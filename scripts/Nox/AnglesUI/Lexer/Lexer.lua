@@ -1,6 +1,8 @@
 local Node = require("scripts.Nox.AnglesUI.Lexer.Nodes.Node")
 local TextNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.TextNode")
 local ComponentNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.ComponentNode")
+local EngineComponentNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.EngineComponentNode")
+local UserComponentNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.UserComponentNode")
 local IfDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.IfDirectiveNode")
 local ForDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.ForDirectiveNode")
 local OutputDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.OutputDirectiveNode")
@@ -14,11 +16,12 @@ local VOID_ELEMENTS = {
   param = true, source = true, track = true, wbr = true,
 }
 
-function Lexer.new(source)
+function Lexer.new(source, userComponents)
   local self = setmetatable({}, Lexer)
   self.source = source
   self.pos = 1
   self.length = #source
+  self.userComponents = userComponents or {}
   return self
 end
 
@@ -313,7 +316,7 @@ function Lexer:parseIfDirective()
   local node = IfDirectiveNode.new(conditionExpr)
 
   -- Parse the body of the @if block
-  local bodyLexer = Lexer.new(bodyContent)
+  local bodyLexer = Lexer.new(bodyContent, self.userComponents)
   bodyLexer:parseChildren(node)
 
   -- Check for @else if / @else chains
@@ -361,7 +364,7 @@ function Lexer:parseElseChain(ifNode)
         -- Parse else-if body into child nodes
         local elseIfChildren = {}
         local tempNode = Node.new("Temp")
-        local bodyLexer = Lexer.new(bodyContent)
+        local bodyLexer = Lexer.new(bodyContent, self.userComponents)
         bodyLexer:parseChildren(tempNode)
         elseIfChildren = tempNode.children
 
@@ -380,7 +383,7 @@ function Lexer:parseElseChain(ifNode)
       end
 
       local tempNode = Node.new("Temp")
-      local bodyLexer = Lexer.new(bodyContent)
+      local bodyLexer = Lexer.new(bodyContent, self.userComponents)
       bodyLexer:parseChildren(tempNode)
       ifNode:setElseBranch(tempNode.children)
       break
@@ -414,7 +417,7 @@ function Lexer:parseForDirective()
   local node = ForDirectiveNode.new(iteratorVar, self:trim(iterableExpr))
 
   -- Parse the body of the @for block
-  local bodyLexer = Lexer.new(bodyContent)
+  local bodyLexer = Lexer.new(bodyContent, self.userComponents)
   bodyLexer:parseChildren(node)
 
   return node
@@ -473,7 +476,15 @@ function Lexer:parseComponent()
   -- Check if this is a void/self-closing element
   local isVoid = VOID_ELEMENTS[string.lower(tagName)] or false
 
-  local node = ComponentNode.new(tagName, attributes, selfClosing or isVoid)
+  -- Create the appropriate node type based on the tag name
+  local node
+  local isMwPrefix = string.sub(tagName, 1, 3) == "mw-"
+  if isMwPrefix then
+    node = EngineComponentNode.new(tagName, attributes, selfClosing or isVoid)
+  else
+    local templateContent = self.userComponents[tagName] or ""
+    node = UserComponentNode.new(tagName, attributes, selfClosing or isVoid, templateContent)
+  end
 
   -- If not self-closing, parse children and closing tag
   if not selfClosing and not isVoid then

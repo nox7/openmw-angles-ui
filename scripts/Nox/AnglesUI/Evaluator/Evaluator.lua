@@ -1,14 +1,17 @@
 local Node = require("scripts.Nox.AnglesUI.Lexer.Nodes.Node")
 local TextNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.TextNode")
 local ComponentNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.ComponentNode")
+local EngineComponentNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.EngineComponentNode")
 local ExpressionEvaluator = require("scripts.Nox.AnglesUI.Evaluator.ExpressionEvaluator")
+local Lexer = require("scripts.Nox.AnglesUI.Lexer.Lexer")
 
 local Evaluator = {}
 Evaluator.__index = Evaluator
 
-function Evaluator.new()
+function Evaluator.new(userComponents)
   local self = setmetatable({}, Evaluator)
   self.expressionEvaluator = ExpressionEvaluator.new()
+  self.userComponents = userComponents or {}
   return self
 end
 
@@ -36,8 +39,12 @@ function Evaluator:evaluateNode(node, context)
     return { TextNode.new(node.text) }
   elseif node.type == Node.TYPE_OUTPUT then
     return self:evaluateOutputNode(node, context)
+  elseif node.type == Node.TYPE_ENGINE_COMPONENT then
+    return self:evaluateEngineComponentNode(node, context)
+  elseif node.type == Node.TYPE_USER_COMPONENT then
+    return self:evaluateUserComponentNode(node, context)
   elseif node.type == Node.TYPE_COMPONENT then
-    return self:evaluateComponentNode(node, context)
+    return self:evaluateEngineComponentNode(node, context)
   elseif node.type == Node.TYPE_IF_DIRECTIVE then
     return self:evaluateIfNode(node, context)
   elseif node.type == Node.TYPE_FOR_DIRECTIVE then
@@ -64,8 +71,8 @@ function Evaluator:evaluateOutputNode(node, context)
   return { TextNode.new(result) }
 end
 
--- Evaluate a ComponentNode: resolve square-bracket attribute bindings
-function Evaluator:evaluateComponentNode(node, context)
+-- Evaluate an EngineComponentNode: resolve square-bracket attribute bindings
+function Evaluator:evaluateEngineComponentNode(node, context)
   local resolvedAttributes = {}
 
   for attrName, attrValue in pairs(node.attributes) do
@@ -84,12 +91,29 @@ function Evaluator:evaluateComponentNode(node, context)
     end
   end
 
-  local resolvedNode = ComponentNode.new(node.tagName, resolvedAttributes, node.selfClosing)
+  local resolvedNode = EngineComponentNode.new(node.tagName, resolvedAttributes, node.selfClosing)
 
   -- Evaluate children
   self:evaluateChildren(node.children, context, resolvedNode)
 
   return { resolvedNode }
+end
+
+-- Evaluate a UserComponentNode: parse its template and evaluate with parent context
+function Evaluator:evaluateUserComponentNode(node, context)
+  local templateContent = node.templateContent
+  if not templateContent or templateContent == "" then
+    return {}
+  end
+
+  -- Parse the user component template
+  local innerLexer = Lexer.new(templateContent, self.userComponents)
+  local innerAst = innerLexer:parse()
+
+  -- Evaluate the parsed template with the parent context
+  local innerResult = self:evaluate(innerAst, context)
+
+  return innerResult.children
 end
 
 -- Evaluate an IfDirectiveNode: pick the matching branch
