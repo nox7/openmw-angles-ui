@@ -178,10 +178,13 @@ function ExpressionEvaluator:evaluate(expression, context)
     else
       func = context:get(funcPath)
     end
-    if type(func) == "function" then
+    -- Don't check if it is a function, as we use Signal which are objects that
+    -- can be called like functions. Just assume the user is right and call whatever
+    -- they want.
+    -- if type(func) == "function" then
       return func()
-    end
-    return nil
+    -- end
+    -- return nil
   end
 
   -- Dot-access variable reference (e.g., "item.name")
