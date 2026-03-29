@@ -21,7 +21,7 @@ OpenMW's code-first approach to UI is technically efficient and gives the user a
         <mw-text>Manage your general castle staff here. You have {{ NumberOfStaff() }} castle staff!</mw-text>
       </mw-flex>
     }
-  </mw-box>
+  </mw-window>
 </mw-root>
 ```
 
@@ -64,7 +64,7 @@ Because a single HTML template file can become massive and complicated, you can 
     @if (ShowStaffManager()) {
       <nox-staff-manager></nox-staff-manager>
     }
-  </mw-box>
+  </mw-window>
 </mw-root>
 ```
 
