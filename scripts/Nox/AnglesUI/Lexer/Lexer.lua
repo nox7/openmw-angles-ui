@@ -464,7 +464,7 @@ function Lexer:parseComponent()
         self:skipWhitespace()
         attrValue = self:readAttributeValue()
       end
-      attributes[attrName] = attrValue
+      attributes[string.lower(attrName)] = attrValue
       self:skipWhitespace()
     end
   end
