@@ -4,9 +4,13 @@ local Evaluator = require("scripts.Nox.AnglesUI.Evaluator.Evaluator")
 local Context = require("scripts.Nox.AnglesUI.Evaluator.Context")
 local UI = require("openmw.ui");
 local Util = require('openmw.util')
+local Core = require("openmw.core")
 local MWUI = require('openmw.interfaces').MWUI
 local Node = require("scripts.Nox.AnglesUI.Lexer.Nodes.Node")
 local TableUtils = require("scripts.Nox.Utils.TableUtils")
+
+-- The user's menu transparency setting from the Settings::gui().mTransparencyAlpha value
+local menuTransparencyAlphaValue = UI._getMenuTransparency()
 
 local Renderer = {}
 Renderer.__index = Renderer
@@ -127,12 +131,17 @@ function Renderer:GetEngineUIElement(node)
           })
         }
       elseif (tagName == "mw-flex") then
+        -- If there is padding, then parse it and apply it to the relativeSize, size, and position accordingly
+        local padding = node:getAttribute("padding")
+        local parsedPadding = self:ParsePadding(padding or "0")
+
         return {
           type = UI.TYPE.Flex,
-        }
-      elseif (tagName == "mw-padding") then
-        return {
-          template = MWUI.templates.padding,
+          props = {
+            relativeSize = Util.vector2(1,1),
+            size = Util.vector2(0,0) - Util.vector2(parsedPadding.Left + parsedPadding.Right, parsedPadding.Top + parsedPadding.Bottom),
+            position = Util.vector2(parsedPadding.Left, parsedPadding.Top)
+          }
         }
       elseif (tagName == "mw-text") then
         local textNodesText = ""
@@ -158,8 +167,8 @@ function Renderer:GetEngineUIElement(node)
           type = UI.TYPE.Text,
           template = MWUI.templates.textNormal,
           props = {
-            textSize = node:getAttribute("textSize") or 24,
-            textColor = (r and g and b) and Util.color.rgb(r, g, b) or Util.color.rgb(0,1,0),
+            -- textSize = node:getAttribute("textSize") or 24,
+            -- textColor = (r and g and b) and Util.color.rgb(r, g, b) or Util.color.rgb(0,1,0),
             text = textNodesText,
             relativeSize = Util.vector2(1, 1),
           }
@@ -171,6 +180,63 @@ function Renderer:GetEngineUIElement(node)
   else
     error("Cannot render node of type " .. node.type)
   end
+end
+
+-- Parses a string that can contain between 1 and 4 numbers
+-- Parses it in CSS-format
+-- Always return a table with keys "Top, Right, Bottom, Left"
+function Renderer:ParsePadding(paddingString)
+  if (type(paddingString) ~= "string") then
+    error("Padding must be provided as a string.")
+  end
+
+  local trimmed = paddingString:match("^%s*(.-)%s*$")
+  if (trimmed == "") then
+    error("Padding string cannot be empty.")
+  end
+
+  local values = {}
+  for token in string.gmatch(trimmed, "%S+") do
+    if (not string.match(token, "^%d+$")) then
+      error("Invalid padding value '" .. token .. "'. Padding must contain whole numbers only.")
+    end
+
+    table.insert(values, tonumber(token))
+  end
+
+  if (#values < 1 or #values > 4) then
+    error("Padding must contain between 1 and 4 values.")
+  end
+
+  local top, right, bottom, left
+  if (#values == 1) then
+    top = values[1]
+    right = values[1]
+    bottom = values[1]
+    left = values[1]
+  elseif (#values == 2) then
+    top = values[1]
+    right = values[2]
+    bottom = values[1]
+    left = values[2]
+  elseif (#values == 3) then
+    top = values[1]
+    right = values[2]
+    bottom = values[3]
+    left = values[2]
+  else
+    top = values[1]
+    right = values[2]
+    bottom = values[3]
+    left = values[4]
+  end
+
+  return {
+    Top = top,
+    Right = right,
+    Bottom = bottom,
+    Left = left,
+  }
 end
 
 return Renderer
