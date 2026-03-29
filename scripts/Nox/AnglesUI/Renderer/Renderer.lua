@@ -119,6 +119,7 @@ function Renderer:GetEngineUIElement(node)
                 resource = UI.texture({
                   path = "black"
                 }),
+                alpha = menuTransparencyAlphaValue,
                 relativeSize = Util.vector2(1, 1)
               }
             },
