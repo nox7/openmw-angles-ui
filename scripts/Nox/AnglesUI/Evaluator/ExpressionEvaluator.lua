@@ -159,6 +159,31 @@ function ExpressionEvaluator:evaluate(expression, context)
     return nil
   end
 
+  -- Function call: name() or name.path()
+  if string.sub(expression, -2) == "()" then
+    local funcPath = string.sub(expression, 1, -3)
+    local dotPos = string.find(funcPath, "%.")
+    local func
+    if dotPos then
+      local rootName = string.sub(funcPath, 1, dotPos - 1)
+      local remainder = string.sub(funcPath, dotPos + 1)
+      func = context:get(rootName)
+      for segment in string.gmatch(remainder, "[^%.]+") do
+        if type(func) == "table" then
+          func = func[segment]
+        else
+          return nil
+        end
+      end
+    else
+      func = context:get(funcPath)
+    end
+    if type(func) == "function" then
+      return func()
+    end
+    return nil
+  end
+
   -- Dot-access variable reference (e.g., "item.name")
   local dotPos = string.find(expression, "%.")
   if dotPos then
