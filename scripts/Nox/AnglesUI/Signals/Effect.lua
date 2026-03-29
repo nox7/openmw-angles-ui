@@ -2,7 +2,7 @@ local Effect = {}
 Effect.ActiveEffect = nil
 Effect.__index = Effect
 
-function Effect.new(runFn)
+function Effect.New(runFn)
 	if (type(runFn) ~= "function") then
 		error("Effect expects a function.")
 	end

@@ -5,7 +5,7 @@ local Signal = {}
 Signal.__index = Signal
 
 -- Creates a new signal with an initial value.
-function Signal.new(initialValue)
+function Signal.New(initialValue)
 	local self = setmetatable({}, Signal)
 	self._value = initialValue
 	self._listeners = {}
@@ -96,7 +96,7 @@ end
 -- Creates an auto-tracked effect and returns an unsubscribe/dispose function.
 -- Any signal read inside runFn (e.g. count()) becomes a dependency.
 function Signal.Effect(runFn)
-	local effect = Effect.new(runFn)
+	local effect = Effect.New(runFn)
 	return function()
 		effect:Dispose()
 	end
