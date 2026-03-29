@@ -10,11 +10,7 @@ local OutputDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.OutputDire
 local Lexer = {}
 Lexer.__index = Lexer
 
-local VOID_ELEMENTS = {
-  area = true, base = true, br = true, col = true, embed = true,
-  hr = true, img = true, input = true, link = true, meta = true,
-  param = true, source = true, track = true, wbr = true,
-}
+local VOID_ELEMENTS = {}
 
 function Lexer.new(source, userComponents)
   local self = setmetatable({}, Lexer)
