@@ -9,19 +9,20 @@ OpenMW's code-first approach to UI is technically efficient and gives the user a
 
 ```html
 <mw-root Layer="Windows" [Width]="WidthInPixels()" [Height]="HeightInPixels()">
-<mw-window>
-  @if (ShowGuardManager()) {
-    <mw-flex RelativeWidth="1" RelativeWidth="1" Padding="10">
-      <mw-text>Manage your castle guards here.</mw-text>
-    </mw-flex>
-  }
+  <mw-window>
+    @if (ShowGuardManager()) {
+      <mw-flex RelativeWidth="1" RelativeWidth="1" Padding="10">
+        <mw-text>Manage your castle guards here.</mw-text>
+      </mw-flex>
+    }
 
-  @if (ShowStaffManager()) {
-    <mw-flex RelativeWidth="1" RelativeWidth="1" Padding="10">
-      <mw-text>Manage your general castle staff here. You have {{ NumberOfStaff() }} castle staff!</mw-text>
-    </mw-flex>
-  }
-</mw-box>
+    @if (ShowStaffManager()) {
+      <mw-flex RelativeWidth="1" RelativeWidth="1" Padding="10">
+        <mw-text>Manage your general castle staff here. You have {{ NumberOfStaff() }} castle staff!</mw-text>
+      </mw-flex>
+    }
+  </mw-box>
+</mw-root>
 ```
 
 You can see two different components inside the if-directives. They will only render these components if those signal functions return true.
@@ -55,15 +56,16 @@ Because a single HTML template file can become massive and complicated, you can 
 *MainManager.html*
 ```html
 <mw-root Layer="Windows" [Width]="WidthInPixels()" [Height]="HeightInPixels()">
-<mw-window>
-  @if (ShowGuardManager()) {
-    <nox-guard-manager></nox-guard-manager>
-  }
+  <mw-window>
+    @if (ShowGuardManager()) {
+      <nox-guard-manager></nox-guard-manager>
+    }
 
-  @if (ShowStaffManager()) {
-    <nox-staff-manager></nox-staff-manager>
-  }
-</mw-box>
+    @if (ShowStaffManager()) {
+      <nox-staff-manager></nox-staff-manager>
+    }
+  </mw-box>
+</mw-root>
 ```
 
 *GuardManager.html*
