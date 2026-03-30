@@ -119,7 +119,64 @@ function Renderer:ApplyPaddingContainer(layout, childLayouts, parsedPadding)
   self:AppendChildren(layout, { paddedContainer })
 end
 
-function Renderer:ArrangeFlexChildren(childLayouts, direction, gap)
+function Renderer:ResolveAxisSize(absoluteSize, relativeSize, parentAxisSize)
+  if (relativeSize ~= nil and parentAxisSize ~= nil) then
+    return (absoluteSize or 0) + (relativeSize * parentAxisSize)
+  end
+
+  if (absoluteSize ~= nil) then
+    return absoluteSize
+  end
+
+  return nil
+end
+
+function Renderer:ResolveLayoutPixelSize(layout, parentPixelSize)
+  local props = layout.props or {}
+  local size = props.size
+  local relativeSize = props.relativeSize
+
+  local parentWidth = parentPixelSize and parentPixelSize.x or nil
+  local parentHeight = parentPixelSize and parentPixelSize.y or nil
+
+  local resolvedWidth = self:ResolveAxisSize(
+    size and size.x or nil,
+    relativeSize and relativeSize.x or nil,
+    parentWidth
+  )
+
+  local resolvedHeight = self:ResolveAxisSize(
+    size and size.y or nil,
+    relativeSize and relativeSize.y or nil,
+    parentHeight
+  )
+
+  return {
+    x = resolvedWidth,
+    y = resolvedHeight,
+  }
+end
+
+function Renderer:ResolvePaddedPixelSize(parentPixelSize, padding)
+  if (parentPixelSize == nil) then
+    return nil
+  end
+
+  return {
+    x = parentPixelSize.x ~= nil and (parentPixelSize.x - (padding.Left + padding.Right)) or nil,
+    y = parentPixelSize.y ~= nil and (parentPixelSize.y - (padding.Top + padding.Bottom)) or nil,
+  }
+end
+
+function Renderer:ResolveRootParentPixelSize()
+  local screenSize = UI.screenSize()
+  return {
+    x = screenSize.x,
+    y = screenSize.y,
+  }
+end
+
+function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerMainSize)
   local childCount = #childLayouts
   if (childCount == 0) then
     return childLayouts
@@ -127,47 +184,108 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap)
 
   local resolvedDirection = direction or "column"
   local resolvedGap = gap or 0
+  local isRow = resolvedDirection == "row"
 
-  for i, child in ipairs(childLayouts) do
+  local totalGrow = 0
+  local totalFixedMainSize = math.max(0, (childCount - 1) * resolvedGap)
+
+  for _, child in ipairs(childLayouts) do
+    child.props = child.props or {}
+
+    local size = child.props.size
+    local relativeSize = child.props.relativeSize
+    local mainSize = nil
+
+    if (size ~= nil) then
+      mainSize = isRow and size.x or size.y
+      if (mainSize ~= nil and mainSize > 0) then
+        totalFixedMainSize = totalFixedMainSize + mainSize
+      else
+        mainSize = nil
+      end
+    end
+
+    local grow = child.__anglesFlexGrow or 0
+    if (grow > 0) then
+      totalGrow = totalGrow + grow
+    end
+
+    if (size ~= nil and relativeSize == nil) then
+      if (isRow and size.y == 0) then
+        child.props.relativeSize = Util.vector2(0, 1)
+      elseif ((not isRow) and size.x == 0) then
+        child.props.relativeSize = Util.vector2(1, 0)
+      end
+    end
+  end
+
+  local remainingMainSize = nil
+  if (containerMainSize ~= nil) then
+    remainingMainSize = containerMainSize - totalFixedMainSize
+    if (remainingMainSize < 0) then
+      remainingMainSize = 0
+    end
+  end
+
+  local currentMainOffset = 0
+
+  for _, child in ipairs(childLayouts) do
     child.props = child.props or {}
 
     local hasPosition = child.props.position ~= nil
     local hasRelativePosition = child.props.relativePosition ~= nil
-    local hasSize = child.props.size ~= nil
-    local hasRelativeSize = child.props.relativeSize ~= nil
+    local size = child.props.size
 
-    print(child.props.size)
+    local majorSize = 0
+    if (size ~= nil) then
+      majorSize = isRow and (size.x or 0) or (size.y or 0)
+    end
+
+    local grow = child.__anglesFlexGrow or 0
+    if (grow > 0 and remainingMainSize ~= nil and totalGrow > 0) then
+      local grownSize = (remainingMainSize * grow) / totalGrow
+      if (size == nil) then
+        if (isRow) then
+          child.props.size = Util.vector2(grownSize, 0)
+          child.props.relativeSize = child.props.relativeSize or Util.vector2(0, 1)
+        else
+          child.props.size = Util.vector2(0, grownSize)
+          child.props.relativeSize = child.props.relativeSize or Util.vector2(1, 0)
+        end
+      else
+        if (isRow) then
+          child.props.size = Util.vector2((size.x or 0) + grownSize, size.y or 0)
+        else
+          child.props.size = Util.vector2(size.x or 0, (size.y or 0) + grownSize)
+        end
+      end
+
+      majorSize = majorSize + grownSize
+    end
 
     if (not hasRelativePosition and not hasPosition) then
-      if (resolvedDirection == "row") then
-        child.props.relativePosition = Util.vector2((i - 1) / childCount, 0)
+      if (isRow) then
+        child.props.position = Util.vector2(currentMainOffset, 0)
       else
-        child.props.relativePosition = Util.vector2(0, (i - 1) / childCount)
+        child.props.position = Util.vector2(0, currentMainOffset)
       end
     end
 
-    if (not hasSize and not hasRelativeSize) then
-      if (resolvedDirection == "row") then
-        child.props.relativeSize = Util.vector2(1 / childCount, 1)
-      else
-        child.props.relativeSize = Util.vector2(1, 1 / childCount)
-      end
-    end
+    currentMainOffset = currentMainOffset + majorSize + resolvedGap
 
-    if (resolvedGap > 0 and not hasPosition) then
-      if (resolvedDirection == "row") then
-        child.props.position = Util.vector2((i - 1) * resolvedGap, 0)
-      else
-        child.props.position = Util.vector2(0, (i - 1) * resolvedGap)
-      end
-    end
+    child.__anglesFlexGrow = nil
   end
 
   return childLayouts
 end
 
-function Renderer:ApplyCustomFlexContainer(layout, childLayouts, meta)
-  local arrangedChildren = self:ArrangeFlexChildren(childLayouts, meta.direction, meta.gap)
+function Renderer:ApplyCustomFlexContainer(layout, childLayouts, meta, innerPixelSize)
+  local containerMainSize = nil
+  if (innerPixelSize ~= nil) then
+    containerMainSize = (meta.direction == "row") and innerPixelSize.x or innerPixelSize.y
+  end
+
+  local arrangedChildren = self:ArrangeFlexChildren(childLayouts, meta.direction, meta.gap, containerMainSize)
 
   local paddedContainer = {
     props = {
@@ -198,7 +316,8 @@ function Renderer:Render(userContext)
     local firstNode = rootNode.children[1]
     if (firstNode.type == Node.TYPE_ENGINE_COMPONENT) then
       if (firstNode.tagName == "mw-root") then
-        local rootLayout = self:BuildLayoutTree(firstNode)
+        local rootParentPixelSize = self:ResolveRootParentPixelSize()
+        local rootLayout = self:BuildLayoutTree(firstNode, rootParentPixelSize)
         local uiElement = UI.create(rootLayout)
         uiElement:update()
         return uiElement
@@ -213,20 +332,33 @@ function Renderer:Render(userContext)
   end
 end
 
-function Renderer:BuildLayoutTree(node)
+function Renderer:BuildLayoutTree(node, parentPixelSize)
   local layout, meta = self:GetEngineUIElement(node)
+
+  local growAttribute = node:getAttribute("grow")
+  if (growAttribute ~= nil) then
+    layout.__anglesFlexGrow = self:ToNumber(growAttribute, "Grow")
+  end
+
+  local layoutPixelSize = self:ResolveLayoutPixelSize(layout, parentPixelSize)
+
+  local childParentPixelSize = layoutPixelSize
+  if (meta ~= nil and (meta.type == "custom-flex" or meta.type == "padding-container")) then
+    childParentPixelSize = self:ResolvePaddedPixelSize(layoutPixelSize, meta.padding)
+  end
+
   local childLayouts = {}
 
   if (#node.children > 0) then
     for _, childNode in pairs(node.children) do
       if (childNode.type == Node.TYPE_ENGINE_COMPONENT) then
-        table.insert(childLayouts, self:BuildLayoutTree(childNode))
+        table.insert(childLayouts, self:BuildLayoutTree(childNode, childParentPixelSize))
       end
     end
   end
 
   if (meta ~= nil and meta.type == "custom-flex") then
-    self:ApplyCustomFlexContainer(layout, childLayouts, meta)
+    self:ApplyCustomFlexContainer(layout, childLayouts, meta, childParentPixelSize)
   elseif (meta ~= nil and meta.type == "padding-container") then
     self:ApplyPaddingContainer(layout, childLayouts, meta.padding)
   else
@@ -258,17 +390,17 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
     error("Element must have either Width/Height or RelativeWidth/RelativeHeight attributes.")
   end
 
-  if (defaultRelativeSize and (width == nil or height == nil) and (relativeWidth == nil or relativeHeight == nil)) then
+  if (defaultRelativeSize and width == nil and height == nil and relativeWidth == nil and relativeHeight == nil) then
     relativeWidth = 1
     relativeHeight = 1
   end
 
-  if (width ~= nil and height ~= nil) then
-    props.size = Util.vector2(width, height)
+  if (width ~= nil or height ~= nil) then
+    props.size = Util.vector2(width or 0, height or 0)
   end
 
-  if (relativeWidth ~= nil and relativeHeight ~= nil) then
-    props.relativeSize = Util.vector2(relativeWidth, relativeHeight)
+  if (relativeWidth ~= nil or relativeHeight ~= nil) then
+    props.relativeSize = Util.vector2(relativeWidth or 0, relativeHeight or 0)
   end
 
   if (xPos ~= nil and yPos ~= nil) then

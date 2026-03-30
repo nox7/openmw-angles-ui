@@ -55,5 +55,6 @@ return {
     "AnchorX";
     "AnchorY";
     "Visible";
+    "Grow";
   }
 }
