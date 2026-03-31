@@ -583,6 +583,51 @@ function Renderer:Rerender()
   self.rootElement:update()
 end
 
+-- Snaps the mw-root back inside the screen if any edge has drifted outside.
+-- Safe to call at any time; does nothing and skips the update() call when the
+-- window is already fully on-screen.
+function Renderer:SnapToScreen()
+  if (self.rootLayout == nil or self.rootLayout.props == nil or self.rootElement == nil) then
+    return
+  end
+
+  local screenSize = UI.screenSize()
+
+  -- Resolve current pixel position.
+  local curX = 0
+  local curY = 0
+  if (self.rootLayout.props.position ~= nil) then
+    curX = self.rootLayout.props.position.x
+    curY = self.rootLayout.props.position.y
+  elseif (self.rootLayout.props.relativePosition ~= nil) then
+    curX = self.rootLayout.props.relativePosition.x * screenSize.x
+    curY = self.rootLayout.props.relativePosition.y * screenSize.y
+  end
+
+  -- Resolve current pixel size.
+  local rootW = 0
+  local rootH = 0
+  if (self.rootLayout.props.size ~= nil) then
+    rootW = self.rootLayout.props.size.x
+    rootH = self.rootLayout.props.size.y
+  elseif (self.rootLayout.props.relativeSize ~= nil) then
+    rootW = self.rootLayout.props.relativeSize.x * screenSize.x
+    rootH = self.rootLayout.props.relativeSize.y * screenSize.y
+  end
+
+  local newX = math.max(0, math.min(curX, screenSize.x - rootW))
+  local newY = math.max(0, math.min(curY, screenSize.y - rootH))
+
+  if (newX == curX and newY == curY) then
+    return
+  end
+
+  self.rootLayout.props.position         = Util.vector2(newX, newY)
+  self.rootLayout.props.relativePosition = nil
+
+  self.rootElement:update()
+end
+
 function Renderer:BuildLayoutTree(node, parentPixelSize, ancestors, containerContext)
 ancestors = ancestors or {}
 local layout, meta = self:GetEngineUIElement(node, ancestors, containerContext)
@@ -1030,19 +1075,34 @@ function Renderer:BuildDraggerEvents()
       local rootLayout = rendererRef.rootLayout
       if (rootLayout == nil or rootLayout.props == nil) then return end
 
+      local screenSize = UI.screenSize()
+
       local curX = 0
       local curY = 0
       if (rootLayout.props.position ~= nil) then
         curX = rootLayout.props.position.x
         curY = rootLayout.props.position.y
       elseif (rootLayout.props.relativePosition ~= nil) then
-        local screenSize = UI.screenSize()
         curX = rootLayout.props.relativePosition.x * screenSize.x
         curY = rootLayout.props.relativePosition.y * screenSize.y
       end
 
-      -- Move the root; no layout rebuild needed, just a position update.
-      rootLayout.props.position         = Util.vector2(curX + dx, curY + dy)
+      -- Resolve the root's current pixel size for clamping.
+      local rootW = 0
+      local rootH = 0
+      if (rootLayout.props.size ~= nil) then
+        rootW = rootLayout.props.size.x
+        rootH = rootLayout.props.size.y
+      elseif (rootLayout.props.relativeSize ~= nil) then
+        rootW = rootLayout.props.relativeSize.x * screenSize.x
+        rootH = rootLayout.props.relativeSize.y * screenSize.y
+      end
+
+      -- Clamp so the root cannot be dragged outside the screen.
+      local newX = math.max(0, math.min(curX + dx, screenSize.x - rootW))
+      local newY = math.max(0, math.min(curY + dy, screenSize.y - rootH))
+
+      rootLayout.props.position         = Util.vector2(newX, newY)
       rootLayout.props.relativePosition = nil
 
       if (rendererRef.rootElement ~= nil) then
