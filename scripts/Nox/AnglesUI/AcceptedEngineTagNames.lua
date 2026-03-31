@@ -1,3 +1,11 @@
 return {
-  "mw-root"; "mw-window"; "mw-flex"; "mw-text"; "mw-hr"; "mw-widget";
+  "mw-root";
+  "mw-window";
+  "mw-flex";
+  "mw-grid";
+  "mw-text";
+  "mw-image";
+  "mw-text-edit";
+  "mw-hr";
+  "mw-widget";
 };
