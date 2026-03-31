@@ -330,8 +330,10 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
 
     currentMainOffset = currentMainOffset + majorSize + resolvedGap
 
-    -- After grow is resolved, rebuild any nested grid with updated pixel dimensions
-    if (child.__anglesCustomGrid ~= nil) then
+    -- After grow is resolved, rebuild any nested custom layouts (grid or flex)
+    -- using the child's now-resolved pixel dimensions.
+    local needsRebuild = (child.__anglesCustomGrid ~= nil or child.__anglesNestedFlexes ~= nil)
+    if (needsRebuild) then
       local childSize = child.props.size
       local childRelSize = child.props.relativeSize
       local effectiveWidth = nil
@@ -353,10 +355,21 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
         end
       end
 
-      local state = child.__anglesCustomGrid
       local childPixelSize = { x = effectiveWidth, y = effectiveHeight }
-      local gridInnerPixelSize = self:ResolvePaddedPixelSize(childPixelSize, state.meta.padding)
-      self:RebuildCustomGridLayout(child, gridInnerPixelSize)
+
+      if (child.__anglesCustomGrid ~= nil) then
+        local gridInnerPixelSize = self:ResolvePaddedPixelSize(childPixelSize, child.__anglesCustomGrid.meta.padding)
+        self:RebuildCustomGridLayout(child, gridInnerPixelSize)
+      end
+
+      if (child.__anglesNestedFlexes ~= nil) then
+        for _, nestedFlex in ipairs(child.__anglesNestedFlexes) do
+          if (nestedFlex.__anglesCustomFlex ~= nil) then
+            local nestedInnerSize = self:ResolvePaddedPixelSize(childPixelSize, nestedFlex.__anglesCustomFlex.meta.padding)
+            self:RebuildCustomFlexLayout(nestedFlex, nestedInnerSize)
+          end
+        end
+      end
     end
 
     child.__anglesFlexGrow = nil
@@ -366,6 +379,20 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
 end
 
 function Renderer:ApplyCustomFlexContainer(layout, childLayouts, meta, innerPixelSize)
+  -- Snapshot each child's original props before ArrangeFlexChildren modifies them.
+  -- RebuildCustomFlexLayout needs these to restore a clean slate before re-running.
+  local originalChildProps = {}
+  for i, child in ipairs(childLayouts) do
+    child.props = child.props or {}
+    originalChildProps[i] = {
+      size             = child.props.size,
+      relativeSize     = child.props.relativeSize,
+      position         = child.props.position,
+      relativePosition = child.props.relativePosition,
+      flexGrow         = child.__anglesFlexGrow,
+    }
+  end
+
   local arrangedChildren = self:ArrangeFlexChildren(childLayouts, meta.direction, meta.gap, innerPixelSize)
 
   local paddedContainer = {
@@ -378,6 +405,15 @@ function Renderer:ApplyCustomFlexContainer(layout, childLayouts, meta, innerPixe
   }
 
   self:AppendChildren(layout, { paddedContainer })
+
+  -- Store rebuild state so an ancestor's ArrangeFlexChildren can re-run this flex's
+  -- internal layout if the ancestor's grow changes this element's actual pixel size.
+  layout.__anglesCustomFlex = {
+    meta               = meta,
+    childLayouts       = childLayouts,
+    originalChildProps = originalChildProps,
+    paddedContainer    = paddedContainer,
+  }
 end
 
 -- Build the flat list of CSS rules that are active for the current screen width.
@@ -680,6 +716,17 @@ end
     self:ApplyPaddingContainer(layout, childLayouts, meta.padding)
   else
     self:AppendChildren(layout, childLayouts)
+    -- Track any immediate flex children so an ancestor ArrangeFlexChildren can
+    -- call RebuildCustomFlexLayout on them when this wrapper's grow-resolved
+    -- size differs from the build-time estimate.
+    for _, childLayout in ipairs(childLayouts) do
+      if (childLayout.__anglesCustomFlex ~= nil) then
+        if (layout.__anglesNestedFlexes == nil) then
+          layout.__anglesNestedFlexes = {}
+        end
+        table.insert(layout.__anglesNestedFlexes, childLayout)
+      end
+    end
   end
 
   return layout
@@ -1650,6 +1697,34 @@ function Renderer:RebuildCustomGridLayout(layout, innerPixelSize)
   }
 
   layout.content = UI.content({ paddedContainer })
+end
+
+-- Re-runs ArrangeFlexChildren for a flex layout using a new inner pixel size.
+-- Called when an ancestor's grow resolution reveals the element's actual size
+-- differs from the build-time estimate.
+function Renderer:RebuildCustomFlexLayout(layout, innerPixelSize)
+  local state = layout.__anglesCustomFlex
+  if (state == nil) then return end
+
+  -- Restore each child's original pre-arrangement props so ArrangeFlexChildren
+  -- gets a clean slate (correct sizes, nil positions, grow values intact).
+  for i, child in ipairs(state.childLayouts) do
+    local original = state.originalChildProps[i]
+    if (original ~= nil) then
+      child.props              = child.props or {}
+      child.props.size         = original.size
+      child.props.relativeSize = original.relativeSize
+      child.props.position     = original.position
+      child.props.relativePosition = original.relativePosition
+      child.__anglesFlexGrow   = original.flexGrow
+    end
+  end
+
+  local arrangedChildren = self:ArrangeFlexChildren(
+    state.childLayouts, state.meta.direction, state.meta.gap, innerPixelSize
+  )
+
+  state.paddedContainer.content = UI.content(arrangedChildren)
 end
 
 function Renderer:ApplyCustomGridContainer(layout, childLayouts, meta, innerPixelSize)
