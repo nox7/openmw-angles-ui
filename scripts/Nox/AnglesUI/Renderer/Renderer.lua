@@ -11,9 +11,28 @@ local MWUI = require('openmw.interfaces').MWUI
 local Node = require("scripts.Nox.AnglesUI.Lexer.Nodes.Node")
 local TableUtils = require("scripts.Nox.Utils.TableUtils")
 local VFS = require('openmw.vfs')
+local async = require('openmw.async')
 
 -- The user's menu transparency setting from the Settings::gui().mTransparencyAlpha value
 local menuTransparencyAlphaValue = UI._getMenuTransparency()
+
+-- Mapping from CSS property names to our lowercased HTML attribute names
+local CSS_PROPERTY_TO_ATTRIBUTE = {
+  ["padding"]              = "padding",
+  ["color"]               = "textcolor",
+  ["font-size"]           = "textsize",
+  ["background"]          = "background",
+  ["grid-template-columns"] = "gridtemplatecolumns",
+  ["grid-template-rows"]  = "gridtemplaterows",
+  ["grid-column"]         = "gridcolumn",
+  ["grid-row"]            = "gridrow",
+  ["flex-grow"]           = "grow",
+  ["width"]               = "width",
+  ["height"]              = "height",
+  ["gap"]                 = "gap",
+  ["flex-direction"]      = "direction",
+  ["container-type"]      = "containertype",
+}
 
 local Renderer = {}
 Renderer.__index = Renderer
@@ -360,6 +379,100 @@ function Renderer:ApplyCustomFlexContainer(layout, childLayouts, meta, innerPixe
   self:AppendChildren(layout, { paddedContainer })
 end
 
+-- Build the flat list of CSS rules that are active for the current screen width.
+-- Base rules come first; matching media-query rules are appended (higher cascade order).
+function Renderer:ResolveActiveRules()
+  local cssModel = self.cssModel
+  if (cssModel == nil) then return {} end
+
+  local activeRules = {}
+
+  for _, rule in ipairs(cssModel.rules or {}) do
+    table.insert(activeRules, rule)
+  end
+
+  local screenWidth = UI.screenSize().x
+  for _, mediaQuery in ipairs(cssModel.mediaQueries or {}) do
+    local matches = false
+    if (mediaQuery.type == "max-width") then
+      matches = screenWidth <= mediaQuery.value
+    elseif (mediaQuery.type == "min-width") then
+      matches = screenWidth >= mediaQuery.value
+    end
+
+    if (matches) then
+      for _, rule in ipairs(mediaQuery.rules or {}) do
+        table.insert(activeRules, rule)
+      end
+    end
+  end
+
+  return activeRules
+end
+
+-- Build the flat list of active container query rules, including those from matching media queries.
+function Renderer:ResolveActiveContainerQueryRules()
+  local cssModel = self.cssModel
+  if (cssModel == nil) then return {} end
+
+  local activeRules = {}
+
+  for _, cqRule in ipairs(cssModel.containerQueryRules or {}) do
+    table.insert(activeRules, cqRule)
+  end
+
+  local screenWidth = UI.screenSize().x
+  for _, mediaQuery in ipairs(cssModel.mediaQueries or {}) do
+    local matches = false
+    if (mediaQuery.type == "max-width") then
+      matches = screenWidth <= mediaQuery.value
+    elseif (mediaQuery.type == "min-width") then
+      matches = screenWidth >= mediaQuery.value
+    end
+
+    if (matches) then
+      for _, cqRule in ipairs(mediaQuery.containerQueryRules or {}) do
+        table.insert(activeRules, cqRule)
+      end
+    end
+  end
+
+  return activeRules
+end
+
+-- Return a table of lowercased attribute name -> value pairs derived from
+-- any CSS rules in self.activeRules that match this node.
+-- containerPixelSize is the resolved pixel size of the nearest container ancestor (or nil).
+function Renderer:GetCSSAttributesForNode(node, ancestors, containerPixelSize)
+  local attrs = {}
+
+  if (self.activeRules ~= nil and #self.activeRules > 0) then
+    local cssDecls = CSSParser.ApplyRulesToNode(self.activeRules, node, ancestors)
+    for cssProperty, value in pairs(cssDecls) do
+      local attrName = CSS_PROPERTY_TO_ATTRIBUTE[cssProperty]
+      if (attrName ~= nil) then
+        attrs[attrName] = value
+      end
+    end
+  end
+
+  if (containerPixelSize ~= nil
+    and self.activeContainerQueryRules ~= nil
+    and #self.activeContainerQueryRules > 0) then
+    local cqDecls = CSSParser.ApplyContainerRulesToNode(
+      self.activeContainerQueryRules, node, ancestors, containerPixelSize
+    )
+    for cssProperty, value in pairs(cqDecls) do
+      local attrName = CSS_PROPERTY_TO_ATTRIBUTE[cssProperty]
+      if (attrName ~= nil) then
+        attrs[attrName] = value
+      end
+    end
+  end
+
+  return attrs
+end
+
 -- Renders the provided source code and components onto the screen.
 -- This returns the OpenMW Lua UI root element after it is called.
 function Renderer:Render(userContext)
@@ -373,13 +486,19 @@ function Renderer:Render(userContext)
   -- Run an Effect() on all userContexts that are signals, so that when they update we can destroy the uiElement and re-render
   -- a new one with updated values.
 
+  self.activeRules = self:ResolveActiveRules()
+  self.activeContainerQueryRules = self:ResolveActiveContainerQueryRules()
+
   if (#rootNode.children > 0) then
     local firstNode = rootNode.children[1]
     if (firstNode.type == Node.TYPE_ENGINE_COMPONENT) then
       if (firstNode.tagName == "mw-root") then
+        self.evaluatedRootNode = firstNode
         local rootParentPixelSize = self:ResolveRootParentPixelSize()
         local rootLayout = self:BuildLayoutTree(firstNode, rootParentPixelSize)
+        self.rootLayout = rootLayout
         local uiElement = UI.create(rootLayout)
+        self.rootElement = uiElement
         uiElement:update()
         return uiElement
       else
@@ -393,9 +512,57 @@ function Renderer:Render(userContext)
   end
 end
 
-function Renderer:BuildLayoutTree(node, parentPixelSize)
-  local layout, meta = self:GetEngineUIElement(node)
-  local normalizedProperties = self:ParseAcceptedProperties(node)
+-- Rebuilds the layout tree from the stored evaluated root node and updates the live UI element.
+-- Re-resolves CSS rules so media queries and container queries reflect the current state.
+-- Any explicit size/position applied to the root (e.g. from resizing) is preserved and used
+-- when computing child layouts so container queries see the correct container dimensions.
+function Renderer:Rerender()
+  if (self.evaluatedRootNode == nil or self.rootElement == nil or self.rootLayout == nil) then
+    return
+  end
+
+  -- Snapshot explicit size/position set on the root layout (e.g. by a resize drag).
+  -- These are stored temporarily so BuildLayoutTree can apply them before resolving
+  -- child pixel sizes, ensuring container queries fire against the real current size.
+  self._rootSizeOverride     = self.rootLayout.props and self.rootLayout.props.size     or nil
+  self._rootPositionOverride = self.rootLayout.props and self.rootLayout.props.position or nil
+
+  self.activeRules = self:ResolveActiveRules()
+  self.activeContainerQueryRules = self:ResolveActiveContainerQueryRules()
+
+  local rootParentPixelSize = self:ResolveRootParentPixelSize()
+  local newRootLayout = self:BuildLayoutTree(self.evaluatedRootNode, rootParentPixelSize)
+
+  self._rootSizeOverride     = nil
+  self._rootPositionOverride = nil
+
+  -- Patch the live root layout table in-place.
+  -- UI.create() already holds a reference to self.rootLayout, so we mutate it
+  -- rather than replace it so that OpenMW picks up the changes on update().
+  self.rootLayout.props    = newRootLayout.props
+  self.rootLayout.content  = newRootLayout.content
+  self.rootLayout.userData = newRootLayout.userData
+
+  self.rootElement:update()
+end
+
+function Renderer:BuildLayoutTree(node, parentPixelSize, ancestors, containerPixelSize)
+ancestors = ancestors or {}
+local layout, meta = self:GetEngineUIElement(node, ancestors, containerPixelSize)
+local normalizedProperties = self:ParseAcceptedProperties(node, ancestors, containerPixelSize)
+
+  -- During Rerender(), restore the explicit size/position that was applied to the root
+  -- (e.g. from a resize drag) so that child pixel sizes and container queries are computed
+  -- against the actual current dimensions rather than the template defaults.
+  -- The root node is the first BuildLayoutTree call, identified by containerPixelSize == nil.
+  if (containerPixelSize == nil and self._rootSizeOverride ~= nil) then
+    layout.props.size        = self._rootSizeOverride
+    layout.props.relativeSize = nil
+    if (self._rootPositionOverride ~= nil) then
+      layout.props.position        = self._rootPositionOverride
+      layout.props.relativePosition = nil
+    end
+  end
 
   local growAttribute = normalizedProperties["grow"]
   if (growAttribute ~= nil) then
@@ -429,12 +596,25 @@ function Renderer:BuildLayoutTree(node, parentPixelSize)
     childParentPixelSize = self:ResolvePaddedPixelSize(layoutPixelSize, meta.padding)
   end
 
+  -- When containerPixelSize is nil (first call, i.e. mw-root), this element becomes the default container.
+  -- When the element has container-type defined, it becomes a new container for its children.
+  local childContainerPixelSize = containerPixelSize
+  if (childContainerPixelSize == nil or normalizedProperties["containertype"] ~= nil) then
+    childContainerPixelSize = layoutPixelSize
+  end
+
   local childLayouts = {}
+
+  local childAncestors = {}
+  for _, ancestor in ipairs(ancestors) do
+    table.insert(childAncestors, ancestor)
+  end
+  table.insert(childAncestors, node)
 
   if (#node.children > 0) then
     for _, childNode in pairs(node.children) do
       if (childNode.type == Node.TYPE_ENGINE_COMPONENT) then
-        table.insert(childLayouts, self:BuildLayoutTree(childNode, childParentPixelSize))
+        table.insert(childLayouts, self:BuildLayoutTree(childNode, childParentPixelSize, childAncestors, childContainerPixelSize))
       end
     end
   end
@@ -456,7 +636,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
   local props = {}
   local consumed = {}
 
-  self:MarkConsumed(consumed, { "name", "layer", "padding", "parsedpadding", "direction", "gap", "grow" })
+  self:MarkConsumed(consumed, { "name", "layer", "padding", "parsedpadding", "direction", "gap", "grow", "containertype" })
 
   local width, widthRelativeFromWidth = self:ParseNumericOrPercent(allProperties["width"], "Width")
   local height, heightRelativeFromHeight = self:ParseNumericOrPercent(allProperties["height"], "Height")
@@ -535,18 +715,183 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
   return props, consumed
 end
 
+-- Builds the mousePress/mouseMove event table that implements edge/corner resizing for mw-root.
+-- Returns an events table suitable for assignment directly to a layout's "events" field.
+function Renderer:BuildResizeEvents()
+  local resizeState = {
+    isDragging   = false,
+    dragEdge     = nil,
+    lastMousePos = nil,
+  }
+
+  local rendererRef = self
+  local edgeMargin  = 8
+  local minSize     = 50
+
+  local function getElementBounds(l)
+    local elemX = 0
+    local elemY = 0
+
+    if (l.props.position ~= nil) then
+      elemX = l.props.position.x
+      elemY = l.props.position.y
+    elseif (l.props.relativePosition ~= nil) then
+      local screenSize = UI.screenSize()
+      elemX = l.props.relativePosition.x * screenSize.x
+      elemY = l.props.relativePosition.y * screenSize.y
+    end
+
+    local elemW = 0
+    local elemH = 0
+
+    if (l.props.size ~= nil) then
+      elemW = l.props.size.x
+      elemH = l.props.size.y
+    elseif (l.props.relativeSize ~= nil) then
+      local screenSize = UI.screenSize()
+      elemW = l.props.relativeSize.x * screenSize.x
+      elemH = l.props.relativeSize.y * screenSize.y
+    end
+
+    return elemX, elemY, elemW, elemH
+  end
+
+  return {
+    mousePress = async:callback(function(e, l)
+      if (e.button ~= 1) then return end
+
+      local elemX, elemY, elemW, elemH = getElementBounds(l)
+      local mx = e.position.x
+      local my = e.position.y
+
+      local onLeft   = mx >= elemX and mx <= elemX + edgeMargin
+      local onRight  = mx >= elemX + elemW - edgeMargin and mx <= elemX + elemW
+      local onTop    = my >= elemY and my <= elemY + edgeMargin
+      local onBottom = my >= elemY + elemH - edgeMargin and my <= elemY + elemH
+
+      local edge = nil
+      if (onTop and onLeft) then
+        edge = "top-left"
+      elseif (onTop and onRight) then
+        edge = "top-right"
+      elseif (onBottom and onLeft) then
+        edge = "bottom-left"
+      elseif (onBottom and onRight) then
+        edge = "bottom-right"
+      elseif (onLeft) then
+        edge = "left"
+      elseif (onRight) then
+        edge = "right"
+      elseif (onTop) then
+        edge = "top"
+      elseif (onBottom) then
+        edge = "bottom"
+      end
+
+      if (edge ~= nil) then
+        resizeState.isDragging   = true
+        resizeState.dragEdge     = edge
+        resizeState.lastMousePos = e.position
+      else
+        resizeState.isDragging   = false
+        resizeState.dragEdge     = nil
+        resizeState.lastMousePos = nil
+      end
+    end),
+
+    mouseMove = async:callback(function(e, l)
+      if (not resizeState.isDragging) then return end
+
+      -- Stop resizing if the left button is no longer held
+      if (e.button ~= 1) then
+        resizeState.isDragging   = false
+        resizeState.dragEdge     = nil
+        resizeState.lastMousePos = nil
+        return
+      end
+
+      local last = resizeState.lastMousePos
+      if (last == nil) then return end
+
+      local dx = e.position.x - last.x
+      local dy = e.position.y - last.y
+      resizeState.lastMousePos = e.position
+
+      local screenSize = UI.screenSize()
+
+      -- Resolve current pixel position
+      local curX = 0
+      local curY = 0
+      if (l.props.position ~= nil) then
+        curX = l.props.position.x
+        curY = l.props.position.y
+      elseif (l.props.relativePosition ~= nil) then
+        curX = l.props.relativePosition.x * screenSize.x
+        curY = l.props.relativePosition.y * screenSize.y
+      end
+
+      -- Resolve current pixel size (required; bail out if not determinable)
+      local curW = 0
+      local curH = 0
+      if (l.props.size ~= nil) then
+        curW = l.props.size.x
+        curH = l.props.size.y
+      elseif (l.props.relativeSize ~= nil) then
+        curW = l.props.relativeSize.x * screenSize.x
+        curH = l.props.relativeSize.y * screenSize.y
+      else
+        return
+      end
+
+      local edge = resizeState.dragEdge
+      local newW = curW
+      local newH = curH
+      local newX = curX
+      local newY = curY
+
+      -- Horizontal axis
+      if (edge == "right" or edge == "bottom-right" or edge == "top-right") then
+        newW = math.max(minSize, newW + dx)
+      elseif (edge == "left" or edge == "bottom-left" or edge == "top-left") then
+        local adjusted = math.max(minSize, newW - dx)
+        newX = newX + (newW - adjusted)
+        newW = adjusted
+      end
+
+      -- Vertical axis
+      if (edge == "bottom" or edge == "bottom-right" or edge == "bottom-left") then
+        newH = math.max(minSize, newH + dy)
+      elseif (edge == "top" or edge == "top-right" or edge == "top-left") then
+        local adjusted = math.max(minSize, newH - dy)
+        newY = newY + (newH - adjusted)
+        newH = adjusted
+      end
+
+      -- Switch element to absolute pixel size/position once resizing begins
+      l.props.size         = Util.vector2(newW, newH)
+      l.props.relativeSize = nil
+      l.props.position     = Util.vector2(newX, newY)
+      l.props.relativePosition = nil
+
+      if (rendererRef.rootElement ~= nil) then
+        rendererRef:Rerender()
+      end
+    end),
+  }
+end
+
 -- Gets the engine UI element that corresponds to a tag name.
-function Renderer:GetEngineUIElement(node)
-  if (node.type ~= Node.TYPE_ENGINE_COMPONENT) then
-    error("Cannot render node of type " .. node.type)
-  end
+function Renderer:GetEngineUIElement(node, ancestors, containerPixelSize)
+if (node.type ~= Node.TYPE_ENGINE_COMPONENT) then
+  error("Cannot render node of type " .. node.type)
+end
 
-  local tagName = node.tagName
-  if (not Renderer.IsValidEngineTag(tagName)) then
-    error(tagName .. " is not a valid engine tag.")
-  end
+local tagName = node.tagName
+if (not Renderer.IsValidEngineTag(tagName)) then
+  error(tagName .. " is not a valid engine tag.")
+end
 
-  local allProperties = self:ParseAcceptedProperties(node)
+local allProperties = self:ParseAcceptedProperties(node, ancestors, containerPixelSize)
   local name = allProperties["name"]
 
   if (tagName == "mw-root") then
@@ -556,12 +901,19 @@ function Renderer:GetEngineUIElement(node)
     end
 
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { requireSize = true })
-    self:MarkConsumed(consumed, { "name", "layer" })
+    local resizable = self:ToBoolean(allProperties["resizable"], "Resizable")
+    self:MarkConsumed(consumed, { "name", "layer", "resizable" })
+
+    local events = nil
+    if (resizable == true) then
+      events = self:BuildResizeEvents()
+    end
 
     return {
       layer = layer,
       name = name,
       props = props,
+      events = events,
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-window") then
@@ -799,10 +1151,14 @@ end
 -- Gets all accepted properties for the node element
 -- If necessary, parses the properties in correct order so that
 -- their integrity is maintained (e.g. padding needs to be parsed before we can calculate size and position)
-function Renderer:ParseAcceptedProperties(node)
-  local properties = {}
+function Renderer:ParseAcceptedProperties(node, ancestors, containerPixelSize)
+-- CSS-derived attributes are the base; inline HTML attributes override them
+local properties = self:GetCSSAttributesForNode(node, ancestors, containerPixelSize)
 
   for attributeName, attributeValue in pairs(node.attributes or {}) do
+    if (type(attributeValue) == "string") then
+      attributeValue = string.gsub(attributeValue, "(%d+%.?%d*)px", "%1")
+    end
     properties[string.lower(attributeName)] = attributeValue
   end
 
