@@ -32,6 +32,7 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["gap"]                 = "gap",
   ["flex-direction"]      = "direction",
   ["container-type"]      = "containertype",
+  ["container-name"]      = "containername",
 }
 
 local Renderer = {}
@@ -442,8 +443,8 @@ end
 
 -- Return a table of lowercased attribute name -> value pairs derived from
 -- any CSS rules in self.activeRules that match this node.
--- containerPixelSize is the resolved pixel size of the nearest container ancestor (or nil).
-function Renderer:GetCSSAttributesForNode(node, ancestors, containerPixelSize)
+-- containerContext = { pixelSize = {x,y}|nil, named = { [name]={x,y} } } or nil.
+function Renderer:GetCSSAttributesForNode(node, ancestors, containerContext)
   local attrs = {}
 
   if (self.activeRules ~= nil and #self.activeRules > 0) then
@@ -456,11 +457,11 @@ function Renderer:GetCSSAttributesForNode(node, ancestors, containerPixelSize)
     end
   end
 
-  if (containerPixelSize ~= nil
+  if (containerContext ~= nil
     and self.activeContainerQueryRules ~= nil
     and #self.activeContainerQueryRules > 0) then
     local cqDecls = CSSParser.ApplyContainerRulesToNode(
-      self.activeContainerQueryRules, node, ancestors, containerPixelSize
+      self.activeContainerQueryRules, node, ancestors, containerContext
     )
     for cssProperty, value in pairs(cqDecls) do
       local attrName = CSS_PROPERTY_TO_ATTRIBUTE[cssProperty]
@@ -546,23 +547,23 @@ function Renderer:Rerender()
   self.rootElement:update()
 end
 
-function Renderer:BuildLayoutTree(node, parentPixelSize, ancestors, containerPixelSize)
+function Renderer:BuildLayoutTree(node, parentPixelSize, ancestors, containerContext)
 ancestors = ancestors or {}
-local layout, meta = self:GetEngineUIElement(node, ancestors, containerPixelSize)
-local normalizedProperties = self:ParseAcceptedProperties(node, ancestors, containerPixelSize)
+local layout, meta = self:GetEngineUIElement(node, ancestors, containerContext)
+local normalizedProperties = self:ParseAcceptedProperties(node, ancestors, containerContext)
 
-  -- During Rerender(), restore the explicit size/position that was applied to the root
-  -- (e.g. from a resize drag) so that child pixel sizes and container queries are computed
-  -- against the actual current dimensions rather than the template defaults.
-  -- The root node is the first BuildLayoutTree call, identified by containerPixelSize == nil.
-  if (containerPixelSize == nil and self._rootSizeOverride ~= nil) then
-    layout.props.size        = self._rootSizeOverride
-    layout.props.relativeSize = nil
-    if (self._rootPositionOverride ~= nil) then
-      layout.props.position        = self._rootPositionOverride
-      layout.props.relativePosition = nil
-    end
+-- During Rerender(), restore the explicit size/position applied to the root
+-- (e.g. from a resize drag) so child pixel sizes and container queries compute
+-- against the actual current dimensions rather than the template defaults.
+-- The root node is identified by being the first call (containerContext == nil).
+if (containerContext == nil and self._rootSizeOverride ~= nil) then
+  layout.props.size         = self._rootSizeOverride
+  layout.props.relativeSize = nil
+  if (self._rootPositionOverride ~= nil) then
+    layout.props.position         = self._rootPositionOverride
+    layout.props.relativePosition = nil
   end
+end
 
   local growAttribute = normalizedProperties["grow"]
   if (growAttribute ~= nil) then
@@ -596,11 +597,63 @@ local normalizedProperties = self:ParseAcceptedProperties(node, ancestors, conta
     childParentPixelSize = self:ResolvePaddedPixelSize(layoutPixelSize, meta.padding)
   end
 
-  -- When containerPixelSize is nil (first call, i.e. mw-root), this element becomes the default container.
-  -- When the element has container-type defined, it becomes a new container for its children.
-  local childContainerPixelSize = containerPixelSize
-  if (childContainerPixelSize == nil or normalizedProperties["containertype"] ~= nil) then
-    childContainerPixelSize = layoutPixelSize
+  -- Build the child container context.
+  -- The root call has containerContext == nil; mw-root becomes the default unnamed container.
+  -- container-type updates the nearest unnamed container pixel size.
+  -- container-name registers this element under a name for targeted @container NAME queries.
+  local childContainerContext = containerContext or { pixelSize = nil, named = {} }
+  if (containerContext == nil or normalizedProperties["containertype"] ~= nil) then
+    childContainerContext = {
+      pixelSize = layoutPixelSize,
+      named     = childContainerContext.named,
+    }
+  end
+
+  local containerNameAttr = normalizedProperties["containername"]
+  if (containerNameAttr ~= nil) then
+    local newNamed = {}
+    for k, v in pairs(childContainerContext.named) do
+      newNamed[k] = v
+    end
+    -- Only register as a named container when the pixel size is meaningful (> 0).
+    -- A zero width comes from relativeSize.x = 0, which is the placeholder produced when
+    -- no explicit width was set and flex-grow will determine the real size later.
+    -- Registering with size 0 would cause width < N queries to fire spuriously.
+    if (layoutPixelSize.x ~= nil and layoutPixelSize.x > 0) then
+      newNamed[tostring(containerNameAttr)] = layoutPixelSize
+    end
+    childContainerContext = {
+      pixelSize = childContainerContext.pixelSize,
+      named     = newNamed,
+    }
+  end
+
+  -- Self-aware container query re-evaluation.
+  -- After building childContainerContext this element's own named container entry is present
+  -- (when the size was resolvable above).  Re-evaluate CSS using that context so that
+  -- @container NAME queries targeting THIS element's own name can fire and update the meta
+  -- (e.g. grid-template-columns) before children are laid out.
+  local selfContainerKey = containerNameAttr ~= nil and tostring(containerNameAttr) or nil
+  if (selfContainerKey ~= nil and childContainerContext.named[selfContainerKey] ~= nil and meta ~= nil) then
+    local selfAwareProps = self:ParseAcceptedProperties(node, ancestors, childContainerContext)
+    if (meta.type == "custom-grid") then
+      if (selfAwareProps["gridtemplatecolumns"] ~= nil) then
+        meta.templateColumns = selfAwareProps["gridtemplatecolumns"]
+      end
+      if (selfAwareProps["gridtemplaterows"] ~= nil) then
+        meta.templateRows = selfAwareProps["gridtemplaterows"]
+      end
+      if (selfAwareProps["gap"] ~= nil) then
+        meta.gap = selfAwareProps["gap"]
+      end
+    elseif (meta.type == "custom-flex") then
+      if (selfAwareProps["direction"] ~= nil) then
+        meta.direction = selfAwareProps["direction"]
+      end
+      if (selfAwareProps["gap"] ~= nil) then
+        meta.gap = self:ToNumber(selfAwareProps["gap"], "Gap") or 0
+      end
+    end
   end
 
   local childLayouts = {}
@@ -614,7 +667,7 @@ local normalizedProperties = self:ParseAcceptedProperties(node, ancestors, conta
   if (#node.children > 0) then
     for _, childNode in pairs(node.children) do
       if (childNode.type == Node.TYPE_ENGINE_COMPONENT) then
-        table.insert(childLayouts, self:BuildLayoutTree(childNode, childParentPixelSize, childAncestors, childContainerPixelSize))
+        table.insert(childLayouts, self:BuildLayoutTree(childNode, childParentPixelSize, childAncestors, childContainerContext))
       end
     end
   end
@@ -636,7 +689,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
   local props = {}
   local consumed = {}
 
-  self:MarkConsumed(consumed, { "name", "layer", "padding", "parsedpadding", "direction", "gap", "grow", "containertype" })
+  self:MarkConsumed(consumed, { "name", "layer", "padding", "parsedpadding", "direction", "gap", "grow", "containertype", "containername" })
 
   local width, widthRelativeFromWidth = self:ParseNumericOrPercent(allProperties["width"], "Width")
   local height, heightRelativeFromHeight = self:ParseNumericOrPercent(allProperties["height"], "Height")
@@ -881,7 +934,7 @@ function Renderer:BuildResizeEvents()
 end
 
 -- Gets the engine UI element that corresponds to a tag name.
-function Renderer:GetEngineUIElement(node, ancestors, containerPixelSize)
+function Renderer:GetEngineUIElement(node, ancestors, containerContext)
 if (node.type ~= Node.TYPE_ENGINE_COMPONENT) then
   error("Cannot render node of type " .. node.type)
 end
@@ -891,7 +944,7 @@ if (not Renderer.IsValidEngineTag(tagName)) then
   error(tagName .. " is not a valid engine tag.")
 end
 
-local allProperties = self:ParseAcceptedProperties(node, ancestors, containerPixelSize)
+local allProperties = self:ParseAcceptedProperties(node, ancestors, containerContext)
   local name = allProperties["name"]
 
   if (tagName == "mw-root") then
@@ -1151,9 +1204,9 @@ end
 -- Gets all accepted properties for the node element
 -- If necessary, parses the properties in correct order so that
 -- their integrity is maintained (e.g. padding needs to be parsed before we can calculate size and position)
-function Renderer:ParseAcceptedProperties(node, ancestors, containerPixelSize)
+function Renderer:ParseAcceptedProperties(node, ancestors, containerContext)
 -- CSS-derived attributes are the base; inline HTML attributes override them
-local properties = self:GetCSSAttributesForNode(node, ancestors, containerPixelSize)
+local properties = self:GetCSSAttributesForNode(node, ancestors, containerContext)
 
   for attributeName, attributeValue in pairs(node.attributes or {}) do
     if (type(attributeValue) == "string") then

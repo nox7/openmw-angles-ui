@@ -403,15 +403,12 @@ function CSSParser:ParseStylesheet(stylesheet)
         table.insert(stylesheet.mediaQueries, mediaQuery)
       end
     else
-      local rule, nestedRules, inlineCQs = self:ParseRule()
+      local rule, nestedRules = self:ParseRule()
       if (rule ~= nil) then
         table.insert(stylesheet.rules, rule)
       end
       for _, nr in ipairs(nestedRules or {}) do
         table.insert(stylesheet.rules, nr)
-      end
-      for _, cq in ipairs(inlineCQs or {}) do
-        table.insert(stylesheet.containerQueryRules, cq)
       end
     end
   end
@@ -474,15 +471,29 @@ function CSSParser:ParseAtRule(stylesheet)
       self:advance()
       break
     end
-    local rule, nestedRules, inlineCQs = self:ParseRule()
-    if (rule ~= nil) then
-      table.insert(mediaRules, rule)
-    end
-    for _, nr in ipairs(nestedRules or {}) do
-      table.insert(mediaRules, nr)
-    end
-    for _, cq in ipairs(inlineCQs or {}) do
-      table.insert(mediaContainerQueryRules, cq)
+    if (self:peek() == "@") then
+      self:advance() -- skip '@'
+      local innerKeyword = self:readIdentifier()
+      if (innerKeyword == "container") then
+        local tempSheet = { containerQueryRules = mediaContainerQueryRules }
+        self:ParseTopLevelContainerAtRule(tempSheet)
+      else
+        self:skipWhitespaceAndComments()
+        if (self:peek() == "{") then
+          self:skipBlock()
+        else
+          self:readUntil(";")
+          if (self:peek() == ";") then self:advance() end
+        end
+      end
+    else
+      local rule, nestedRules = self:ParseRule()
+      if (rule ~= nil) then
+        table.insert(mediaRules, rule)
+      end
+      for _, nr in ipairs(nestedRules or {}) do
+        table.insert(mediaRules, nr)
+      end
     end
   end
 
@@ -495,19 +506,18 @@ function CSSParser:ParseAtRule(stylesheet)
 end
 
 -- Parse a CSS rule block.
--- Returns: rule (or nil), nestedRules (list of rules expanded from nested blocks), containerQueryRules
+-- Returns: rule (or nil), nestedRules (list of rules expanded from nested blocks)
 function CSSParser:ParseRule()
   self:skipWhitespaceAndComments()
-  if (self:isEOF() or self:peek() == "}") then return nil, {}, {} end
+  if (self:isEOF() or self:peek() == "}") then return nil, {} end
 
   local selectorsRaw = self:readUntil("{")
-  if (self:peek() ~= "{") then return nil, {}, {} end
+  if (self:peek() ~= "{") then return nil, {} end
   self:advance() -- skip '{'
 
   local selectors = self:ParseSelectorList(selectorsRaw)
   local declarations = {}
   local nestedRules = {}
-  local containerQueryRules = {}
 
   while not self:isEOF() do
     self:skipWhitespaceAndComments()
@@ -516,12 +526,7 @@ function CSSParser:ParseRule()
       break
     end
 
-    if (self:peek() == "@") then
-      local inlineCQs = self:ParseInlineContainerAtRule(selectors)
-      for _, cq in ipairs(inlineCQs) do
-        table.insert(containerQueryRules, cq)
-      end
-    elseif (self:IsNestedRuleStart()) then
+    if (self:IsNestedRuleStart()) then
       local nestedRule = self:ParseNestedRule(selectors)
       if (nestedRule ~= nil) then
         table.insert(nestedRules, nestedRule)
@@ -534,8 +539,8 @@ function CSSParser:ParseRule()
     end
   end
 
-  if (#selectors == 0) then return nil, nestedRules, containerQueryRules end
-  return { selectors = selectors, declarations = declarations }, nestedRules, containerQueryRules
+  if (#selectors == 0) then return nil, nestedRules end
+  return { selectors = selectors, declarations = declarations }, nestedRules
 end
 
 -- Parse a nested rule block (e.g. "& > mw-widget { ... }") inside a parent rule.
@@ -636,6 +641,17 @@ end
 function CSSParser:ParseTopLevelContainerAtRule(stylesheet)
   self:skipWhitespaceAndComments()
 
+  -- Check for an optional container name (an identifier before the condition parenthesis).
+  -- e.g. @container sidebar (width < 300px) vs @container (width < 300px)
+  local containerName = nil
+  if (self:peek() ~= "(") then
+    local name = self:readIdentifier()
+    if (name ~= "") then
+      containerName = name
+    end
+    self:skipWhitespaceAndComments()
+  end
+
   if (self:peek() ~= "(") then
     if (self:peek() == "{") then self:skipBlock() end
     return
@@ -666,94 +682,21 @@ function CSSParser:ParseTopLevelContainerAtRule(stylesheet)
     local rule, nestedRules = self:ParseRule()
     if (rule ~= nil) then
       table.insert(stylesheet.containerQueryRules, {
-        selectors    = rule.selectors,
-        condition    = condition,
-        declarations = rule.declarations,
+        selectors     = rule.selectors,
+        condition     = condition,
+        declarations  = rule.declarations,
+        containerName = containerName,
       })
     end
     for _, nr in ipairs(nestedRules or {}) do
       table.insert(stylesheet.containerQueryRules, {
-        selectors    = nr.selectors,
-        condition    = condition,
-        declarations = nr.declarations,
+        selectors     = nr.selectors,
+        condition     = condition,
+        declarations  = nr.declarations,
+        containerName = containerName,
       })
     end
   end
-end
-
--- Parses an inline @container (cond) { declarations } block nested inside a CSS rule.
--- Returns a list of { selectors, condition, declarations } entries (may be empty).
-function CSSParser:ParseInlineContainerAtRule(parentSelectors)
-  self:advance() -- skip '@'
-  local keyword = self:readIdentifier()
-
-  if (keyword ~= "container") then
-    self:skipWhitespaceAndComments()
-    if (self:peek() == "{") then
-      self:skipBlock()
-    else
-      self:readUntil(";")
-      if (self:peek() == ";") then self:advance() end
-    end
-    return {}
-  end
-
-  self:skipWhitespaceAndComments()
-  if (self:peek() ~= "(") then
-    self:skipWhitespaceAndComments()
-    if (self:peek() == "{") then self:skipBlock() end
-    return {}
-  end
-
-  self:advance() -- skip '('
-  local conditionContent = self:readUntil(")")
-  if (self:peek() == ")") then self:advance() end
-  conditionContent = self:trim(conditionContent)
-
-  local condition = CSSParser.ParseContainerCondition(conditionContent)
-  if (condition == nil) then
-    self:skipWhitespaceAndComments()
-    if (self:peek() == "{") then self:skipBlock() end
-    return {}
-  end
-
-  self:skipWhitespaceAndComments()
-  if (self:peek() ~= "{") then return {} end
-  self:advance() -- skip '{'
-
-  local declarations = {}
-  while not self:isEOF() do
-    self:skipWhitespaceAndComments()
-    if (self:peek() == "}") then
-      self:advance()
-      break
-    end
-    if (self:peek() == "@") then
-      -- Skip unknown nested at-rules
-      self:advance()
-      self:readUntil("{")
-      if (self:peek() == "{") then self:skipBlock() end
-    elseif (self:IsNestedRuleStart()) then
-      -- Skip nested selector blocks
-      self:readUntil("{")
-      if (self:peek() == "{") then self:skipBlock() end
-    else
-      local decl = self:ParseDeclaration()
-      if (decl ~= nil) then
-        declarations[decl.property] = decl.value
-      end
-    end
-  end
-
-  if (next(declarations) == nil) then return {} end
-
-  return {
-    {
-      selectors    = parentSelectors,
-      condition    = condition,
-      declarations = declarations,
-    }
-  }
 end
 
 -- Parses a container condition string such as "width <= 300" or "max-width: 500".
@@ -825,15 +768,25 @@ function CSSParser.EvaluateContainerCondition(condition, containerPixelSize)
   return false
 end
 
--- Applies matching container query rules to a node given its ancestor chain and the nearest
--- container's pixel size.  Returns a flat { cssPropertyName = value } table.
-function CSSParser.ApplyContainerRulesToNode(containerQueryRules, node, ancestors, containerPixelSize)
-  if (containerPixelSize == nil) then return {} end
+-- Applies matching container query rules to a node given its ancestor chain and a containerContext.
+-- containerContext = { pixelSize = {x,y}|nil, named = { [name] = {x,y}, ... } }
+-- For unnamed @container rules (containerName == nil), containerContext.pixelSize is evaluated.
+-- For named @container rules, containerContext.named[containerName] is evaluated.
+-- Returns a flat { cssPropertyName = value } table.
+function CSSParser.ApplyContainerRulesToNode(containerQueryRules, node, ancestors, containerContext)
+  if (containerContext == nil) then return {} end
 
   local declMap = {}
 
   for ruleIndex, cqRule in ipairs(containerQueryRules) do
-    if (CSSParser.EvaluateContainerCondition(cqRule.condition, containerPixelSize)) then
+    local containerPixelSize = nil
+    if (cqRule.containerName ~= nil) then
+      containerPixelSize = containerContext.named and containerContext.named[cqRule.containerName] or nil
+    else
+      containerPixelSize = containerContext.pixelSize
+    end
+
+    if (containerPixelSize ~= nil and CSSParser.EvaluateContainerCondition(cqRule.condition, containerPixelSize)) then
       for _, selectorStr in ipairs(cqRule.selectors) do
         local parsedSel = CSSParser.ParseSelectorParts(selectorStr)
         if (CSSParser.SelectorMatchesNode(parsedSel, node, ancestors)) then
