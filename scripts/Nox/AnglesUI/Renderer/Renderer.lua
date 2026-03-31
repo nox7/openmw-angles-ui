@@ -12,6 +12,7 @@ local Node = require("scripts.Nox.AnglesUI.Lexer.Nodes.Node")
 local TableUtils = require("scripts.Nox.Utils.TableUtils")
 local VFS = require('openmw.vfs')
 local async = require('openmw.async')
+local UserComponent = require("scripts.Nox.AnglesUI.Renderer.UserComponent")
 
 -- The user's menu transparency setting from the Settings::gui().mTransparencyAlpha value
 local menuTransparencyAlphaValue = UI._getMenuTransparency()
@@ -35,6 +36,11 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["container-name"]      = "containername",
 }
 
+---@class Renderer Class responsible for rendering a single OpenMW UiElement from HTMl and CSS source code.
+---@field public string source
+---@field public table<string, UserComponent> userComponents The key is the selector and the value is an instance of UserComponent
+---@field public string cssSource
+---@field public table cssModel The parsed CSS model from cssSource, including rules and media queries.
 local Renderer = {}
 Renderer.__index = Renderer
 
@@ -58,6 +64,8 @@ Renderer.IsValidEngineTag = function(tagName)
 end
 
 -- Creates a render from a virtual file path
+-- userComponents is expected to be a table where keys are selectors
+-- and values are file paths. They will get loaded into actual source code later.
 function Renderer.FromFile(vfsPath, userComponents)
   local file = VFS.open(vfsPath)
   if (file == nil) then
@@ -75,6 +83,29 @@ function Renderer.FromFile(vfsPath, userComponents)
       cssSource = cssFile:read("*a")
       cssFile:close()
     end
+  end
+
+  -- Now, we'll iterate the userComponents (key/value pairs) and load the files
+  -- With each, we'll create a new set of UserComponent objects and pass them to the new renderer
+  for selector, componentPath in pairs(userComponents) do
+    local componentFile = VFS.open(componentPath)
+    if (componentFile == nil) then
+      error("Could not find user component file at path: " .. componentPath .. " for selector: " .. selector)
+    end
+
+    local componentSource = componentFile:read("*a")
+    componentFile:close()
+
+    local componentCssSource = nil
+    local componentCssPath = string.gsub(componentPath, "%.%w+$", ".css")
+    if (componentCssPath ~= componentPath) then
+      local componentCssFile = VFS.open(componentCssPath)
+      if (componentCssFile ~= nil) then
+        componentCssSource = componentCssFile:read("*a")
+        componentCssFile:close()
+      end
+    end
+    userComponents[selector] = UserComponent.New(selector, componentSource, componentCssSource)
   end
 
   return Renderer.New(source, userComponents, cssSource)
@@ -423,12 +454,36 @@ function Renderer:ResolveActiveRules()
   if (cssModel == nil) then return {} end
 
   local activeRules = {}
+  local screenWidth = UI.screenSize().x
 
+  -- User component CSS rules come first (lower cascade order than the main stylesheet).
+  -- This lets main-stylesheet rules override user component rules at equal specificity.
+  for _, userComponent in pairs(self.userComponents) do
+    if (type(userComponent) == "table" and userComponent.cssModel ~= nil) then
+      for _, rule in ipairs(userComponent.cssModel.rules or {}) do
+        table.insert(activeRules, rule)
+      end
+      for _, mediaQuery in ipairs(userComponent.cssModel.mediaQueries or {}) do
+        local matches = false
+        if (mediaQuery.type == "max-width") then
+          matches = screenWidth <= mediaQuery.value
+        elseif (mediaQuery.type == "min-width") then
+          matches = screenWidth >= mediaQuery.value
+        end
+        if (matches) then
+          for _, rule in ipairs(mediaQuery.rules or {}) do
+            table.insert(activeRules, rule)
+          end
+        end
+      end
+    end
+  end
+
+  -- Main stylesheet rules.
   for _, rule in ipairs(cssModel.rules or {}) do
     table.insert(activeRules, rule)
   end
 
-  local screenWidth = UI.screenSize().x
   for _, mediaQuery in ipairs(cssModel.mediaQueries or {}) do
     local matches = false
     if (mediaQuery.type == "max-width") then
@@ -453,12 +508,35 @@ function Renderer:ResolveActiveContainerQueryRules()
   if (cssModel == nil) then return {} end
 
   local activeRules = {}
+  local screenWidth = UI.screenSize().x
 
+  -- User component container query rules come first.
+  for _, userComponent in pairs(self.userComponents) do
+    if (type(userComponent) == "table" and userComponent.cssModel ~= nil) then
+      for _, cqRule in ipairs(userComponent.cssModel.containerQueryRules or {}) do
+        table.insert(activeRules, cqRule)
+      end
+      for _, mediaQuery in ipairs(userComponent.cssModel.mediaQueries or {}) do
+        local matches = false
+        if (mediaQuery.type == "max-width") then
+          matches = screenWidth <= mediaQuery.value
+        elseif (mediaQuery.type == "min-width") then
+          matches = screenWidth >= mediaQuery.value
+        end
+        if (matches) then
+          for _, cqRule in ipairs(mediaQuery.containerQueryRules or {}) do
+            table.insert(activeRules, cqRule)
+          end
+        end
+      end
+    end
+  end
+
+  -- Main stylesheet container query rules.
   for _, cqRule in ipairs(cssModel.containerQueryRules or {}) do
     table.insert(activeRules, cqRule)
   end
 
-  local screenWidth = UI.screenSize().x
   for _, mediaQuery in ipairs(cssModel.mediaQueries or {}) do
     local matches = false
     if (mediaQuery.type == "max-width") then
@@ -513,7 +591,7 @@ end
 -- Renders the provided source code and components onto the screen.
 -- This returns the OpenMW Lua UI root element after it is called.
 function Renderer:Render(userContext)
-  local lexer = Lexer.new(self.source)
+  local lexer = Lexer.new(self.source, self.userComponents)
   local ast = lexer:parse()
   local evaluator = Evaluator.new(self.userComponents)
   local context = Context.new(userContext)
