@@ -478,7 +478,10 @@ function Lexer:parseComponent()
   if isMwPrefix then
     node = EngineComponentNode.new(tagName, attributes, selfClosing or isVoid)
   else
-    local templateContent = self.userComponents[tagName] or ""
+    local templateContent = self.userComponents[tagName]
+    if (templateContent == nil) then
+      error("<" .. tagName .. "> is not a recognized engine component (must start with 'mw-') nor a registered user component.")
+    end
     node = UserComponentNode.new(tagName, attributes, selfClosing or isVoid, templateContent)
   end
 
