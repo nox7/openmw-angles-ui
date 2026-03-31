@@ -692,6 +692,20 @@ end
     end
   end
 
+  -- Attach drag-to-move events when Dragger="true" is set on this element.
+  -- Any element can be a drag handle; the events always move the mw-root position.
+  local draggerAttr = normalizedProperties["dragger"]
+  if (draggerAttr ~= nil and self:ToBoolean(draggerAttr, "Dragger") == true) then
+    local draggerEvents = self:BuildDraggerEvents()
+    if (layout.events == nil) then
+      layout.events = draggerEvents
+    else
+      for k, v in pairs(draggerEvents) do
+        layout.events[k] = v
+      end
+    end
+  end
+
   local childLayouts = {}
 
   local childAncestors = {}
@@ -736,7 +750,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
   local props = {}
   local consumed = {}
 
-  self:MarkConsumed(consumed, { "name", "layer", "padding", "parsedpadding", "direction", "gap", "grow", "containertype", "containername" })
+  self:MarkConsumed(consumed, { "name", "layer", "padding", "parsedpadding", "direction", "gap", "grow", "containertype", "containername", "dragger" })
 
   local width, widthRelativeFromWidth = self:ParseNumericOrPercent(allProperties["width"], "Width")
   local height, heightRelativeFromHeight = self:ParseNumericOrPercent(allProperties["height"], "Height")
@@ -980,6 +994,64 @@ function Renderer:BuildResizeEvents()
   }
 end
 
+-- Builds the mousePress/mouseMove event table that moves the mw-root when dragged.
+-- Attach to any element via the Dragger="true" attribute.
+function Renderer:BuildDraggerEvents()
+  local dragState = {
+    isDragging   = false,
+    lastMousePos = nil,
+  }
+
+  local rendererRef = self
+
+  return {
+    mousePress = async:callback(function(e, l)
+      if (e.button ~= 1) then return end
+      dragState.isDragging   = true
+      dragState.lastMousePos = e.position
+    end),
+
+    mouseMove = async:callback(function(e, l)
+      if (not dragState.isDragging) then return end
+
+      if (e.button ~= 1) then
+        dragState.isDragging   = false
+        dragState.lastMousePos = nil
+        return
+      end
+
+      local last = dragState.lastMousePos
+      if (last == nil) then return end
+
+      local dx = e.position.x - last.x
+      local dy = e.position.y - last.y
+      dragState.lastMousePos = e.position
+
+      local rootLayout = rendererRef.rootLayout
+      if (rootLayout == nil or rootLayout.props == nil) then return end
+
+      local curX = 0
+      local curY = 0
+      if (rootLayout.props.position ~= nil) then
+        curX = rootLayout.props.position.x
+        curY = rootLayout.props.position.y
+      elseif (rootLayout.props.relativePosition ~= nil) then
+        local screenSize = UI.screenSize()
+        curX = rootLayout.props.relativePosition.x * screenSize.x
+        curY = rootLayout.props.relativePosition.y * screenSize.y
+      end
+
+      -- Move the root; no layout rebuild needed, just a position update.
+      rootLayout.props.position         = Util.vector2(curX + dx, curY + dy)
+      rootLayout.props.relativePosition = nil
+
+      if (rendererRef.rootElement ~= nil) then
+        rendererRef.rootElement:update()
+      end
+    end),
+  }
+end
+
 -- Gets the engine UI element that corresponds to a tag name.
 function Renderer:GetEngineUIElement(node, ancestors, containerContext)
 if (node.type ~= Node.TYPE_ENGINE_COMPONENT) then
@@ -1018,7 +1090,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     }, nil
   elseif (tagName == "mw-window") then
     local consumed = {}
-    self:MarkConsumed(consumed, { "name", "background" })
+    self:MarkConsumed(consumed, { "name", "background", "dragger" })
 
     local background = allProperties["background"]
     local includeBackground = background == nil or string.lower(tostring(background)) ~= "none"
@@ -1216,11 +1288,15 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     }, nil
   elseif (tagName == "mw-hr") then
     local consumed = {}
-    self:MarkConsumed(consumed, { "name" })
+    self:MarkConsumed(consumed, { "name", "dragger" })
     return {
       name = name,
       template = MWUI.templates.horizontalLine,
-      props = {},
+      props = {
+        size = Util.vector2(10, 20),
+        tileV = true,
+        tileH = false,
+      },
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-widget") then
