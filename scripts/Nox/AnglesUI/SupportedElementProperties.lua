@@ -17,12 +17,34 @@ return {
   };
   ["mw-window"] = {
     "Name";
+    "Background";
   };
   ["mw-flex"] = {
     "Name";
     "Padding";
     "Direction";
     "Gap";
+    "Grow";
+    "Width";
+    "Height";
+    "RelativeWidth";
+    "RelativeHeight";
+    "RelativeX";
+    "RelativeY";
+    "X";
+    "Y";
+    "AnchorX";
+    "AnchorY";
+    "Visible";
+  };
+  ["mw-grid"] = {
+    "Name";
+    "Padding";
+    "Gap";
+    "RowGap";
+    "ColumnGap";
+    "GridTemplateRows";
+    "GridTemplateColumns";
     "Width";
     "Height";
     "RelativeWidth";
@@ -38,9 +60,56 @@ return {
   ["mw-text"] = {
     "Name";
     "TextColor";
+    "TextSize";
+    "Multiline";
+    "WordWrap";
+    "TextShadow";
+    "GridRow";
+    "GridColumn";
+    "GridRowSpan";
+    "GridColumnSpan";
+    "Grow";
+  };
+  ["mw-image"] = {
+    "Name";
+    "Resource";
+    "Src";
+    "Path";
+    "TileH";
+    "TileV";
+    "Width";
+    "Height";
+    "RelativeWidth";
+    "RelativeHeight";
+    "X";
+    "Y";
+    "RelativeX";
+    "RelativeY";
+    "GridRow";
+    "GridColumn";
+    "GridRowSpan";
+    "GridColumnSpan";
+    "Grow";
+  };
+  ["mw-text-edit"] = {
+    "Name";
+    "Text";
+    "TextSize";
+    "Multiline";
+    "WordWrap";
+    "GridRow";
+    "GridColumn";
+    "GridRowSpan";
+    "GridColumnSpan";
+    "Grow";
   };
   ["mw-hr"] = {
-    
+    "Name";
+    "GridRow";
+    "GridColumn";
+    "GridRowSpan";
+    "GridColumnSpan";
+    "Grow";
   };
   ["mw-widget"] = {
     "Name";
@@ -56,5 +125,10 @@ return {
     "AnchorY";
     "Visible";
     "Grow";
+    "Padding";
+    "GridRow";
+    "GridColumn";
+    "GridRowSpan";
+    "GridColumnSpan";
   }
 }

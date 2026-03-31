@@ -170,10 +170,11 @@ function Evaluator:evaluateForNode(node, context)
 
   local results = {}
 
-  for _, item in ipairs(iterable) do
+  for index, item in ipairs(iterable) do
     -- Create a child context with the iterator variable bound to the current item
     local childContext = context:createChild({
       [node.iteratorVariable] = item,
+      ["$index"] = index,
     })
 
     -- Evaluate all children in the for-body with this iteration's context
