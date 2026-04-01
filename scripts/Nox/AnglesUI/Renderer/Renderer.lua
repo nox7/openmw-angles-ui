@@ -658,10 +658,12 @@ function Renderer:Render(userContext)
   self:_disposeSignalEffects()
 
   -- Subscribe to every context signal so that any Set() call triggers a full re-render.
-  self._signalContext      = userContext or {}
+  self._signalContext       = userContext or {}
+  self._signalsDirty        = false
   self._signalUnsubscribers = {}
   for _, signal in pairs(self._signalContext) do
     local unsubscribe = signal:Subscribe(function()
+      self._signalsDirty = true
       self:Rerender()
     end)
     table.insert(self._signalUnsubscribers, unsubscribe)
@@ -677,6 +679,7 @@ function Renderer:Render(userContext)
 
   self.activeRules              = self:ResolveActiveRules()
   self.activeContainerQueryRules = self:ResolveActiveContainerQueryRules()
+  self._cachedScreenWidth        = UI.screenSize().x
 
   if (#rootNode.children > 0) then
     local firstNode = rootNode.children[1]
@@ -712,9 +715,10 @@ function Renderer:Rerender()
     return
   end
 
-  -- Re-evaluate the AST against the current signal values so text bindings,
-  -- @if conditions, and @for collections reflect the latest state.
-  if (self._ast ~= nil) then
+  -- Re-evaluate the AST only when a signal has actually changed value.
+  -- During resize/drag the signals are unchanged, so this block is skipped.
+  if (self._ast ~= nil and self._signalsDirty) then
+    self._signalsDirty = false
     local evaluator  = Evaluator.new(self.userComponents)
     local context    = Context.new(self._signalContext or {})
     local freshRoot  = evaluator:evaluate(self._ast, context)
@@ -732,8 +736,15 @@ function Renderer:Rerender()
   self._rootSizeOverride     = self.rootLayout.props and self.rootLayout.props.size     or nil
   self._rootPositionOverride = self.rootLayout.props and self.rootLayout.props.position or nil
 
-  self.activeRules              = self:ResolveActiveRules()
-  self.activeContainerQueryRules = self:ResolveActiveContainerQueryRules()
+  -- Active rules only change when the game screen is resized (media queries).
+  -- Resizing the mw-root panel does not change the screen size, so skip the
+  -- rebuild in the common case.
+  local currentScreenWidth = UI.screenSize().x
+  if (self._cachedScreenWidth ~= currentScreenWidth) then
+    self.activeRules              = self:ResolveActiveRules()
+    self.activeContainerQueryRules = self:ResolveActiveContainerQueryRules()
+    self._cachedScreenWidth = currentScreenWidth
+  end
 
   local rootParentPixelSize = self:ResolveRootParentPixelSize()
   local newRootLayout = self:BuildLayoutTree(self.evaluatedRootNode, rootParentPixelSize)

@@ -1,6 +1,11 @@
 local CSSParser = {}
 CSSParser.__index = CSSParser
 
+-- Module-level parsed-selector cache.  Populated on the first parse of each
+-- unique selector string; keyed by the raw string.  CSS files are static so
+-- the cache never needs to be invalidated.
+local _parsedSelectorCache = {}
+
 function CSSParser.New()
   local self = setmetatable({}, CSSParser)
   return self
@@ -82,6 +87,9 @@ end
 -- Returns: { parts = { {tag, classes, id, specificity}, ... }, combinators = { ">"|" "|"~"|"+ ", ... }, specificity = N }
 -- For simple selectors (no combinators), parts has one element and combinators is empty.
 function CSSParser.ParseSelectorParts(selectorStr)
+  local cached = _parsedSelectorCache[selectorStr]
+  if (cached ~= nil) then return cached end
+
   local parts = {}
   local combinators = {}
   local n = #selectorStr
@@ -121,7 +129,9 @@ function CSSParser.ParseSelectorParts(selectorStr)
   flushToken()
 
   if (#parts == 0) then
-    return { parts = {}, combinators = {}, specificity = 0 }
+    local result = { parts = {}, combinators = {}, specificity = 0 }
+    _parsedSelectorCache[selectorStr] = result
+    return result
   end
 
   local totalSpecificity = 0
@@ -129,7 +139,9 @@ function CSSParser.ParseSelectorParts(selectorStr)
     totalSpecificity = totalSpecificity + part.specificity
   end
 
-  return { parts = parts, combinators = combinators, specificity = totalSpecificity }
+  local result = { parts = parts, combinators = combinators, specificity = totalSpecificity }
+  _parsedSelectorCache[selectorStr] = result
+  return result
 end
 
 -- Evaluates an :nth-child argument string against a 1-based child position.
@@ -256,14 +268,18 @@ function CSSParser.SelectorMatchesNode(parsedSelector, node, ancestors)
   while (selectorPartIndex >= 1) do
     local combinator = parsedSelector.combinators[selectorPartIndex]
     local part = parsedSelector.parts[selectorPartIndex]
+    local partHasPseudos = (part.pseudos ~= nil and #part.pseudos > 0)
 
     if (combinator == ">") then
       if (ancestorIndex < 1) then
         return false
       end
-      local ancestorAncestors = {}
-      for k = 1, ancestorIndex - 1 do
-        ancestorAncestors[k] = ancestors[k]
+      local ancestorAncestors = nil
+      if (partHasPseudos) then
+        ancestorAncestors = {}
+        for k = 1, ancestorIndex - 1 do
+          ancestorAncestors[k] = ancestors[k]
+        end
       end
       if (not CSSParser.SimplePartMatchesNode(part, ancestors[ancestorIndex], ancestorAncestors)) then
         return false
@@ -272,9 +288,12 @@ function CSSParser.SelectorMatchesNode(parsedSelector, node, ancestors)
     elseif (combinator == " ") then
       local found = false
       while (ancestorIndex >= 1) do
-        local ancestorAncestors = {}
-        for k = 1, ancestorIndex - 1 do
-          ancestorAncestors[k] = ancestors[k]
+        local ancestorAncestors = nil
+        if (partHasPseudos) then
+          ancestorAncestors = {}
+          for k = 1, ancestorIndex - 1 do
+            ancestorAncestors[k] = ancestors[k]
+          end
         end
         if (CSSParser.SimplePartMatchesNode(part, ancestors[ancestorIndex], ancestorAncestors)) then
           found = true
