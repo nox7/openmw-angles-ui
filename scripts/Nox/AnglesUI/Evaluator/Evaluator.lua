@@ -94,8 +94,22 @@ function Evaluator:evaluateEngineComponentNode(node, context)
         end
       end
     else
-      -- Static attribute, pass through as-is.
-      resolvedAttributes[attrName] = attrValue
+      -- Event binding: (eventName)="FuncName" or (eventName)="FuncName($arg1, $arg2)"
+      -- $arg1 and $arg2 are always provided when the event fires; the notation in the template
+      -- is purely documentary.  Only the function identifier is resolved here.
+      local eventName = string.match(attrName, "^%((.+)%)$")
+      if eventName then
+        local funcExpr = attrValue and string.match(attrValue, "^([%w_%.]+)") or nil
+        if funcExpr ~= nil then
+          local resolvedFunc = self.expressionEvaluator:evaluate(funcExpr, context)
+          if resolvedFunc ~= nil then
+            resolvedAttributes["event:" .. eventName] = resolvedFunc
+          end
+        end
+      else
+        -- Static attribute, pass through as-is.
+        resolvedAttributes[attrName] = attrValue
+      end
     end
   end
 

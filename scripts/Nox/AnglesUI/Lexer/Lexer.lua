@@ -464,7 +464,11 @@ function Lexer:parseComponent()
         self:skipWhitespace()
         attrValue = self:readAttributeValue()
       end
-      attributes[string.lower(attrName)] = attrValue
+      -- Preserve original case for event bindings (e.g. (mousePress)) because OpenMW event
+      -- names are camelCase and would break if lowercased.  All other attribute names are
+      -- normalised to lowercase for case-insensitive CSS / property matching.
+      local attrKey = (string.sub(attrName, 1, 1) == "(") and attrName or string.lower(attrName)
+      attributes[attrKey] = attrValue
       self:skipWhitespace()
     end
   end
@@ -534,7 +538,7 @@ function Lexer:readAttributeName()
   local startPos = self.pos
   while not self:isEOF() do
     local ch = self:peek()
-    if string.match(ch, "[%w_%-%.:%[%]]") then
+    if string.match(ch, "[%w_%-%.:%[%]%(%)]" ) then
       self:advance()
     else
       break

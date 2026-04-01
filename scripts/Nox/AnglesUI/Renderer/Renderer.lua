@@ -644,13 +644,13 @@ function Renderer:GetCSSAttributesForNode(node, ancestors, containerContext)
 end
 
 -- Renders the provided source code and components onto the screen.
--- userContext must be a flat table where every value is a Signal.
+-- userContext must be a flat table where every value is a Signal or a plain function.
 -- This returns the OpenMW Lua UI root element after it is called.
 function Renderer:Render(userContext)
-  -- Enforce the contract: only Signal instances are accepted as context values.
+  -- Enforce the contract: context values must be Signal instances or plain functions.
   for key, value in pairs(userContext or {}) do
-    if (not Signal.IsSignal(value)) then
-      error("Renderer:Render() context values must be Signal instances. '" .. tostring(key) .. "' is not a Signal.")
+    if (not Signal.IsSignal(value) and type(value) ~= "function") then
+      error("Renderer:Render() context values must be Signal instances or functions. '" .. tostring(key) .. "' is neither.")
     end
   end
 
@@ -658,15 +658,18 @@ function Renderer:Render(userContext)
   self:_disposeSignalEffects()
 
   -- Subscribe to every context signal so that any Set() call triggers a full re-render.
+  -- Plain functions in the context are passed through as-is and are not subscribed.
   self._signalContext       = userContext or {}
   self._signalsDirty        = false
   self._signalUnsubscribers = {}
   for _, signal in pairs(self._signalContext) do
-    local unsubscribe = signal:Subscribe(function()
-      self._signalsDirty = true
-      self:Rerender()
-    end)
-    table.insert(self._signalUnsubscribers, unsubscribe)
+    if (Signal.IsSignal(signal)) then
+      local unsubscribe = signal:Subscribe(function()
+        self._signalsDirty = true
+        self:Rerender()
+      end)
+      table.insert(self._signalUnsubscribers, unsubscribe)
+    end
   end
 
   local lexer = Lexer.new(self.source, self.userComponents)
@@ -928,18 +931,29 @@ end
     end
   end
 
-  -- Attach drag-to-move events when Dragger="true" is set on this element.
-  -- Any element can be a drag handle; the events always move the mw-root position.
+  -- Collect system event functions: __pendingSystemEvents set by GetEngineUIElement (e.g. resize
+  -- funcs on mw-root) plus dragger funcs for elements marked as drag handles.
+  local systemEventFuncs = layout.__pendingSystemEvents or {}
+  layout.__pendingSystemEvents = nil
   local draggerAttr = normalizedProperties["dragger"]
   if (draggerAttr ~= nil and self:ToBoolean(draggerAttr, "Dragger") == true) then
-    local draggerEvents = self:BuildDraggerEvents()
-    if (layout.events == nil) then
-      layout.events = draggerEvents
-    else
-      for k, v in pairs(draggerEvents) do
-        layout.events[k] = v
-      end
+    for k, v in pairs(self:BuildDraggerFuncs()) do
+      systemEventFuncs[k] = v
     end
+  end
+  -- Collect user-defined event bindings from the evaluated node's attributes (event:X prefix).
+  local userEventFuncs = {}
+  for attrName, attrValue in pairs(node.attributes or {}) do
+    local eventName = string.match(attrName, "^event:(.+)$")
+    if (eventName ~= nil and attrValue ~= nil) then
+      userEventFuncs[eventName] = attrValue
+    end
+  end
+  -- Build and register the final events table, chaining handlers where both system and user
+  -- define the same event (system fires first, then user).
+  local finalEvents = self:BuildEventTable(systemEventFuncs, userEventFuncs)
+  if (finalEvents ~= nil) then
+    layout.events = finalEvents
   end
 
   local childLayouts = {}
@@ -1065,9 +1079,10 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
   return props, consumed
 end
 
--- Builds the mousePress/mouseMove event table that implements edge/corner resizing for mw-root.
--- Returns an events table suitable for assignment directly to a layout's "events" field.
-function Renderer:BuildResizeEvents()
+-- Builds the mousePress/mouseMove resize handler functions for mw-root.
+-- Returns plain Lua functions (not async:callback wrapped).
+-- See BuildEventTable for the final wrapping step.
+function Renderer:BuildResizeFuncs()
   local resizeState = {
     isDragging   = false,
     dragEdge     = nil,
@@ -1107,7 +1122,7 @@ function Renderer:BuildResizeEvents()
   end
 
   return {
-    mousePress = async:callback(function(e, l)
+    mousePress = function(e, l)
       if (e.button ~= 1) then return end
 
       local elemX, elemY, elemW, elemH = getElementBounds(l)
@@ -1147,9 +1162,9 @@ function Renderer:BuildResizeEvents()
         resizeState.dragEdge     = nil
         resizeState.lastMousePos = nil
       end
-    end),
+    end,
 
-    mouseMove = async:callback(function(e, l)
+    mouseMove = function(e, l)
       if (not resizeState.isDragging) then return end
 
       -- Stop resizing if the left button is no longer held
@@ -1226,13 +1241,14 @@ function Renderer:BuildResizeEvents()
       if (rendererRef.rootElement ~= nil) then
         rendererRef:Rerender()
       end
-    end),
+    end,
   }
 end
 
--- Builds the mousePress/mouseMove event table that moves the mw-root when dragged.
--- Attach to any element via the Dragger="true" attribute.
-function Renderer:BuildDraggerEvents()
+-- Builds the mousePress/mouseMove drag handler functions.
+-- Returns plain Lua functions (not async:callback wrapped).
+-- See BuildEventTable for the final wrapping step.
+function Renderer:BuildDraggerFuncs()
   local dragState = {
     isDragging   = false,
     lastMousePos = nil,
@@ -1241,13 +1257,13 @@ function Renderer:BuildDraggerEvents()
   local rendererRef = self
 
   return {
-    mousePress = async:callback(function(e, l)
+    mousePress = function(e, l)
       if (e.button ~= 1) then return end
       dragState.isDragging   = true
       dragState.lastMousePos = e.position
-    end),
+    end,
 
-    mouseMove = async:callback(function(e, l)
+    mouseMove = function(e, l)
       if (not dragState.isDragging) then return end
 
       if (e.button ~= 1) then
@@ -1299,8 +1315,38 @@ function Renderer:BuildDraggerEvents()
       if (rendererRef.rootElement ~= nil) then
         rendererRef.rootElement:update()
       end
-    end),
+    end,
   }
+end
+
+-- Builds the final layout.events table from system and user event function tables.
+-- Both tables map event name strings to plain Lua functions.
+-- When both define the same event name, the system handler fires first then the user handler.
+-- Every handler is wrapped in async:callback for OpenMW compatibility.
+function Renderer:BuildEventTable(systemFuncs, userFuncs)
+  local allNames = {}
+  for k in pairs(systemFuncs or {}) do allNames[k] = true end
+  for k in pairs(userFuncs or {}) do allNames[k] = true end
+
+  if (next(allNames) == nil) then return nil end
+
+  local events = {}
+  for eventName in pairs(allNames) do
+    local sf = (systemFuncs or {})[eventName]
+    local uf = (userFuncs or {})[eventName]
+    if (sf ~= nil and uf ~= nil) then
+      local s, u = sf, uf
+      events[eventName] = async:callback(function(e, l) s(e, l); u(e, l) return true end)
+    elseif (sf ~= nil) then
+      local s = sf
+      events[eventName] = async:callback(function(e, l) s(e, l) return true end)
+    else
+      local u = uf
+      events[eventName] = async:callback(function(e, l) u(e, l) return true end)
+    end
+  end
+
+  return events
 end
 
 -- Gets the engine UI element that corresponds to a tag name.
@@ -1327,16 +1373,16 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     local resizable = self:ToBoolean(allProperties["resizable"], "Resizable")
     self:MarkConsumed(consumed, { "name", "layer", "resizable" })
 
-    local events = nil
+    local resizeFuncs = nil
     if (resizable == true) then
-      events = self:BuildResizeEvents()
+      resizeFuncs = self:BuildResizeFuncs()
     end
 
     return {
       layer = layer,
       name = name,
       props = props,
-      events = events,
+      __pendingSystemEvents = resizeFuncs,
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-window") then
