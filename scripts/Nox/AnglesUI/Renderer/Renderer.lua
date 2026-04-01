@@ -13,6 +13,7 @@ local TableUtils = require("scripts.Nox.Utils.TableUtils")
 local VFS = require('openmw.vfs')
 local async = require('openmw.async')
 local UserComponent = require("scripts.Nox.AnglesUI.Renderer.UserComponent")
+local Signal = require("scripts.Nox.AnglesUI.Signals.Signal")
 
 -- The user's menu transparency setting from the Settings::gui().mTransparencyAlpha value
 local menuTransparencyAlphaValue = UI._getMenuTransparency()
@@ -589,19 +590,38 @@ function Renderer:GetCSSAttributesForNode(node, ancestors, containerContext)
 end
 
 -- Renders the provided source code and components onto the screen.
+-- userContext must be a flat table where every value is a Signal.
 -- This returns the OpenMW Lua UI root element after it is called.
 function Renderer:Render(userContext)
+  -- Enforce the contract: only Signal instances are accepted as context values.
+  for key, value in pairs(userContext or {}) do
+    if (not Signal.IsSignal(value)) then
+      error("Renderer:Render() context values must be Signal instances. '" .. tostring(key) .. "' is not a Signal.")
+    end
+  end
+
+  -- Tear down subscriptions left over from any previous Render() call.
+  self:_disposeSignalEffects()
+
+  -- Subscribe to every context signal so that any Set() call triggers a full re-render.
+  self._signalContext      = userContext or {}
+  self._signalUnsubscribers = {}
+  for _, signal in pairs(self._signalContext) do
+    local unsubscribe = signal:Subscribe(function()
+      self:Rerender()
+    end)
+    table.insert(self._signalUnsubscribers, unsubscribe)
+  end
+
   local lexer = Lexer.new(self.source, self.userComponents)
-  local ast = lexer:parse()
+  local ast   = lexer:parse()
+  self._ast   = ast  -- stored so Rerender() can re-evaluate against fresh signal values
+
   local evaluator = Evaluator.new(self.userComponents)
-  local context = Context.new(userContext)
-  local rootNode = evaluator:evaluate(ast, context)
+  local context   = Context.new(userContext)
+  local rootNode  = evaluator:evaluate(ast, context)
 
-  -- TODO
-  -- Run an Effect() on all userContexts that are signals, so that when they update we can destroy the uiElement and re-render
-  -- a new one with updated values.
-
-  self.activeRules = self:ResolveActiveRules()
+  self.activeRules              = self:ResolveActiveRules()
   self.activeContainerQueryRules = self:ResolveActiveContainerQueryRules()
 
   if (#rootNode.children > 0) then
@@ -631,9 +651,25 @@ end
 -- Re-resolves CSS rules so media queries and container queries reflect the current state.
 -- Any explicit size/position applied to the root (e.g. from resizing) is preserved and used
 -- when computing child layouts so container queries see the correct container dimensions.
+-- When signals are registered, the template is also re-evaluated so bindings reflect the
+-- latest signal values before the layout is rebuilt.
 function Renderer:Rerender()
   if (self.evaluatedRootNode == nil or self.rootElement == nil or self.rootLayout == nil) then
     return
+  end
+
+  -- Re-evaluate the AST against the current signal values so text bindings,
+  -- @if conditions, and @for collections reflect the latest state.
+  if (self._ast ~= nil) then
+    local evaluator  = Evaluator.new(self.userComponents)
+    local context    = Context.new(self._signalContext or {})
+    local freshRoot  = evaluator:evaluate(self._ast, context)
+    if (#freshRoot.children > 0) then
+      local firstNode = freshRoot.children[1]
+      if (firstNode.type == Node.TYPE_ENGINE_COMPONENT and firstNode.tagName == "mw-root") then
+        self.evaluatedRootNode = firstNode
+      end
+    end
   end
 
   -- Snapshot explicit size/position set on the root layout (e.g. by a resize drag).
@@ -642,11 +678,13 @@ function Renderer:Rerender()
   self._rootSizeOverride     = self.rootLayout.props and self.rootLayout.props.size     or nil
   self._rootPositionOverride = self.rootLayout.props and self.rootLayout.props.position or nil
 
-  self.activeRules = self:ResolveActiveRules()
+  self.activeRules              = self:ResolveActiveRules()
   self.activeContainerQueryRules = self:ResolveActiveContainerQueryRules()
 
   local rootParentPixelSize = self:ResolveRootParentPixelSize()
   local newRootLayout = self:BuildLayoutTree(self.evaluatedRootNode, rootParentPixelSize)
+
+
 
   self._rootSizeOverride     = nil
   self._rootPositionOverride = nil
@@ -704,6 +742,16 @@ function Renderer:SnapToScreen()
   self.rootLayout.props.relativePosition = nil
 
   self.rootElement:update()
+end
+
+-- Unsubscribes all signal listeners registered by the last Render() call.
+function Renderer:_disposeSignalEffects()
+  if (self._signalUnsubscribers ~= nil) then
+    for _, unsubscribe in ipairs(self._signalUnsubscribers) do
+      unsubscribe()
+    end
+    self._signalUnsubscribers = nil
+  end
 end
 
 function Renderer:BuildLayoutTree(node, parentPixelSize, ancestors, containerContext)

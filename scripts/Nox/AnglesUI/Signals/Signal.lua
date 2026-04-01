@@ -4,6 +4,11 @@ local Effect = require("scripts.Nox.AnglesUI.Signals.Effect");
 local Signal = {}
 Signal.__index = Signal
 
+-- Returns true when value is a Signal instance (checks metatable identity).
+function Signal.IsSignal(value)
+	return type(value) == "table" and getmetatable(value) == Signal
+end
+
 -- Creates a new signal with an initial value.
 function Signal.New(initialValue)
 	local self = setmetatable({}, Signal)
