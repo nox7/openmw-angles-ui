@@ -74,21 +74,42 @@ end
 -- Evaluate an EngineComponentNode: resolve square-bracket attribute bindings
 function Evaluator:evaluateEngineComponentNode(node, context)
   local resolvedAttributes = {}
+  local dynamicClasses = {}  -- accumulated from [class.X] bindings
 
   for attrName, attrValue in pairs(node.attributes) do
-    -- Check if the attribute name is a square-bracket binding like [relativeSize]
     local bindingName = string.match(attrName, "^%[(.+)%]$")
     if bindingName then
-      -- Evaluate the attribute value as a code expression
-      local resolvedValue = self.expressionEvaluator:evaluate(attrValue, context)
-      -- Only apply the attribute if the value is not nil
-      if resolvedValue ~= nil then
-        resolvedAttributes[bindingName] = resolvedValue
+      -- [class.X] binding: append the class name only when the expression is truthy.
+      local className = string.match(bindingName, "^class%.(.+)$")
+      if className then
+        local condVal = self.expressionEvaluator:evaluate(attrValue, context)
+        if condVal ~= nil and condVal ~= false then
+          table.insert(dynamicClasses, className)
+        end
+      else
+        -- Regular evaluated binding (e.g. [style.height], [Width]).
+        local resolvedValue = self.expressionEvaluator:evaluate(attrValue, context)
+        if resolvedValue ~= nil then
+          resolvedAttributes[bindingName] = resolvedValue
+        end
       end
     else
-      -- Static attribute, pass through as-is
+      -- Static attribute, pass through as-is.
       resolvedAttributes[attrName] = attrValue
     end
+  end
+
+  -- Merge dynamic class bindings with any static class attribute.
+  if (#dynamicClasses > 0) then
+    local existingClass = resolvedAttributes["class"] or ""
+    local parts = {}
+    for cls in string.gmatch(existingClass, "%S+") do
+      table.insert(parts, cls)
+    end
+    for _, cls in ipairs(dynamicClasses) do
+      table.insert(parts, cls)
+    end
+    resolvedAttributes["class"] = table.concat(parts, " ")
   end
 
   local resolvedNode = EngineComponentNode.new(node.tagName, resolvedAttributes, node.selfClosing)

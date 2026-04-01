@@ -37,6 +37,60 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["container-name"]      = "containername",
 }
 
+-- Maps the lowercased JS-style property name from a [style.X] binding to the
+-- internal attribute key used throughout the renderer.  Camelcase is collapsed
+-- to lowercase before the lookup (e.g. "flexGrow" -> "flexgrow").
+local STYLE_BINDING_TO_ATTRIBUTE = {
+  ["height"]              = "height",
+  ["width"]               = "width",
+  ["padding"]             = "padding",
+  ["gap"]                 = "gap",
+  ["rowgap"]              = "rowgap",
+  ["columngap"]           = "columngap",
+  ["color"]               = "textcolor",
+  ["textcolor"]           = "textcolor",
+  ["fontsize"]            = "textsize",
+  ["textsize"]            = "textsize",
+  ["background"]          = "background",
+  ["flexgrow"]            = "grow",
+  ["grow"]                = "grow",
+  ["flexdirection"]       = "direction",
+  ["direction"]           = "direction",
+  ["gridtemplatecolumns"] = "gridtemplatecolumns",
+  ["gridtemplaterows"]    = "gridtemplaterows",
+  ["gridcolumn"]          = "gridcolumn",
+  ["gridrow"]             = "gridrow",
+  ["gridcolumnspan"]      = "gridcolumnspan",
+  ["gridrowspan"]         = "gridrowspan",
+  ["containertype"]       = "containertype",
+  ["containername"]       = "containername",
+  ["visible"]             = "visible",
+  ["anchorx"]             = "anchorx",
+  ["anchory"]             = "anchory",
+  ["x"]                   = "x",
+  ["y"]                   = "y",
+  ["multiline"]           = "multiline",
+  ["wordwrap"]            = "wordwrap",
+  ["textshadow"]          = "textshadow",
+  ["tileh"]               = "tileh",
+  ["tilev"]               = "tilev",
+}
+
+-- HTML attributes that are structural, behavioral, or content-related and
+-- are therefore still accepted as plain HTML attributes (not [style.X]).
+local NON_STYLE_ATTRIBUTES = {
+  ["id"]        = true,
+  ["class"]     = true,
+  ["name"]      = true,
+  ["layer"]     = true,
+  ["resizable"] = true,
+  ["dragger"]   = true,
+  ["resource"]  = true,  -- mw-image texture path
+  ["src"]       = true,
+  ["path"]      = true,
+  ["text"]      = true,  -- mw-text-edit initial content
+}
+
 ---@class Renderer Class responsible for rendering a single OpenMW UiElement from HTMl and CSS source code.
 ---@field public string source
 ---@field public table<string, UserComponent> userComponents The key is the selector and the value is an instance of UserComponent
@@ -1510,18 +1564,69 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
   end
 end
 
--- Gets all accepted properties for the node element
--- If necessary, parses the properties in correct order so that
--- their integrity is maintained (e.g. padding needs to be parsed before we can calculate size and position)
+-- Builds the resolved property table for a node.
+-- Sources, in ascending priority order:
+--   1. CSS rules (via GetCSSAttributesForNode)
+--   2. [style.X]="expr" evaluated bindings  (style properties only)
+--   3. Whitelisted non-style HTML attributes (layer, name, dragger, resource, …)
+-- Direct style-named HTML attributes (e.g. Height="24") are intentionally
+-- ignored – styling belongs in CSS or [style.X] bindings.
 function Renderer:ParseAcceptedProperties(node, ancestors, containerContext)
--- CSS-derived attributes are the base; inline HTML attributes override them
-local properties = self:GetCSSAttributesForNode(node, ancestors, containerContext)
+  local properties = self:GetCSSAttributesForNode(node, ancestors, containerContext)
 
   for attributeName, attributeValue in pairs(node.attributes or {}) do
-    if (type(attributeValue) == "string") then
-      attributeValue = string.gsub(attributeValue, "(%d+%.?%d*)px", "%1")
+    local lowerName = string.lower(attributeName)
+
+    -- [style.X] evaluated bindings: map JS camelCase property to internal name.
+    -- A nil or false value means the binding is inactive; fall back to the CSS value.
+    local styleProp = string.match(lowerName, "^style%.(.+)$")
+    if (styleProp ~= nil) then
+      local internalName = STYLE_BINDING_TO_ATTRIBUTE[styleProp]
+      if (internalName ~= nil and attributeValue ~= nil and attributeValue ~= false) then
+        if (type(attributeValue) == "string") then
+          attributeValue = string.gsub(attributeValue, "(%d+%.?%d*)px", "%1")
+        end
+        properties[internalName] = attributeValue
+      end
+    elseif (NON_STYLE_ATTRIBUTES[lowerName]) then
+      -- Structural / behavioral / content attributes pass through as-is.
+      properties[lowerName] = attributeValue
     end
-    properties[string.lower(attributeName)] = attributeValue
+    -- All other direct HTML style attributes are silently ignored.
+  end
+
+  -- Resolve CSS grid-column / grid-row shorthand values that include a span.
+  --   "1 / span 2"  → gridcolumn = 1,  gridcolumnspan = 2
+  --   "1 / 3"       → gridcolumn = 1,  gridcolumnspan = 2  (endLine - startLine)
+  --   "1"           → gridcolumn = 1   (span defaults to 1 in ArrangeGridChildren)
+  local gridLinePairs = {
+    { "gridcolumn", "gridcolumnspan" },
+    { "gridrow",    "gridrowspan"    },
+  }
+  for _, pair in ipairs(gridLinePairs) do
+    local colKey, spanKey = pair[1], pair[2]
+    local val = properties[colKey]
+    if (type(val) == "string") then
+      local startCol, span = string.match(val, "^%s*(%d+)%s*/%s*span%s+(%d+)%s*$")
+      if (startCol ~= nil) then
+        properties[colKey] = startCol
+        if (properties[spanKey] == nil) then
+          properties[spanKey] = span
+        end
+      else
+        local startLine, endLine = string.match(val, "^%s*(%d+)%s*/%s*(%d+)%s*$")
+        if (startLine ~= nil) then
+          local s = tonumber(startLine)
+          local e = tonumber(endLine)
+          if (s ~= nil and e ~= nil and e > s) then
+            properties[colKey] = tostring(s)
+            if (properties[spanKey] == nil) then
+              properties[spanKey] = tostring(e - s)
+            end
+          end
+        end
+      end
+    end
   end
 
   if (node.tagName == "mw-flex" or node.tagName == "mw-widget" or node.tagName == "mw-grid") then
