@@ -261,14 +261,22 @@ function CSSParser.SelectorMatchesNode(parsedSelector, node, ancestors)
       if (ancestorIndex < 1) then
         return false
       end
-      if (not CSSParser.SimplePartMatchesNode(part, ancestors[ancestorIndex])) then
+      local ancestorAncestors = {}
+      for k = 1, ancestorIndex - 1 do
+        ancestorAncestors[k] = ancestors[k]
+      end
+      if (not CSSParser.SimplePartMatchesNode(part, ancestors[ancestorIndex], ancestorAncestors)) then
         return false
       end
       ancestorIndex = ancestorIndex - 1
     elseif (combinator == " ") then
       local found = false
       while (ancestorIndex >= 1) do
-        if (CSSParser.SimplePartMatchesNode(part, ancestors[ancestorIndex])) then
+        local ancestorAncestors = {}
+        for k = 1, ancestorIndex - 1 do
+          ancestorAncestors[k] = ancestors[k]
+        end
+        if (CSSParser.SimplePartMatchesNode(part, ancestors[ancestorIndex], ancestorAncestors)) then
           found = true
           ancestorIndex = ancestorIndex - 1
           break
