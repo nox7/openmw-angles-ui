@@ -48,9 +48,34 @@ function CSSParser.ParseSimpleSelectorPart(selectorStr)
     tag = tagPart
   end
 
-  local specificity = (id ~= nil and 100 or 0) + (#classes * 10) + (tag ~= nil and 1 or 0)
+  -- Parse pseudo-selectors: :nth-child(n), :first-child, :not(selector)
+  local pseudos = {}
+  local i = 1
+  while i <= #selectorStr do
+    local colonPos = selectorStr:find(":", i, true)
+    if (colonPos == nil) then break end
+    local rest = selectorStr:sub(colonPos)
+    local nthArg = rest:match("^:nth%-child%((.-)%)")
+    if (nthArg ~= nil) then
+      table.insert(pseudos, { type = "nth-child", value = nthArg })
+      i = colonPos + 11 + #nthArg + 1   -- len(":nth-child(") + arg + len(")")
+    elseif (rest:sub(1, 12) == ":first-child") then
+      table.insert(pseudos, { type = "nth-child", value = "1" })
+      i = colonPos + 12
+    else
+      local notArg = rest:match("^:not%((.-)%)")
+      if (notArg ~= nil) then
+        table.insert(pseudos, { type = "not", value = notArg })
+        i = colonPos + 5 + #notArg + 1  -- len(":not(") + arg + len(")")
+      else
+        i = colonPos + 1
+      end
+    end
+  end
 
-  return { tag = tag, classes = classes, id = id, specificity = specificity }
+  local specificity = (id ~= nil and 100 or 0) + (#classes * 10) + (tag ~= nil and 1 or 0) + (#pseudos * 10)
+
+  return { tag = tag, classes = classes, id = id, pseudos = pseudos, specificity = specificity }
 end
 
 -- Parse a compound selector string (e.g. "mw-flex > mw-widget.my-class") into its parts and combinators.
@@ -107,9 +132,46 @@ function CSSParser.ParseSelectorParts(selectorStr)
   return { parts = parts, combinators = combinators, specificity = totalSpecificity }
 end
 
+-- Evaluates an :nth-child argument string against a 1-based child position.
+-- Supports integers, "odd", "even", and an+b expressions (e.g. "2n+1", "3n", "-n+3").
+function CSSParser.EvaluateNthChildArg(arg, position)
+  local trimmed = (arg or ""):match("^%s*(.-)%s*$")
+
+  if (trimmed == "odd")  then return position % 2 == 1 end
+  if (trimmed == "even") then return position % 2 == 0 end
+
+  -- Pure integer
+  local n = tonumber(trimmed)
+  if (n ~= nil) then return position == math.floor(n) end
+
+  -- "n" alone → matches every positive position
+  if (trimmed == "n") then return position >= 1 end
+
+  -- an+b or an-b  (e.g. "2n+1", "3n", "-n+3", "n+2")
+  local aStr, sign, bStr = trimmed:match("^([%+%-]?%d*)n%s*([%+%-])%s*(%d+)$")
+  if (aStr ~= nil) then
+    local a = (aStr == "" or aStr == "+") and 1 or (aStr == "-" and -1 or tonumber(aStr) or 1)
+    local b = tonumber(bStr) or 0
+    if (sign == "-") then b = -b end
+    if (a == 0) then return position == b end
+    local diff = position - b
+    return diff >= 0 and diff % a == 0
+  end
+
+  -- an (no b term, e.g. "3n")
+  local aStr2 = trimmed:match("^([%+%-]?%d*)n$")
+  if (aStr2 ~= nil) then
+    local a = (aStr2 == "" or aStr2 == "+") and 1 or (aStr2 == "-" and -1 or tonumber(aStr2) or 1)
+    if (a <= 0) then return false end
+    return position >= 1 and position % a == 0
+  end
+
+  return false
+end
+
 -- Returns true if a simple selector part matches a given node.
-function CSSParser.SimplePartMatchesNode(part, node)
-  if (part.tag == nil and part.id == nil and #part.classes == 0) then
+function CSSParser.SimplePartMatchesNode(part, node, ancestors)
+  if (part.tag == nil and part.id == nil and #part.classes == 0 and #(part.pseudos or {}) == 0) then
     return false
   end
 
@@ -137,6 +199,35 @@ function CSSParser.SimplePartMatchesNode(part, node)
     end
   end
 
+  -- Evaluate pseudo-selectors.
+  for _, pseudo in ipairs(part.pseudos or {}) do
+    if (pseudo.type == "nth-child") then
+      local parent = (ancestors ~= nil) and ancestors[#ancestors] or nil
+      if (parent == nil) then return false end
+      -- Count the node's 1-based position among element siblings (nodes with a tagName).
+      -- Text nodes do not have tagName and are excluded from the count.
+      local pos = 0
+      local found = false
+      for _, sibling in ipairs(parent.children or {}) do
+        if (sibling.tagName ~= nil) then
+          pos = pos + 1
+          if (sibling == node) then
+            found = true
+            break
+          end
+        end
+      end
+      if (not found or not CSSParser.EvaluateNthChildArg(pseudo.value, pos)) then
+        return false
+      end
+    elseif (pseudo.type == "not") then
+      local innerParsed = CSSParser.ParseSelectorParts(pseudo.value)
+      if (CSSParser.SelectorMatchesNode(innerParsed, node, ancestors)) then
+        return false
+      end
+    end
+  end
+
   return true
 end
 
@@ -151,7 +242,7 @@ function CSSParser.SelectorMatchesNode(parsedSelector, node, ancestors)
 
   ancestors = ancestors or {}
 
-  if (not CSSParser.SimplePartMatchesNode(parsedSelector.parts[#parsedSelector.parts], node)) then
+  if (not CSSParser.SimplePartMatchesNode(parsedSelector.parts[#parsedSelector.parts], node, ancestors)) then
     return false
   end
 
@@ -382,8 +473,8 @@ function CSSParser:ExpandNestedSelector(parentSel, nestedSel)
     return parentSel .. " " .. self:trim(descendantPart)
   end
 
-  -- No & present — implicit descendant: return as-is
-  return trimmed
+  -- No & present — implicit descendant combinator (CSS nesting spec).
+  return parentSel .. " " .. trimmed
 end
 
 -- ─── Grammar rules ───────────────────────────────────────────────────────────
@@ -527,9 +618,12 @@ function CSSParser:ParseRule()
     end
 
     if (self:IsNestedRuleStart()) then
-      local nestedRule = self:ParseNestedRule(selectors)
+      local nestedRule, deeperRules = self:ParseNestedRule(selectors)
       if (nestedRule ~= nil) then
         table.insert(nestedRules, nestedRule)
+      end
+      for _, dr in ipairs(deeperRules) do
+        table.insert(nestedRules, dr)
       end
     else
       local decl = self:ParseDeclaration()
@@ -543,36 +637,16 @@ function CSSParser:ParseRule()
   return { selectors = selectors, declarations = declarations }, nestedRules
 end
 
--- Parse a nested rule block (e.g. "& > mw-widget { ... }") inside a parent rule.
--- Expands `&` references using parentSelectors and returns a flat rule.
+-- Parse a nested rule block recursively.
+-- Expands `&` references (and implicit descendants) using parentSelectors.
+-- Returns: rule (or nil), deeperRules (list of rules from any further-nested blocks).
 function CSSParser:ParseNestedRule(parentSelectors)
   local selectorRaw = self:readUntil("{")
-  if (self:peek() ~= "{") then return nil end
+  if (self:peek() ~= "{") then return nil, {} end
   self:advance() -- skip '{'
 
-  local declarations = {}
-
-  while not self:isEOF() do
-    self:skipWhitespaceAndComments()
-    if (self:peek() == "}") then
-      self:advance()
-      break
-    end
-
-    -- Skip any further nesting (we only expand one level deep)
-    if (self:IsNestedRuleStart()) then
-      local skipRaw = self:readUntil("{")
-      if (self:peek() == "{") then
-        self:skipBlock()
-      end
-    else
-      local decl = self:ParseDeclaration()
-      if (decl ~= nil) then
-        declarations[decl.property] = decl.value
-      end
-    end
-  end
-
+  -- Compute expanded selectors BEFORE parsing the body so that any deeper
+  -- nested rules inside this block can use them as their parent selectors.
   local expandedSelectors = {}
   for _, nestedSel in ipairs(self:ParseSelectorList(selectorRaw)) do
     for _, parentSel in ipairs(parentSelectors) do
@@ -583,8 +657,43 @@ function CSSParser:ParseNestedRule(parentSelectors)
     end
   end
 
-  if (#expandedSelectors == 0) then return nil end
-  return { selectors = expandedSelectors, declarations = declarations }
+  local declarations = {}
+  local deeperRules  = {}
+
+  while not self:isEOF() do
+    self:skipWhitespaceAndComments()
+    if (self:peek() == "}") then
+      self:advance()
+      break
+    end
+
+    if (self:IsNestedRuleStart()) then
+      if (#expandedSelectors > 0) then
+        -- Recurse: the current expanded selectors become the parent for this deeper block.
+        local deepRule, evenDeeperRules = self:ParseNestedRule(expandedSelectors)
+        if (deepRule ~= nil) then
+          table.insert(deeperRules, deepRule)
+        end
+        for _, dr in ipairs(evenDeeperRules) do
+          table.insert(deeperRules, dr)
+        end
+      else
+        -- No valid parent selectors; discard the unresolvable nested block.
+        self:readUntil("{")
+        if (self:peek() == "{") then
+          self:skipBlock()
+        end
+      end
+    else
+      local decl = self:ParseDeclaration()
+      if (decl ~= nil) then
+        declarations[decl.property] = decl.value
+      end
+    end
+  end
+
+  if (#expandedSelectors == 0) then return nil, deeperRules end
+  return { selectors = expandedSelectors, declarations = declarations }, deeperRules
 end
 
 function CSSParser:ParseSelectorList(rawSelectors)
