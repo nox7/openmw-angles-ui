@@ -1719,29 +1719,31 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     -- the outer widget AND by the scrollbar button handlers built later in
     -- ApplyScrollCanvasContainer; both sets share the same persistent state table
     -- so they always operate on the current layout after any Rerender().
-    local function updateScrollVisuals()
-      if (state.contentLayout ~= nil) then
-        local pad = state.padding or { Left = 0, Top = 0 }
-        state.contentLayout.props.position = Util.vector2(
-          -state.x + pad.Left,
-          -state.y + pad.Top
-        )
+    if (state.updateScrollVisuals == nil) then
+      local function updateScrollVisuals()
+        if (state.contentLayout ~= nil) then
+          local pad = state.padding or { Left = 0, Top = 0 }
+          state.contentLayout.props.position = Util.vector2(
+            -state.x + pad.Left,
+            -state.y + pad.Top
+          )
+        end
+        if (state.vThumbLayout ~= nil and (state.maxY or 0) > 0) then
+          local vRatio = state.y / state.maxY
+          local thumbY = vRatio * ((state.trackH or 0) - (state.vThumbH or 0))
+          state.vThumbLayout.props.position = Util.vector2(0, thumbY)
+        end
+        if (state.hThumbLayout ~= nil and (state.maxX or 0) > 0) then
+          local hRatio = state.x / state.maxX
+          local thumbX = hRatio * ((state.trackW or 0) - (state.hThumbW or 0))
+          state.hThumbLayout.props.position = Util.vector2(thumbX, 0)
+        end
+        if (rendererRef.rootElement ~= nil) then
+          rendererRef.rootElement:update()
+        end
       end
-      if (state.vThumbLayout ~= nil and (state.maxY or 0) > 0) then
-        local vRatio = state.y / state.maxY
-        local thumbY = vRatio * ((state.trackH or 0) - (state.vThumbH or 0))
-        state.vThumbLayout.props.position = Util.vector2(0, thumbY)
-      end
-      if (state.hThumbLayout ~= nil and (state.maxX or 0) > 0) then
-        local hRatio = state.x / state.maxX
-        local thumbX = hRatio * ((state.trackW or 0) - (state.hThumbW or 0))
-        state.hThumbLayout.props.position = Util.vector2(thumbX, 0)
-      end
-      if (rendererRef.rootElement ~= nil) then
-        rendererRef.rootElement:update()
-      end
+      state.updateScrollVisuals = updateScrollVisuals
     end
-    state.updateScrollVisuals = updateScrollVisuals
 
     self:MarkConsumed(consumed, {
       "name", "padding", "parsedpadding", "direction", "gap", "scrollbarsize", "scrollstep"
@@ -2471,7 +2473,65 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   local vThumbY = maxScrollY > 0 and ((state.y / maxScrollY) * (vTrackH - vThumbH)) or 0
   local hThumbX = maxScrollX > 0 and ((state.x / maxScrollX) * (hTrackW - hThumbW)) or 0
 
-  local updateFn = state.updateScrollVisuals
+  -- Create scrollbar interaction callbacks once and cache them on state.
+  -- They capture only the persistent state table and the constant scrollStep,
+  -- so the same async:callback objects are safely reused across every rerender.
+  if (state.cachedCallbacks == nil) then
+    local scrollStep = meta.scrollStep
+    state.cachedCallbacks = {
+      vThumbPress = async:callback(function(e, l)
+        if (e.button ~= 1) then return true end
+        state.vDragging  = true
+        state.vLastMouse = e.position
+        return true
+      end),
+      vThumbClick = async:callback(function(e, l) end),
+      vTrackClick = async:callback(function(e, l)
+        if (state.maxY <= 0) then return true end
+        local trackSize = state.trackH > 0 and state.trackH or 1
+        local ratio = math.max(0, math.min(1, e.offset.y / trackSize))
+        state.y = ratio * state.maxY
+        state.updateScrollVisuals()
+        return true
+      end),
+      vUpClick = async:callback(function(e, l)
+        state.y = math.max(0, state.y - scrollStep)
+        state.updateScrollVisuals()
+        return true
+      end),
+      vDownClick = async:callback(function(e, l)
+        state.y = math.min(state.maxY, state.y + scrollStep)
+        state.updateScrollVisuals()
+        return true
+      end),
+      hThumbPress = async:callback(function(e, l)
+        if (e.button ~= 1) then return true end
+        state.hDragging  = true
+        state.hLastMouse = e.position
+        return true
+      end),
+      hThumbClick = async:callback(function(e, l) end),
+      hTrackClick = async:callback(function(e, l)
+        if (state.maxX <= 0) then return true end
+        local trackSize = state.trackW > 0 and state.trackW or 1
+        local ratio = math.max(0, math.min(1, e.offset.x / trackSize))
+        state.x = ratio * state.maxX
+        state.updateScrollVisuals()
+        return true
+      end),
+      hLeftClick = async:callback(function(e, l)
+        state.x = math.max(0, state.x - scrollStep)
+        state.updateScrollVisuals()
+        return true
+      end),
+      hRightClick = async:callback(function(e, l)
+        state.x = math.min(state.maxX, state.x + scrollStep)
+        state.updateScrollVisuals()
+        return true
+      end),
+    }
+  end
+  local cb = state.cachedCallbacks
 
   -- ── Content & viewport ─────────────────────────────────────────────────────
 
@@ -2503,14 +2563,8 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
       position = Util.vector2(0, vThumbY),
     },
     events = {
-      -- Start thumb drag; block the click from propagating to the track.
-      mousePress = async:callback(function(e, l)
-        if (e.button ~= 1) then return true end
-        state.vDragging  = true
-        state.vLastMouse = e.position
-        return true
-      end),
-      mouseClick = async:callback(function(e, l) end),
+      mousePress = cb.vThumbPress,
+      mouseClick = cb.vThumbClick,
     },
   }
   state.vThumbLayout = vThumbLayout
@@ -2522,14 +2576,7 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
       position = Util.vector2(0, sbSize + arrowGap),
     },
     events = {
-      mouseClick = async:callback(function(e, l)
-        if (state.maxY <= 0) then return true end
-        local trackSize = state.trackH > 0 and state.trackH or 1
-        local ratio = math.max(0, math.min(1, e.offset.y / trackSize))
-        state.y = ratio * state.maxY
-        updateFn()
-        return true
-      end),
+      mouseClick = cb.vTrackClick,
     },
     content = UI.content({ vThumbLayout }),
   }
@@ -2550,11 +2597,7 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
       },
     }),
     events = {
-      mouseClick = async:callback(function(e, l)
-        state.y = math.max(0, state.y - meta.scrollStep)
-        updateFn()
-        return true
-      end),
+      mouseClick = cb.vUpClick,
     },
   }
 
@@ -2574,11 +2617,7 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
       },
     }),
     events = {
-      mouseClick = async:callback(function(e, l)
-        state.y = math.min(state.maxY, state.y + meta.scrollStep)
-        updateFn()
-        return true
-      end),
+      mouseClick = cb.vDownClick,
     },
   }
 
@@ -2601,13 +2640,8 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
       position = Util.vector2(hThumbX, 0),
     },
     events = {
-      mousePress = async:callback(function(e, l)
-        if (e.button ~= 1) then return true end
-        state.hDragging  = true
-        state.hLastMouse = e.position
-        return true
-      end),
-      mouseClick = async:callback(function(e, l) end),
+      mousePress = cb.hThumbPress,
+      mouseClick = cb.hThumbClick,
     },
   }
   state.hThumbLayout = hThumbLayout
@@ -2619,14 +2653,7 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
       position = Util.vector2(sbSize + arrowGap, 0),
     },
     events = {
-      mouseClick = async:callback(function(e, l)
-        if (state.maxX <= 0) then return true end
-        local trackSize = state.trackW > 0 and state.trackW or 1
-        local ratio = math.max(0, math.min(1, e.offset.x / trackSize))
-        state.x = ratio * state.maxX
-        updateFn()
-        return true
-      end),
+      mouseClick = cb.hTrackClick,
     },
     content = UI.content({ hThumbLayout }),
   }
@@ -2647,11 +2674,7 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
       },
     }),
     events = {
-      mouseClick = async:callback(function(e, l)
-        state.x = math.max(0, state.x - meta.scrollStep)
-        updateFn()
-        return true
-      end),
+      mouseClick = cb.hLeftClick,
     },
   }
 
@@ -2671,11 +2694,7 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
       },
     }),
     events = {
-      mouseClick = async:callback(function(e, l)
-        state.x = math.min(state.maxX, state.x + meta.scrollStep)
-        updateFn()
-        return true
-      end),
+      mouseClick = cb.hRightClick,
     },
   }
 
