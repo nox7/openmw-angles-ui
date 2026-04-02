@@ -14,6 +14,7 @@ local VFS = require('openmw.vfs')
 local async = require('openmw.async')
 local UserComponent = require("scripts.Nox.AnglesUI.Renderer.UserComponent")
 local Signal = require("scripts.Nox.AnglesUI.Signals.Signal")
+local TextUtility = require("scripts.Nox.AnglesUI.Utilities.TextUtility")
 
 -- The user's menu transparency setting from the Settings::gui().mTransparencyAlpha value
 local menuTransparencyAlphaValue = UI._getMenuTransparency()
@@ -40,6 +41,7 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["flex-direction"]      = "direction",
   ["container-type"]      = "containertype",
   ["container-name"]      = "containername",
+  ["scrollbar-width"]     = "scrollbarsize",
 }
 
 -- Maps the lowercased JS-style property name from a [style.X] binding to the
@@ -2428,10 +2430,14 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
       local py = (p.position and p.position.y) or 0
       local sw = (p.size and p.size.x) or 0
       local sh = (p.size and p.size.y) or 0
-      -- For text children the real rendered height may differ, but use the
-      -- estimated value for scroll extent (good-enough for typical single-line text).
-      if (child.type == UI.TYPE.Text and sh == 0) then
-        sh = child.props.textSize or defaultTextSize
+      -- For text children use estimated dimensions when no explicit size is set.
+      if (child.type == UI.TYPE.Text) then
+        if (sh == 0) then
+          sh = child.props.textSize or defaultTextSize
+        end
+        if (sw == 0) then
+          sw = TextUtility.EstimateTextWidth(child.props.text, child.props.textSize)
+        end
       end
       contentW = math.max(contentW, px + sw)
       contentH = math.max(contentH, py + sh)
