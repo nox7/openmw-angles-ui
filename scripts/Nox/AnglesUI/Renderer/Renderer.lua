@@ -2447,9 +2447,11 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   state.maxY    = maxScrollY
   state.padding = padding
 
-  -- Track geometry: arrow buttons occupy sbSize at each end of the track.
-  local vTrackH  = math.max(0, viewportH - 2 * sbSize)
-  local hTrackW  = math.max(0, viewportW - 2 * sbSize)
+  -- Track geometry: arrow buttons occupy sbSize at each end of the track, with a
+  -- 4-pixel gap on each side separating each arrow from the thumb track.
+  local arrowGap = 4
+  local vTrackH  = math.max(0, viewportH - 2 * sbSize - 2 * arrowGap)
+  local hTrackW  = math.max(0, viewportW - 2 * sbSize - 2 * arrowGap)
   local minThumb = math.max(sbSize, 16)
   local vThumbH  = maxScrollY > 0 and math.max(minThumb, (innerH / contentH) * vTrackH) or vTrackH
   local hThumbW  = maxScrollX > 0 and math.max(minThumb, (innerW / contentW) * hTrackW) or hTrackW
@@ -2508,9 +2510,10 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   state.vThumbLayout = vThumbLayout
 
   local vTrackLayout = {
+    template = MWUI.templates.borders,
     props = {
       size     = Util.vector2(sbSize, vTrackH),
-      position = Util.vector2(0, sbSize),
+      position = Util.vector2(0, sbSize + arrowGap),
     },
     events = {
       mouseClick = async:callback(function(e, l)
@@ -2526,12 +2529,20 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   }
 
   local vUpArrow = {
-    type = UI.TYPE.Image,
+    template = MWUI.templates.borders,
     props = {
-      resource = UI.texture({ path = "textures/omw_menu_scroll_up.dds" }),
       size     = Util.vector2(sbSize, sbSize),
       position = Util.vector2(0, 0),
     },
+    content = UI.content({
+      {
+        type  = UI.TYPE.Image,
+        props = {
+          resource     = UI.texture({ path = "textures/omw_menu_scroll_up.dds" }),
+          relativeSize = Util.vector2(1, 1),
+        },
+      },
+    }),
     events = {
       mouseClick = async:callback(function(e, l)
         state.y = math.max(0, state.y - meta.scrollStep)
@@ -2542,12 +2553,20 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   }
 
   local vDownArrow = {
-    type = UI.TYPE.Image,
+    template = MWUI.templates.borders,
     props = {
-      resource = UI.texture({ path = "textures/omw_menu_scroll_down.dds" }),
       size     = Util.vector2(sbSize, sbSize),
-      position = Util.vector2(0, sbSize + vTrackH),
+      position = Util.vector2(0, sbSize + arrowGap + vTrackH + arrowGap),
     },
+    content = UI.content({
+      {
+        type  = UI.TYPE.Image,
+        props = {
+          resource     = UI.texture({ path = "textures/omw_menu_scroll_down.dds" }),
+          relativeSize = Util.vector2(1, 1),
+        },
+      },
+    }),
     events = {
       mouseClick = async:callback(function(e, l)
         state.y = math.min(state.maxY, state.y + meta.scrollStep)
@@ -2588,9 +2607,10 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   state.hThumbLayout = hThumbLayout
 
   local hTrackLayout = {
+    template = MWUI.templates.borders,
     props = {
       size     = Util.vector2(hTrackW, sbSize),
-      position = Util.vector2(sbSize, 0),
+      position = Util.vector2(sbSize + arrowGap, 0),
     },
     events = {
       mouseClick = async:callback(function(e, l)
@@ -2606,12 +2626,20 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   }
 
   local hLeftArrow = {
-    type = UI.TYPE.Image,
+    template = MWUI.templates.borders,
     props = {
-      resource = UI.texture({ path = "textures/omw_menu_scroll_left.dds" }),
       size     = Util.vector2(sbSize, sbSize),
       position = Util.vector2(0, 0),
     },
+    content = UI.content({
+      {
+        type  = UI.TYPE.Image,
+        props = {
+          resource     = UI.texture({ path = "textures/omw_menu_scroll_left.dds" }),
+          relativeSize = Util.vector2(1, 1),
+        },
+      },
+    }),
     events = {
       mouseClick = async:callback(function(e, l)
         state.x = math.max(0, state.x - meta.scrollStep)
@@ -2622,12 +2650,20 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   }
 
   local hRightArrow = {
-    type = UI.TYPE.Image,
+    template = MWUI.templates.borders,
     props = {
-      resource = UI.texture({ path = "textures/omw_menu_scroll_right.dds" }),
       size     = Util.vector2(sbSize, sbSize),
-      position = Util.vector2(sbSize + hTrackW, 0),
+      position = Util.vector2(sbSize + arrowGap + hTrackW + arrowGap, 0),
     },
+    content = UI.content({
+      {
+        type  = UI.TYPE.Image,
+        props = {
+          resource     = UI.texture({ path = "textures/omw_menu_scroll_right.dds" }),
+          relativeSize = Util.vector2(1, 1),
+        },
+      },
+    }),
     events = {
       mouseClick = async:callback(function(e, l)
         state.x = math.min(state.maxX, state.x + meta.scrollStep)
