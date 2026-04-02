@@ -2583,8 +2583,8 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   state.padding = padding
 
   -- Track geometry: arrow buttons occupy sbSize at each end of the track, with a
-  -- 4-pixel gap on each side separating each arrow from the thumb track.
-  local arrowGap = 4
+  -- 2-pixel gap on each side separating each arrow from the thumb track.
+  local arrowGap = 2
   local vTrackH  = math.max(0, viewportH - 2 * sbSize - 2 * arrowGap)
   local hTrackW  = math.max(0, viewportW - 2 * sbSize - 2 * arrowGap)
   local minThumb = math.max(sbSize, 16)
