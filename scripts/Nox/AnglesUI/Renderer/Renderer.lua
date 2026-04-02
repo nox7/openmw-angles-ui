@@ -100,6 +100,7 @@ local NON_STYLE_ATTRIBUTES = {
   ["text"]      = true,  -- mw-text-edit initial content
   ["scrollbarsize"] = true,  -- mw-scroll-canvas scrollbar strip width
   ["scrollstep"]    = true,  -- mw-scroll-canvas pixels scrolled per arrow click
+  ["edgemargin"]    = true,  -- mw-root resize edge hit-test width in pixels
 }
 
 ---@class Renderer Compiles an HTML+CSS template into a live OpenMW UI element tree.
@@ -1238,8 +1239,9 @@ end
 -- Builds the mousePress/mouseMove resize handler functions for mw-root.
 -- Returns plain Lua functions (not async:callback wrapped).
 -- See BuildEventTable for the final wrapping step.
+---@param edgeMargin number|nil Pixel distance from each window edge that activates a resize drag; defaults to 8.
 ---@return {mousePress: fun(e:table,l:table), mouseMove: fun(e:table,l:table)} Plain handler functions for edge-drag resizing.
-function Renderer:BuildResizeFuncs()
+function Renderer:BuildResizeFuncs(edgeMargin)
   local resizeState = {
     isDragging   = false,
     dragEdge     = nil,
@@ -1247,7 +1249,7 @@ function Renderer:BuildResizeFuncs()
   }
 
   local rendererRef = self
-  local edgeMargin  = 8
+  local edgeMargin  = edgeMargin or 8
   local minSize     = 50
 
   local function getElementBounds(l)
@@ -1535,12 +1537,17 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     end
 
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { requireSize = true })
-    local resizable = self:ToBoolean(allProperties["resizable"], "Resizable")
-    self:MarkConsumed(consumed, { "name", "layer", "resizable" })
+    local resizable     = self:ToBoolean(allProperties["resizable"], "Resizable")
+    local edgeMarginRaw = allProperties["edgemargin"]
+    if (type(edgeMarginRaw) == "string") then
+      edgeMarginRaw = string.gsub(edgeMarginRaw, "(%d+%.?%d*)px", "%1")
+    end
+    local edgeMargin = self:ToNumber(edgeMarginRaw, "EdgeMargin")
+    self:MarkConsumed(consumed, { "name", "layer", "resizable", "edgemargin" })
 
     local resizeFuncs = nil
     if (resizable == true) then
-      resizeFuncs = self:BuildResizeFuncs()
+      resizeFuncs = self:BuildResizeFuncs(edgeMargin)
     end
 
     return {
