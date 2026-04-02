@@ -1843,7 +1843,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
               if (scrollable > 0 and (state.maxY or 0) > 0) then
                 local delta = (dy / scrollable) * state.maxY
                 state.y = math.max(0, math.min(state.maxY, state.y + delta))
-                updateScrollVisuals()
+                state.updateScrollVisuals()
               end
             end
           end
@@ -1858,7 +1858,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
               if (scrollable > 0 and (state.maxX or 0) > 0) then
                 local delta = (dx / scrollable) * state.maxX
                 state.x = math.max(0, math.min(state.maxX, state.x + delta))
-                updateScrollVisuals()
+                state.updateScrollVisuals()
               end
             end
           end
