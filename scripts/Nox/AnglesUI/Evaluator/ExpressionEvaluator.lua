@@ -1,6 +1,10 @@
+---@class ExpressionEvaluator Parses and evaluates Angular-style template expressions against a Context.
+-- Supports logical operators (||, &&, !), equality (==, !=), ternary (?:), dot-access,
+-- function calls, string/number/boolean literals, and nil.
 local ExpressionEvaluator = {}
 ExpressionEvaluator.__index = ExpressionEvaluator
 
+---@return ExpressionEvaluator
 function ExpressionEvaluator.new()
   local self = setmetatable({}, ExpressionEvaluator)
   return self
@@ -52,6 +56,9 @@ local function findTopLevelOperator(str, operator)
 end
 
 -- Evaluate an expression string against a context
+---@param expression string The expression string to evaluate.
+---@param context Context The variable scope used to resolve identifiers and call functions.
+---@return any The evaluated result; type depends on the expression content.
 function ExpressionEvaluator:evaluate(expression, context)
   expression = trim(expression)
 
@@ -209,6 +216,9 @@ function ExpressionEvaluator:evaluate(expression, context)
 end
 
 -- Evaluate an expression and return the result as a string for display
+---@param expression string The expression string to evaluate.
+---@param context Context The variable scope.
+---@return string The result coerced to a string; returns an empty string when the result is nil.
 function ExpressionEvaluator:evaluateToString(expression, context)
   local result = self:evaluate(expression, context)
   if result == nil then
@@ -218,6 +228,9 @@ function ExpressionEvaluator:evaluateToString(expression, context)
 end
 
 -- Evaluate a condition expression and return a boolean
+---@param expression string The condition expression string.
+---@param context Context The variable scope.
+---@return boolean True when the expression evaluates to a truthy value.
 function ExpressionEvaluator:evaluateCondition(expression, context)
   local result = self:evaluate(expression, context)
   if result then

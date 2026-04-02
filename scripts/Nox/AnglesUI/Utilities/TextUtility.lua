@@ -1,3 +1,4 @@
+---@class TextUtility Utility functions for estimating rendered text dimensions without access to the OpenMW layout engine.
 local TextUtility = {}
 
 -- Per-character pixel width estimates at the 16px baseline text size.
@@ -12,6 +13,9 @@ local DEFAULT_TEXT_SIZE = 16
 
 -- Estimates the rendered pixel width of a string at the given text size.
 -- When textSize is nil or 0 the 16px baseline widths are used as-is.
+---@param text string|nil The string to measure; nil or empty returns 0.
+---@param textSize number|nil The font size in pixels. Character widths are scaled proportionally from the 16px baseline.
+---@return number The estimated pixel width of the string.
 function TextUtility.EstimateTextWidth(text, textSize)
   if (text == nil or text == "") then
     return 0

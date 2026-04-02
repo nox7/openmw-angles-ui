@@ -1,3 +1,4 @@
+---@class CSSParser Parses a CSS source string into a structured stylesheet model and provides CSS cascade and selector-matching utilities.
 local CSSParser = {}
 CSSParser.__index = CSSParser
 
@@ -6,6 +7,7 @@ CSSParser.__index = CSSParser
 -- the cache never needs to be invalidated.
 local _parsedSelectorCache = {}
 
+---@return CSSParser
 function CSSParser.New()
   local self = setmetatable({}, CSSParser)
   return self
@@ -19,6 +21,8 @@ end
 --     rules        = { { selectors={...}, declarations={prop=val} }, ... }
 --     mediaQueries = { { type="max-width"|"min-width", value=N, rules={...} }, ... }
 --   }
+---@param cssSource string|nil The raw CSS source text to parse.
+---@return {rules: table[], mediaQueries: table[], containerQueryRules: table[]} The parsed stylesheet model.
 function CSSParser:Parse(cssSource)
   if (cssSource == nil or cssSource == "") then
     return { rules = {}, mediaQueries = {}, containerQueryRules = {} }
@@ -34,6 +38,8 @@ function CSSParser:Parse(cssSource)
 end
 
 -- Parse a simple (non-compound) selector string into { tag, classes, id, specificity }.
+---@param selectorStr string A simple selector string (e.g. "mw-flex.my-class#my-id").
+---@return {tag: string|nil, classes: string[], id: string|nil, pseudos: table[], specificity: integer}
 function CSSParser.ParseSimpleSelectorPart(selectorStr)
   local tag = nil
   local classes = {}
@@ -86,6 +92,8 @@ end
 -- Parse a compound selector string (e.g. "mw-flex > mw-widget.my-class") into its parts and combinators.
 -- Returns: { parts = { {tag, classes, id, specificity}, ... }, combinators = { ">"|" "|"~"|"+ ", ... }, specificity = N }
 -- For simple selectors (no combinators), parts has one element and combinators is empty.
+---@param selectorStr string The full compound selector string.
+---@return {parts: table[], combinators: string[], specificity: integer}
 function CSSParser.ParseSelectorParts(selectorStr)
   local cached = _parsedSelectorCache[selectorStr]
   if (cached ~= nil) then return cached end
@@ -146,6 +154,9 @@ end
 
 -- Evaluates an :nth-child argument string against a 1-based child position.
 -- Supports integers, "odd", "even", and an+b expressions (e.g. "2n+1", "3n", "-n+3").
+---@param arg string The :nth-child argument string (e.g. "2n+1", "odd", "3").
+---@param position integer The 1-based index of the element among its element siblings.
+---@return boolean True when the position satisfies the nth-child expression.
 function CSSParser.EvaluateNthChildArg(arg, position)
   local trimmed = (arg or ""):match("^%s*(.-)%s*$")
 
@@ -182,6 +193,10 @@ function CSSParser.EvaluateNthChildArg(arg, position)
 end
 
 -- Returns true if a simple selector part matches a given node.
+---@param part {tag: string|nil, classes: string[], id: string|nil, pseudos: table[], specificity: integer} Parsed simple selector part.
+---@param node Node The node to test.
+---@param ancestors Node[]|nil Ordered ancestor chain from root to the immediate parent (required for pseudo-class evaluation).
+---@return boolean True when the node satisfies all criteria in the selector part.
 function CSSParser.SimplePartMatchesNode(part, node, ancestors)
   if (part.tag == nil and part.id == nil and #part.classes == 0 and #(part.pseudos or {}) == 0) then
     return false
@@ -247,6 +262,10 @@ end
 -- parsedSelector: result of ParseSelectorParts ({ parts, combinators, specificity })
 -- node: the node being matched
 -- ancestors: ordered list of ancestor nodes from root to immediate parent (optional)
+---@param parsedSelector {parts: table[], combinators: string[], specificity: integer} The parsed compound selector.
+---@param node Node The node to test.
+---@param ancestors Node[]|nil Ordered ancestor chain from root to the immediate parent.
+---@return boolean True when the full compound selector matches the node.
 function CSSParser.SelectorMatchesNode(parsedSelector, node, ancestors)
   if (#parsedSelector.parts == 0) then
     return false
@@ -318,6 +337,10 @@ end
 -- Collect the winning CSS declarations that apply to a node from a list of rules.
 -- Later rules and higher specificity win (standard CSS cascade).
 -- Returns a flat table: { cssPropertyName = value, ... }
+---@param rules table[] Parsed CSS rules from CSSParser:Parse().rules.
+---@param node Node The node to match against each rule's selector list.
+---@param ancestors Node[]|nil Ordered ancestor chain from root to the immediate parent.
+---@return table<string, string> Map of CSS property name to the winning declared value.
 function CSSParser.ApplyRulesToNode(rules, node, ancestors)
 local declMap = {}
 
@@ -346,21 +369,27 @@ end
 
 -- ─── Parser internals ────────────────────────────────────────────────────────
 
+---@param offset integer|nil Character offset from the current position (default 0).
+---@return string|nil
 function CSSParser:peek(offset)
   local idx = self.pos + (offset or 0)
   if (idx > self.length) then return nil end
   return string.sub(self.source, idx, idx)
 end
 
+---@param len integer Number of characters to peek.
+---@return string|nil
 function CSSParser:peekString(len)
   if (self.pos + len - 1 > self.length) then return nil end
   return string.sub(self.source, self.pos, self.pos + len - 1)
 end
 
+---@param n integer|nil Characters to advance (default 1).
 function CSSParser:advance(n)
   self.pos = self.pos + (n or 1)
 end
 
+---@return boolean True when the read position is past the end of the source.
 function CSSParser:isEOF()
   return self.pos > self.length
 end
@@ -395,6 +424,8 @@ function CSSParser:skipWhitespaceAndComments()
   end
 end
 
+---@param target string The string to stop before.
+---@return string All characters consumed before the target (or all remaining if not found).
 function CSSParser:readUntil(target)
   local startPos = self.pos
   local targetLen = #target
@@ -407,10 +438,13 @@ function CSSParser:readUntil(target)
   return string.sub(self.source, startPos, self.pos - 1)
 end
 
+---@param str string
+---@return string
 function CSSParser:trim(str)
   return (string.match(str, "^%s*(.-)%s*$") or str)
 end
 
+---@return string The consumed identifier (letters, digits, underscores, hyphens).
 function CSSParser:readIdentifier()
   local startPos = self.pos
   while not self:isEOF() do
@@ -442,6 +476,7 @@ end
 -- Returns true if the current position looks like the start of a nested rule
 -- (i.e. a `{` appears before any `:` or `;` or `}`).
 -- Does not consume any input.
+---@return boolean
 function CSSParser:IsNestedRuleStart()
   local savedPos = self.pos
 
@@ -474,6 +509,9 @@ end
 --   "&.my-class"     ->  "#outer-flex.my-class"
 --   "&"              ->  "#outer-flex"
 --   "mw-widget"      ->  "mw-widget"   (no &, treat as implicit descendant)
+---@param parentSel string The fully expanded parent selector string.
+---@param nestedSel string The raw nested selector (may contain `&` references).
+---@return string The expanded selector with `&` substituted by the parent selector.
 function CSSParser:ExpandNestedSelector(parentSel, nestedSel)
   local trimmed = self:trim(nestedSel)
 
@@ -625,6 +663,7 @@ end
 
 -- Parse a CSS rule block.
 -- Returns: rule (or nil), nestedRules (list of rules expanded from nested blocks)
+---@return table|nil, table[] The top-level rule table (or nil) and any rules from nested blocks.
 function CSSParser:ParseRule()
   self:skipWhitespaceAndComments()
   if (self:isEOF() or self:peek() == "}") then return nil, {} end
@@ -667,6 +706,8 @@ end
 -- Parse a nested rule block recursively.
 -- Expands `&` references (and implicit descendants) using parentSelectors.
 -- Returns: rule (or nil), deeperRules (list of rules from any further-nested blocks).
+---@param parentSelectors string[] The expanded selectors of the containing rule used to resolve `&`.
+---@return table|nil, table[] The expanded nested rule (or nil) and any rules from further-nested blocks.
 function CSSParser:ParseNestedRule(parentSelectors)
   local selectorRaw = self:readUntil("{")
   if (self:peek() ~= "{") then return nil, {} end
@@ -723,6 +764,8 @@ function CSSParser:ParseNestedRule(parentSelectors)
   return { selectors = expandedSelectors, declarations = declarations }, deeperRules
 end
 
+---@param rawSelectors string A comma-separated list of selectors (raw, may contain whitespace).
+---@return string[] A list of trimmed individual selector strings.
 function CSSParser:ParseSelectorList(rawSelectors)
   local selectors = {}
   for part in string.gmatch(rawSelectors, "[^,]+") do
@@ -734,6 +777,7 @@ function CSSParser:ParseSelectorList(rawSelectors)
   return selectors
 end
 
+---@return {property: string, value: string}|nil The parsed property/value pair, or nil on a parse failure.
 function CSSParser:ParseDeclaration()
   self:skipWhitespaceAndComments()
   if (self:isEOF() or self:peek() == "}") then return nil end
@@ -774,6 +818,7 @@ end
 -- ─── Container query helpers ─────────────────────────────────────────────────
 
 -- Parses a top-level @container (cond) { rules... } block and inserts entries into stylesheet.
+---@param stylesheet {containerQueryRules: table[]} The stylesheet table to append container query rule entries to.
 function CSSParser:ParseTopLevelContainerAtRule(stylesheet)
   self:skipWhitespaceAndComments()
 
@@ -837,6 +882,8 @@ end
 
 -- Parses a container condition string such as "width <= 300" or "max-width: 500".
 -- Returns { property, operator, value } or nil if the condition is not recognised.
+---@param conditionStr string The condition text from inside the `@container (...)` parentheses.
+---@return {property: string, operator: string, value: number}|nil The parsed condition, or nil when unrecognised.
 function CSSParser.ParseContainerCondition(conditionStr)
   local str = string.gsub(conditionStr, "(%d+%.?%d*)px", "%1")
   str = str:match("^%s*(.-)%s*$")
@@ -877,6 +924,9 @@ end
 
 -- Evaluates a container condition { property, operator, value } against a pixel size { x, y }.
 -- Returns true when the condition is satisfied, false otherwise.
+---@param condition {property: string, operator: string, value: number} The parsed container condition.
+---@param containerPixelSize {x: number|nil, y: number|nil}|nil The current pixel size of the named or nearest container.
+---@return boolean True when the container size satisfies the condition operator and value.
 function CSSParser.EvaluateContainerCondition(condition, containerPixelSize)
   if (containerPixelSize == nil) then return false end
 
@@ -909,6 +959,11 @@ end
 -- For unnamed @container rules (containerName == nil), containerContext.pixelSize is evaluated.
 -- For named @container rules, containerContext.named[containerName] is evaluated.
 -- Returns a flat { cssPropertyName = value } table.
+---@param containerQueryRules table[] Container query rules from CSSParser:Parse().containerQueryRules.
+---@param node Node The node to match selectors against.
+---@param ancestors Node[]|nil Ordered ancestor chain from root to the immediate parent.
+---@param containerContext {pixelSize: {x:number,y:number}|nil, named: table<string,{x:number,y:number}>}|nil Current container size context.
+---@return table<string, string> Map of CSS property name to the winning declared value.
 function CSSParser.ApplyContainerRulesToNode(containerQueryRules, node, ancestors, containerContext)
   if (containerContext == nil) then return {} end
 

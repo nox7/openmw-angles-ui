@@ -7,11 +7,19 @@ local IfDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.IfDirectiveNod
 local ForDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.ForDirectiveNode")
 local OutputDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.OutputDirectiveNode")
 
+---@class Lexer Tokenises an Angular-style HTML template string into an AST of Node objects.
+---@field source string The raw template source string being parsed.
+---@field pos integer Current 1-based read position within the source.
+---@field length integer Total character length of the source string.
+---@field userComponents table<string, UserComponent> Registered user components looked up when an unknown tag is encountered.
 local Lexer = {}
 Lexer.__index = Lexer
 
 local VOID_ELEMENTS = {}
 
+---@param source string The raw HTML-like template source string.
+---@param userComponents table<string, UserComponent>|nil Map of selector to UserComponent for resolving custom tags.
+---@return Lexer
 function Lexer.new(source, userComponents)
   local self = setmetatable({}, Lexer)
   self.source = source
@@ -22,6 +30,8 @@ function Lexer.new(source, userComponents)
 end
 
 -- Utility: return current character without advancing
+---@param offset integer|nil Character offset from the current position (default 0).
+---@return string|nil The character at the offset position, or nil when past EOF.
 function Lexer:peek(offset)
   local idx = self.pos + (offset or 0)
   if idx > self.length then
@@ -31,6 +41,8 @@ function Lexer:peek(offset)
 end
 
 -- Utility: return substring from current position
+---@param len integer Number of characters to peek ahead.
+---@return string|nil The next `len` characters, or nil if fewer than `len` remain.
 function Lexer:peekString(len)
   if self.pos + len - 1 > self.length then
     return nil
@@ -39,11 +51,13 @@ function Lexer:peekString(len)
 end
 
 -- Utility: advance position by n characters
+---@param n integer|nil Number of characters to advance (default 1).
 function Lexer:advance(n)
   self.pos = self.pos + (n or 1)
 end
 
 -- Utility: check if we have reached the end of the source
+---@return boolean True when the read position is past the last character.
 function Lexer:isEOF()
   return self.pos > self.length
 end
@@ -61,6 +75,8 @@ function Lexer:skipWhitespace()
 end
 
 -- Utility: read until a target string is found (does not consume the target)
+---@param target string The string to stop before.
+---@return string All characters consumed before the target (or all remaining if not found).
 function Lexer:readUntil(target)
   local startPos = self.pos
   local targetLen = #target
@@ -75,6 +91,7 @@ end
 
 -- Utility: read a balanced brace block starting at the opening '{'
 -- Returns the content inside the braces (not including the braces themselves)
+---@return string|nil The inner content of the balanced `{ }` block, or nil if no opening brace is at the current position.
 function Lexer:readBraceBlock()
   if self:peek() ~= "{" then
     return nil
@@ -102,6 +119,7 @@ end
 
 -- Utility: read a balanced parentheses expression starting at '('
 -- Returns the content inside the parens (not including the parens themselves)
+---@return string|nil The inner content of the balanced `( )` group, or nil if no opening paren is at the current position.
 function Lexer:readParenExpression()
   if self:peek() ~= "(" then
     return nil
@@ -128,6 +146,7 @@ function Lexer:readParenExpression()
 end
 
 -- Parse the full source into a list of AST root nodes
+---@return Node The root AST Node whose children are the top-level parsed nodes.
 function Lexer:parse()
   local rootNode = Node.new("Root")
   self:parseChildren(rootNode)
@@ -135,6 +154,8 @@ function Lexer:parse()
 end
 
 -- Parse children into the given parent node until EOF or a stopping condition
+---@param parentNode Node The parent node to which parsed children are appended.
+---@param stopCondition (fun(): boolean)|nil Optional predicate; parsing stops immediately when it returns true.
 function Lexer:parseChildren(parentNode, stopCondition)
   while not self:isEOF() do
     if stopCondition and stopCondition() then
@@ -176,6 +197,7 @@ function Lexer:parseChildren(parentNode, stopCondition)
 end
 
 -- Parse plain text until we hit a special token
+---@return TextNode|nil A TextNode for the consumed text, or nil when no text characters were available.
 function Lexer:parseText()
   local startPos = self.pos
   while not self:isEOF() do
@@ -198,6 +220,7 @@ function Lexer:parseText()
 end
 
 -- Parse {{ expression }}
+---@return OutputDirectiveNode The output directive node for the parsed expression.
 function Lexer:parseOutputDirective()
   self:advance(2) -- skip '{{'
   local content = self:readUntil("}}")
@@ -218,6 +241,8 @@ end
 
 -- Try to parse a ternary expression: condition ? trueExpr : falseExpr
 -- Returns nil if not a ternary
+---@param expression string The expression string to test for ternary form.
+---@return string|nil condition, string|nil trueExpr, string|nil falseExpr Three values on success; all nil when not a ternary.
 function Lexer:parseTernaryExpression(expression)
   -- Find the '?' that is not inside quotes or nested parens
   local questionPos = self:findOperatorPosition(expression, "?")
@@ -245,6 +270,9 @@ function Lexer:parseTernaryExpression(expression)
 end
 
 -- Find position of an operator character, skipping quoted strings and nested parens
+---@param str string The string to search within.
+---@param operator string The single-character operator to locate.
+---@return integer|nil The 1-based position of the operator at the top level, or nil if not found.
 function Lexer:findOperatorPosition(str, operator)
   local i = 1
   local len = #str
@@ -276,6 +304,7 @@ function Lexer:findOperatorPosition(str, operator)
 end
 
 -- Parse @if or @for directives
+---@return Node An IfDirectiveNode or ForDirectiveNode on success, or a fallback TextNode for unknown directives.
 function Lexer:parseDirective()
   self:advance() -- skip '@'
 
@@ -293,6 +322,7 @@ function Lexer:parseDirective()
 end
 
 -- Parse @if (condition) { ... } with optional @else if and @else
+---@return Node An IfDirectiveNode on success, or a fallback TextNode when the syntax is malformed.
 function Lexer:parseIfDirective()
   self:skipWhitespace()
 
@@ -322,6 +352,7 @@ function Lexer:parseIfDirective()
 end
 
 -- Parse optional @else if (...) { ... } and @else { ... } chains
+---@param ifNode IfDirectiveNode The if node to attach else-if branches and the optional else branch to.
 function Lexer:parseElseChain(ifNode)
   while not self:isEOF() do
     local savedPos = self.pos
@@ -388,6 +419,7 @@ function Lexer:parseElseChain(ifNode)
 end
 
 -- Parse @for (item in list) { ... }
+---@return Node A ForDirectiveNode on success, or a fallback TextNode when the syntax is malformed.
 function Lexer:parseForDirective()
   self:skipWhitespace()
 
@@ -420,6 +452,7 @@ function Lexer:parseForDirective()
 end
 
 -- Parse an HTML tag <tagName attr="value"> ... </tagName>
+---@return Node An EngineComponentNode (mw- prefix), a UserComponentNode (registered selector), or a fallback TextNode.
 function Lexer:parseComponent()
   self:advance() -- skip '<'
 
@@ -520,6 +553,7 @@ function Lexer:parseComment()
 end
 
 -- Read an identifier (letters, digits, underscores, hyphens)
+---@return string The consumed identifier; may be empty if the current character is not a valid identifier character.
 function Lexer:readIdentifier()
   local startPos = self.pos
   while not self:isEOF() do
@@ -534,6 +568,7 @@ function Lexer:readIdentifier()
 end
 
 -- Read an attribute name (allows letters, digits, underscores, hyphens, dots, colons, and brackets)
+---@return string The consumed attribute name string.
 function Lexer:readAttributeName()
   local startPos = self.pos
   while not self:isEOF() do
@@ -548,6 +583,7 @@ function Lexer:readAttributeName()
 end
 
 -- Read an attribute value (quoted or unquoted)
+---@return string The parsed attribute value with any enclosing quote characters stripped.
 function Lexer:readAttributeValue()
   local ch = self:peek()
 
@@ -592,6 +628,8 @@ function Lexer:readAttributeValue()
 end
 
 -- Utility: trim whitespace from both ends of a string
+---@param str string The string to trim.
+---@return string The trimmed string.
 function Lexer:trim(str)
   return string.match(str, "^%s*(.-)%s*$") or str
 end

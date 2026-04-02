@@ -5,9 +5,14 @@ local EngineComponentNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.EngineComp
 local ExpressionEvaluator = require("scripts.Nox.AnglesUI.Evaluator.ExpressionEvaluator")
 local Lexer = require("scripts.Nox.AnglesUI.Lexer.Lexer")
 
+---@class Evaluator Walks a Lexer-produced AST and returns a fully resolved tree with bindings, directives, and user components expanded.
+---@field expressionEvaluator ExpressionEvaluator Used to evaluate attribute bindings and directive conditions.
+---@field userComponents table<string, UserComponent> Map of selector to UserComponent for resolving custom element nodes.
 local Evaluator = {}
 Evaluator.__index = Evaluator
 
+---@param userComponents table<string, UserComponent>|nil Map of selector names to registered UserComponent instances.
+---@return Evaluator
 function Evaluator.new(userComponents)
   local self = setmetatable({}, Evaluator)
   self.expressionEvaluator = ExpressionEvaluator.new()
@@ -16,6 +21,9 @@ function Evaluator.new(userComponents)
 end
 
 -- Evaluate an AST against a context, returning a new tree of resolved nodes
+---@param astRoot Node The root node of the AST produced by the Lexer.
+---@param context Context The variable scope supplying signal values and functions.
+---@return Node A new root Node whose children are fully resolved and ready for the Renderer.
 function Evaluator:evaluate(astRoot, context)
   local resultRoot = Node.new("Root")
   self:evaluateChildren(astRoot.children, context, resultRoot)
@@ -23,6 +31,9 @@ function Evaluator:evaluate(astRoot, context)
 end
 
 -- Evaluate a list of child nodes and add resolved nodes to the parent
+---@param children Node[] The child nodes to evaluate.
+---@param context Context Current variable scope.
+---@param parentNode Node Parent node to which resolved children are appended.
 function Evaluator:evaluateChildren(children, context, parentNode)
   for _, child in ipairs(children) do
     local resolvedNodes = self:evaluateNode(child, context)
@@ -34,6 +45,9 @@ end
 
 -- Evaluate a single node, returning a list of resolved nodes
 -- (a list because for-loops expand into multiple nodes)
+---@param node Node The node to evaluate.
+---@param context Context Current variable scope.
+---@return Node[] Zero or more resolved nodes. `@for` directives may return more than one.
 function Evaluator:evaluateNode(node, context)
   if node.type == Node.TYPE_TEXT then
     return { TextNode.new(node.text) }
@@ -55,6 +69,9 @@ function Evaluator:evaluateNode(node, context)
 end
 
 -- Evaluate an OutputDirectiveNode: resolve the expression to a text value
+---@param node OutputDirectiveNode The output directive node containing expression data.
+---@param context Context Current variable scope.
+---@return TextNode[] A single-element list containing a TextNode with the resolved string.
 function Evaluator:evaluateOutputNode(node, context)
   local result
   if node.isTernary then
@@ -72,6 +89,9 @@ function Evaluator:evaluateOutputNode(node, context)
 end
 
 -- Evaluate an EngineComponentNode: resolve square-bracket attribute bindings
+---@param node EngineComponentNode The engine component with raw attribute expressions.
+---@param context Context Current variable scope.
+---@return EngineComponentNode[] A single-element list with the node's attributes fully resolved.
 function Evaluator:evaluateEngineComponentNode(node, context)
   local resolvedAttributes = {}
   local dynamicClasses = {}  -- accumulated from [class.X] bindings
@@ -135,6 +155,9 @@ function Evaluator:evaluateEngineComponentNode(node, context)
 end
 
 -- Evaluate a UserComponentNode: parse its template and evaluate with parent context
+---@param node UserComponentNode The user component node whose template needs to be expanded.
+---@param context Context Current variable scope passed into the component template.
+---@return Node[] The resolved children produced by evaluating the component's template.
 function Evaluator:evaluateUserComponentNode(node, context)
   local templateContent = node.templateContent
   if not templateContent or templateContent == "" then
@@ -152,6 +175,9 @@ function Evaluator:evaluateUserComponentNode(node, context)
 end
 
 -- Evaluate an IfDirectiveNode: pick the matching branch
+---@param node IfDirectiveNode The if directive with condition and branch data.
+---@param context Context Current variable scope.
+---@return Node[] The resolved children of whichever branch matched, or an empty list when none matched.
 function Evaluator:evaluateIfNode(node, context)
   -- Check the main condition
   if self.expressionEvaluator:evaluateCondition(node.conditionExpression, context) then
@@ -196,6 +222,9 @@ function Evaluator:evaluateIfNode(node, context)
 end
 
 -- Evaluate a ForDirectiveNode: iterate array and duplicate children per iteration
+---@param node ForDirectiveNode The for directive with iterator variable and iterable expression.
+---@param context Context Current variable scope; a child scope is created for each iteration, binding the iterator variable and `$index`.
+---@return Node[] The concatenated resolved children across all loop iterations.
 function Evaluator:evaluateForNode(node, context)
   local iterable = self.expressionEvaluator:evaluate(node.iterableExpression, context)
 

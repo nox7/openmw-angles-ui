@@ -102,15 +102,24 @@ local NON_STYLE_ATTRIBUTES = {
   ["scrollstep"]    = true,  -- mw-scroll-canvas pixels scrolled per arrow click
 }
 
----@class Renderer Class responsible for rendering a single OpenMW UiElement from HTMl and CSS source code.
----@field public string source
----@field public table<string, UserComponent> userComponents The key is the selector and the value is an instance of UserComponent
----@field public string cssSource
----@field public table cssModel The parsed CSS model from cssSource, including rules and media queries.
+---@class Renderer Compiles an HTML+CSS template into a live OpenMW UI element tree.
+-- Owns the full pipeline: CSS parsing, layout-tree building, flex/grid arrangement,
+-- scroll-canvas construction, signal subscriptions, and incremental re-rendering.
+---@field source string Raw HTML template source string.
+---@field userComponents table<string, UserComponent> Map of selector to UserComponent for resolving custom element tags.
+---@field cssSource string|nil Raw CSS source paired with the template.
+---@field cssModel {rules: table[], mediaQueries: table[], containerQueryRules: table[]} Parsed CSS model.
+---@field activeRules table[] Flat list of CSS rules active for the current screen width.
+---@field activeContainerQueryRules table[] Flat list of container query rules active for the current screen width.
+---@field rootLayout table|nil The live OpenMW Layout table for mw-root (mutated in-place on re-renders).
+---@field rootElement table|nil The OpenMW UI element from UI.create(); call :update() to push layout changes.
+---@field evaluatedRootNode Node|nil The most recently evaluated root AST node used as the source for re-renders.
 local Renderer = {}
 Renderer.__index = Renderer
 
 -- Returns true if the tag name is an accepted engine tag
+---@param tagName any Must be a string starting with "mw-" or listed in AcceptedEngineTagNames.
+---@return boolean True when the tag is a recognised AnglesUI engine element.
 Renderer.IsValidEngineTag = function(tagName)
   if (type(tagName) ~= "string") then
     return false
@@ -132,6 +141,9 @@ end
 -- Creates a render from a virtual file path
 -- userComponents is expected to be a table where keys are selectors
 -- and values are file paths. They will get loaded into actual source code later.
+---@param vfsPath string VFS-relative path to the HTML template file.
+---@param userComponents table<string, string> Map of selector to VFS file path; entries are replaced in-place with UserComponent instances.
+---@return Renderer
 function Renderer.FromFile(vfsPath, userComponents)
   local file = VFS.open(vfsPath)
   if (file == nil) then
@@ -177,6 +189,10 @@ function Renderer.FromFile(vfsPath, userComponents)
   return Renderer.New(source, userComponents, cssSource)
 end
 
+---@param source string The raw HTML template source string.
+---@param userComponents table<string, UserComponent>|nil Map of selector to loaded UserComponent instances.
+---@param cssSource string|nil The raw CSS source to pair with the template.
+---@return Renderer
 function Renderer.New(source, userComponents, cssSource)
   local self = setmetatable({}, Renderer)
   self.source = source
@@ -186,6 +202,9 @@ function Renderer.New(source, userComponents, cssSource)
   return self
 end
 
+---@param value any A number or a string containing a numeric literal.
+---@param propertyName string Displayed in the error message on conversion failure.
+---@return number|nil The numeric value, or nil when value is nil.
 function Renderer:ToNumber(value, propertyName)
   if (value == nil) then
     return nil
@@ -205,6 +224,9 @@ function Renderer:ToNumber(value, propertyName)
   error("Invalid number value for property '" .. propertyName .. "': " .. tostring(value))
 end
 
+---@param value any A boolean or the strings "true"/"false".
+---@param propertyName string Displayed in the error message on conversion failure.
+---@return boolean|nil The boolean value, or nil when value is nil.
 function Renderer:ToBoolean(value, propertyName)
   if (value == nil) then
     return nil
@@ -227,6 +249,8 @@ function Renderer:ToBoolean(value, propertyName)
   error("Invalid boolean value for property '" .. propertyName .. "': " .. tostring(value))
 end
 
+---@param layout table The OpenMW Layout table to receive children.
+---@param childLayouts table[] Child Layout tables to append.
 function Renderer:AppendChildren(layout, childLayouts)
   if (#childLayouts <= 0) then
     return
@@ -241,6 +265,9 @@ function Renderer:AppendChildren(layout, childLayouts)
   end
 end
 
+---@param layout table The outer Layout table.
+---@param childLayouts table[] Children to place inside the padded inner container.
+---@param parsedPadding {Top: number, Right: number, Bottom: number, Left: number} Pixel padding values.
 function Renderer:ApplyPaddingContainer(layout, childLayouts, parsedPadding)
   if (#childLayouts <= 0) then
     return
@@ -258,6 +285,10 @@ function Renderer:ApplyPaddingContainer(layout, childLayouts, parsedPadding)
   self:AppendChildren(layout, { paddedContainer })
 end
 
+---@param absoluteSize number|nil Pixel size component (from `size.x` or `size.y`).
+---@param relativeSize number|nil Fractional component 0–1 (from `relativeSize.x` or `relativeSize.y`).
+---@param parentAxisSize number|nil Parent's pixel size along this axis.
+---@return number|nil Resolved pixel size, or nil when information is insufficient.
 function Renderer:ResolveAxisSize(absoluteSize, relativeSize, parentAxisSize)
   if (relativeSize ~= nil and parentAxisSize ~= nil) then
     return (absoluteSize or 0) + (relativeSize * parentAxisSize)
@@ -270,6 +301,9 @@ function Renderer:ResolveAxisSize(absoluteSize, relativeSize, parentAxisSize)
   return nil
 end
 
+---@param layout table An OpenMW Layout table with optional `props.size` and `props.relativeSize`.
+---@param parentPixelSize {x: number|nil, y: number|nil}|nil The parent's resolved pixel size.
+---@return {x: number|nil, y: number|nil} Resolved pixel size; axes may be nil when unresolvable.
 function Renderer:ResolveLayoutPixelSize(layout, parentPixelSize)
   local props = layout.props or {}
   local size = props.size
@@ -296,6 +330,9 @@ function Renderer:ResolveLayoutPixelSize(layout, parentPixelSize)
   }
 end
 
+---@param parentPixelSize {x: number|nil, y: number|nil}|nil The outer pixel size of the container.
+---@param padding {Top: number, Right: number, Bottom: number, Left: number} Padding to subtract from each axis.
+---@return {x: number|nil, y: number|nil}|nil Inner pixel size after subtracting padding, or nil when parentPixelSize is nil.
 function Renderer:ResolvePaddedPixelSize(parentPixelSize, padding)
   if (parentPixelSize == nil) then
     return nil
@@ -307,6 +344,7 @@ function Renderer:ResolvePaddedPixelSize(parentPixelSize, padding)
   }
 end
 
+---@return {x: number, y: number} Current OpenMW screen dimensions in pixels.
 function Renderer:ResolveRootParentPixelSize()
   local screenSize = UI.screenSize()
   return {
@@ -315,6 +353,11 @@ function Renderer:ResolveRootParentPixelSize()
   }
 end
 
+---@param childLayouts table[] Layout tables to arrange; props are mutated in-place.
+---@param direction string|nil "row" or "column" (default "column").
+---@param gap number|nil Pixel gap between adjacent children (default 0).
+---@param containerPixelSize {x: number|nil, y: number|nil}|nil Available container space for flex-grow distribution.
+---@return table[] The same `childLayouts` with positions, sizes, and relative sizes resolved.
 function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPixelSize)
   local childCount = #childLayouts
   if (childCount == 0) then
@@ -497,6 +540,10 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
   return childLayouts
 end
 
+---@param layout table The outer Layout table for the mw-flex element.
+---@param childLayouts table[] Children to arrange inside the flex container.
+---@param meta {type: string, direction: string, gap: number, padding: table} Flex metadata.
+---@param innerPixelSize {x: number|nil, y: number|nil}|nil Available inner pixel area after the container's own padding.
 function Renderer:ApplyCustomFlexContainer(layout, childLayouts, meta, innerPixelSize)
   -- Snapshot each child's original props before ArrangeFlexChildren modifies them.
   -- RebuildCustomFlexLayout needs these to restore a clean slate before re-running.
@@ -537,6 +584,7 @@ end
 
 -- Build the flat list of CSS rules that are active for the current screen width.
 -- Base rules come first; matching media-query rules are appended (higher cascade order).
+---@return table[] Active CSS rules in cascade order (user-component rules, then main-stylesheet, then media-query overrides).
 function Renderer:ResolveActiveRules()
   local cssModel = self.cssModel
   if (cssModel == nil) then return {} end
@@ -591,6 +639,7 @@ function Renderer:ResolveActiveRules()
 end
 
 -- Build the flat list of active container query rules, including those from matching media queries.
+---@return table[] Active container query rules in cascade order.
 function Renderer:ResolveActiveContainerQueryRules()
   local cssModel = self.cssModel
   if (cssModel == nil) then return {} end
@@ -646,6 +695,10 @@ end
 -- Return a table of lowercased attribute name -> value pairs derived from
 -- any CSS rules in self.activeRules that match this node.
 -- containerContext = { pixelSize = {x,y}|nil, named = { [name]={x,y} } } or nil.
+---@param node Node The node to match CSS selectors against.
+---@param ancestors Node[] Ordered ancestor chain from root to immediate parent.
+---@param containerContext {pixelSize: {x:number,y:number}|nil, named: table<string,{x:number,y:number}>}|nil Container size context.
+---@return table<string, any> Internal attribute name to winning CSS-declared value.
 function Renderer:GetCSSAttributesForNode(node, ancestors, containerContext)
   local attrs = {}
 
@@ -679,6 +732,8 @@ end
 -- Renders the provided source code and components onto the screen.
 -- userContext must be a flat table where every value is a Signal or a plain function.
 -- This returns the OpenMW Lua UI root element after it is called.
+---@param userContext table<string, Signal|fun(...): any> Flat map of context variables; every value must be a Signal or a plain function.
+---@return table The OpenMW UI element (return value of UI.create()) for the rendered root.
 function Renderer:Render(userContext)
   -- Enforce the contract: context values must be Signal instances or plain functions.
   for key, value in pairs(userContext or {}) do
@@ -748,6 +803,7 @@ end
 -- when computing child layouts so container queries see the correct container dimensions.
 -- When signals are registered, the template is also re-evaluated so bindings reflect the
 -- latest signal values before the layout is rebuilt.
+---@return nil Mutates rootLayout in-place and calls rootElement:update().
 function Renderer:Rerender()
   if (self.evaluatedRootNode == nil or self.rootElement == nil or self.rootLayout == nil) then
     return
@@ -806,6 +862,7 @@ end
 -- Snaps the mw-root back inside the screen if any edge has drifted outside.
 -- Safe to call at any time; does nothing and skips the update() call when the
 -- window is already fully on-screen.
+---@return nil
 function Renderer:SnapToScreen()
   if (self.rootLayout == nil or self.rootLayout.props == nil or self.rootElement == nil) then
     return
@@ -849,6 +906,7 @@ function Renderer:SnapToScreen()
 end
 
 -- Unsubscribes all signal listeners registered by the last Render() call.
+---@return nil
 function Renderer:_disposeSignalEffects()
   if (self._signalUnsubscribers ~= nil) then
     for _, unsubscribe in ipairs(self._signalUnsubscribers) do
@@ -858,6 +916,11 @@ function Renderer:_disposeSignalEffects()
   end
 end
 
+---@param node Node The evaluated AST node to convert into an OpenMW Layout.
+---@param parentPixelSize {x: number|nil, y: number|nil}|nil The parent's resolved pixel size for resolving relative dimensions.
+---@param ancestors Node[]|nil Ordered ancestor chain from root to this node's parent for CSS matching.
+---@param containerContext {pixelSize: {x:number,y:number}|nil, named: table<string,{x:number,y:number}>}|nil Container query size context.
+---@return table The OpenMW Layout table with props, content, and events fully populated.
 function Renderer:BuildLayoutTree(node, parentPixelSize, ancestors, containerContext)
 ancestors = ancestors or {}
 local layout, meta = self:GetEngineUIElement(node, ancestors, containerContext)
@@ -1086,6 +1149,9 @@ end
   return layout
 end
 
+---@param allProperties table<string, any> Normalised attribute map from ParseAcceptedProperties.
+---@param options {requireSize: boolean|nil, defaultRelativeSize: boolean|nil}|nil Parsing options.
+---@return table props, table consumed The populated `props` table and a map of consumed attribute keys.
 function Renderer:ApplyCommonWidgetProperties(allProperties, options)
   local props = {}
   local consumed = {}
@@ -1172,6 +1238,7 @@ end
 -- Builds the mousePress/mouseMove resize handler functions for mw-root.
 -- Returns plain Lua functions (not async:callback wrapped).
 -- See BuildEventTable for the final wrapping step.
+---@return {mousePress: fun(e:table,l:table), mouseMove: fun(e:table,l:table)} Plain handler functions for edge-drag resizing.
 function Renderer:BuildResizeFuncs()
   local resizeState = {
     isDragging   = false,
@@ -1338,6 +1405,7 @@ end
 -- Builds the mousePress/mouseMove drag handler functions.
 -- Returns plain Lua functions (not async:callback wrapped).
 -- See BuildEventTable for the final wrapping step.
+---@return {mousePress: fun(e:table,l:table), mouseMove: fun(e:table,l:table)} Plain handler functions for drag-to-move.
 function Renderer:BuildDraggerFuncs()
   local dragState = {
     isDragging   = false,
@@ -1413,6 +1481,9 @@ end
 -- Both tables map event name strings to plain Lua functions.
 -- When both define the same event name, the system handler fires first then the user handler.
 -- Every handler is wrapped in async:callback for OpenMW compatibility.
+---@param systemFuncs table<string, fun(e:table,l:table)>|nil System-generated event handlers (resize, drag, scroll).
+---@param userFuncs table<string, fun(e:table,l:table)>|nil User-defined event handlers from template `(event)=` bindings.
+---@return table<string, userdata>|nil Map of event name to async:callback-wrapped handler, or nil when no events are defined.
 function Renderer:BuildEventTable(systemFuncs, userFuncs)
   local allNames = {}
   for k in pairs(systemFuncs or {}) do allNames[k] = true end
@@ -1440,6 +1511,10 @@ function Renderer:BuildEventTable(systemFuncs, userFuncs)
 end
 
 -- Gets the engine UI element that corresponds to a tag name.
+---@param node Node The evaluated engine component node to translate into an OpenMW Layout.
+---@param ancestors Node[] Ordered ancestor chain for CSS selector matching.
+---@param containerContext table|nil Current container query context.
+---@return table layout, table|nil meta The base OpenMW Layout table and an optional meta descriptor (custom-flex, custom-grid, custom-scroll-canvas, or padding-container).
 function Renderer:GetEngineUIElement(node, ancestors, containerContext)
 if (node.type ~= Node.TYPE_ENGINE_COMPONENT) then
   error("Cannot render node of type " .. node.type)
@@ -1839,6 +1914,10 @@ end
 --   3. Whitelisted non-style HTML attributes (layer, name, dragger, resource, …)
 -- Direct style-named HTML attributes (e.g. Height="24") are intentionally
 -- ignored – styling belongs in CSS or [style.X] bindings.
+---@param node Node The evaluated node whose attributes and matching CSS rules are combined.
+---@param ancestors Node[] Ordered ancestor chain for CSS matching.
+---@param containerContext table|nil Current container query context.
+---@return table<string, any> Merged property map (CSS < [style.X] bindings < structural HTML attributes).
 function Renderer:ParseAcceptedProperties(node, ancestors, containerContext)
   local properties = self:GetCSSAttributesForNode(node, ancestors, containerContext)
 
@@ -1910,6 +1989,8 @@ end
 -- Parses a string that can contain between 1 and 4 numbers
 -- Parses it in CSS-format
 -- Always return a table with keys "Top, Right, Bottom, Left"
+---@param paddingString string CSS-style padding shorthand (1–4 space-separated whole-number values).
+---@return {Top: number, Right: number, Bottom: number, Left: number}
 function Renderer:ParsePadding(paddingString)
   if (type(paddingString) ~= "string") then
     error("Padding must be provided as a string.")
@@ -1964,6 +2045,9 @@ function Renderer:ParsePadding(paddingString)
   }
 end
 
+---@param value any A number or a string such as "200" or "50%".
+---@param propertyName string Used in error messages on parse failure.
+---@return number|nil pixelValue, number|nil relativeValue Exactly one of the two return values will be non-nil.
 function Renderer:ParseNumericOrPercent(value, propertyName)
   if (value == nil) then
     return nil, nil
@@ -1989,12 +2073,17 @@ function Renderer:ParseNumericOrPercent(value, propertyName)
   error("Invalid number or percent value for property '" .. propertyName .. "': " .. tostring(value))
 end
 
+---@param consumed table<string, boolean> The consumed-keys map to update.
+---@param keys string[] Attribute key strings to mark as consumed (stored lowercased).
 function Renderer:MarkConsumed(consumed, keys)
   for _, key in ipairs(keys) do
     consumed[string.lower(key)] = true
   end
 end
 
+---@param allProperties table<string, any> The full resolved property map for the element.
+---@param consumedKeys table<string, boolean> Keys already applied to Layout props that should be excluded.
+---@return table|nil A table of leftover properties for the Layout's `userData` field, or nil when empty.
 function Renderer:BuildUserData(allProperties, consumedKeys)
   local userData = nil
 
@@ -2011,6 +2100,9 @@ function Renderer:BuildUserData(allProperties, consumedKeys)
   return userData
 end
 
+---@param value any A single number or a string with one or two whitespace-separated numeric tokens.
+---@param fallback number|nil Value to use when `value` is nil (default 0).
+---@return number rowGap, number columnGap Two gap values; single-value input yields equal row and column gaps.
 function Renderer:ParseSpacingPair(value, fallback)
   if (value == nil) then
     return fallback or 0, fallback or 0
@@ -2039,6 +2131,8 @@ function Renderer:ParseSpacingPair(value, fallback)
   return self:ToNumber(tokens[1], "RowGap"), self:ToNumber(tokens[2], "ColumnGap")
 end
 
+---@param trackDefinition any CSS-style track template string (e.g. "1fr 2fr", "100 50%", bare integer "3" for equal columns) or nil.
+---@return {kind: string, value: number}[] Ordered track descriptors where `kind` is "fr", "px", "percent", or "auto".
 function Renderer:ParseGridTracks(trackDefinition)
   local tracks = {}
 
@@ -2077,6 +2171,10 @@ function Renderer:ParseGridTracks(trackDefinition)
   return tracks
 end
 
+---@param tracks {kind: string, value: number}[] Parsed track descriptors from ParseGridTracks.
+---@param containerAxisSize number|nil Available pixel space along this axis; required for fr and percent tracks.
+---@param gapSize number|nil Pixel gap between tracks; subtracted before distributing fr units.
+---@return number[] Resolved pixel size for each track in the same order as `tracks`.
 function Renderer:ResolveGridTrackSizes(tracks, containerAxisSize, gapSize)
   if (#tracks == 0) then
     return {}
@@ -2122,6 +2220,9 @@ function Renderer:ResolveGridTrackSizes(tracks, containerAxisSize, gapSize)
   return sizes
 end
 
+---@param trackSizes number[] Resolved pixel size for each track.
+---@param gap number Pixel gap inserted between adjacent tracks.
+---@return number[] 1-based array of pixel start offsets for each track.
 function Renderer:BuildGridStarts(trackSizes, gap)
   local starts = {}
   local cursor = 0
@@ -2137,6 +2238,9 @@ function Renderer:BuildGridStarts(trackSizes, gap)
   return starts
 end
 
+---@param occupancy table<integer, table<integer, boolean>> 2D occupancy grid (row → column → occupied).
+---@param row integer 1-based row index.
+---@param col integer 1-based column index.
 function Renderer:EnsureGridCell(occupancy, row, col)
   if (occupancy[row] == nil) then
     occupancy[row] = {}
@@ -2147,6 +2251,12 @@ function Renderer:EnsureGridCell(occupancy, row, col)
   end
 end
 
+---@param occupancy table<integer, table<integer, boolean>> The 2D occupancy grid.
+---@param row integer Top-left row of the area to test (1-based).
+---@param col integer Top-left column of the area to test (1-based).
+---@param rowSpan integer Number of rows the area spans.
+---@param colSpan integer Number of columns the area spans.
+---@return boolean True when every cell in the area is unoccupied.
 function Renderer:IsGridAreaFree(occupancy, row, col, rowSpan, colSpan)
   for r = row, row + rowSpan - 1 do
     for c = col, col + colSpan - 1 do
@@ -2160,6 +2270,11 @@ function Renderer:IsGridAreaFree(occupancy, row, col, rowSpan, colSpan)
   return true
 end
 
+---@param occupancy table<integer, table<integer, boolean>> The 2D occupancy grid.
+---@param row integer Top-left row of the area (1-based).
+---@param col integer Top-left column (1-based).
+---@param rowSpan integer Number of rows to mark.
+---@param colSpan integer Number of columns to mark.
 function Renderer:MarkGridArea(occupancy, row, col, rowSpan, colSpan)
   for r = row, row + rowSpan - 1 do
     for c = col, col + colSpan - 1 do
@@ -2169,6 +2284,10 @@ function Renderer:MarkGridArea(occupancy, row, col, rowSpan, colSpan)
   end
 end
 
+---@param childLayouts table[] Child Layout tables to place in the grid.
+---@param meta {type: string, padding: table, templateRows: any, templateColumns: any, gap: any, rowGap: any, columnGap: any} Grid metadata.
+---@param innerPixelSize {x: number|nil, y: number|nil}|nil Inner pixel area of the grid container.
+---@return table[] The same `childLayouts` with `props.position` and `props.size` set to grid-computed values.
 function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
   local rowGap, columnGap = self:ParseSpacingPair(meta.gap, 0)
   if (meta.rowGap ~= nil) then
@@ -2304,6 +2423,8 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
   return childLayouts
 end
 
+---@param layout table The Layout table that owns an `__anglesCustomGrid` state block.
+---@param innerPixelSize {x: number|nil, y: number|nil}|nil New inner pixel size for the grid.
 function Renderer:RebuildCustomGridLayout(layout, innerPixelSize)
   local state = layout.__anglesCustomGrid
   if (state == nil) then
@@ -2337,6 +2458,8 @@ end
 -- Re-runs ArrangeFlexChildren for a flex layout using a new inner pixel size.
 -- Called when an ancestor's grow resolution reveals the element's actual size
 -- differs from the build-time estimate.
+---@param layout table The Layout table that owns an `__anglesCustomFlex` state block.
+---@param innerPixelSize {x: number|nil, y: number|nil}|nil New inner pixel size for the flex container.
 function Renderer:RebuildCustomFlexLayout(layout, innerPixelSize)
   local state = layout.__anglesCustomFlex
   if (state == nil) then return end
@@ -2362,6 +2485,10 @@ function Renderer:RebuildCustomFlexLayout(layout, innerPixelSize)
   state.paddedContainer.content = UI.content(arrangedChildren)
 end
 
+---@param outerLayout table The Layout table for the mw-scroll-canvas element.
+---@param childLayouts table[] The scrollable content children.
+---@param meta {type: string, state: table, padding: table, direction: string, gap: number, scrollBarSize: number, scrollStep: number, scrollId: string} Scroll canvas metadata.
+---@param canvasPixelSize {x: number|nil, y: number|nil}|nil Resolved pixel size of the scroll canvas widget.
 function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, canvasPixelSize)
   local state     = meta.state
   local padding   = meta.padding
@@ -2727,6 +2854,8 @@ end
 
 -- Re-runs ApplyScrollCanvasContainer for a scroll canvas layout using a new canvas pixel size.
 -- Called when an ancestor's grow resolution reveals the element's actual size.
+---@param layout table The Layout table that owns an `__anglesCustomScrollCanvas` state block.
+---@param canvasPixelSize {x: number|nil, y: number|nil}|nil New resolved pixel size for the scroll canvas.
 function Renderer:RebuildScrollCanvas(layout, canvasPixelSize)
   local state = layout.__anglesCustomScrollCanvas
   if (state == nil) then return end
@@ -2748,6 +2877,10 @@ function Renderer:RebuildScrollCanvas(layout, canvasPixelSize)
   self:ApplyScrollCanvasContainer(layout, state.childLayouts, state.meta, canvasPixelSize)
 end
 
+---@param layout table The outer Layout table for the mw-grid element.
+---@param childLayouts table[] Children to place in the grid.
+---@param meta table Grid metadata (padding, templateRows, templateColumns, gap, rowGap, columnGap).
+---@param innerPixelSize {x: number|nil, y: number|nil}|nil Available inner pixel area of the grid.
 function Renderer:ApplyCustomGridContainer(layout, childLayouts, meta, innerPixelSize)
   -- Snapshot original placement metadata so RebuildCustomGridLayout can restore it
   local originalChildMeta = {}
