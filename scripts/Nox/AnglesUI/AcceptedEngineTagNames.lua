@@ -8,4 +8,5 @@ return {
   "mw-text-edit";
   "mw-hr";
   "mw-widget";
+  "mw-scroll-canvas";
 };

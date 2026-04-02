@@ -130,5 +130,29 @@ return {
     "GridColumn";
     "GridRowSpan";
     "GridColumnSpan";
+  };
+  ["mw-scroll-canvas"] = {
+    "Name";
+    "Width";
+    "Height";
+    "RelativeWidth";
+    "RelativeHeight";
+    "RelativeX";
+    "RelativeY";
+    "X";
+    "Y";
+    "AnchorX";
+    "AnchorY";
+    "Visible";
+    "Padding";
+    "Direction";
+    "Gap";
+    "Grow";
+    "ScrollBarSize";
+    "ScrollStep";
+    "GridRow";
+    "GridColumn";
+    "GridRowSpan";
+    "GridColumnSpan";
   }
 }

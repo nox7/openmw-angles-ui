@@ -18,6 +18,11 @@ local Signal = require("scripts.Nox.AnglesUI.Signals.Signal")
 -- The user's menu transparency setting from the Settings::gui().mTransparencyAlpha value
 local menuTransparencyAlphaValue = UI._getMenuTransparency()
 
+-- Fallback height used for mw-text children inside a scroll canvas that have no
+-- explicit size set (autoSize means OpenMW computes the real size at render time,
+-- so we estimate using this value when calculating scroll content bounds).
+local defaultTextSize = 16
+
 -- Mapping from CSS property names to our lowercased HTML attribute names
 local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["padding"]              = "padding",
@@ -74,6 +79,8 @@ local STYLE_BINDING_TO_ATTRIBUTE = {
   ["textshadow"]          = "textshadow",
   ["tileh"]               = "tileh",
   ["tilev"]               = "tilev",
+  ["scrollbarsize"]       = "scrollbarsize",
+  ["scrollstep"]          = "scrollstep",
 }
 
 -- HTML attributes that are structural, behavioral, or content-related and
@@ -89,6 +96,8 @@ local NON_STYLE_ATTRIBUTES = {
   ["src"]       = true,
   ["path"]      = true,
   ["text"]      = true,  -- mw-text-edit initial content
+  ["scrollbarsize"] = true,  -- mw-scroll-canvas scrollbar strip width
+  ["scrollstep"]    = true,  -- mw-scroll-canvas pixels scrolled per arrow click
 }
 
 ---@class Renderer Class responsible for rendering a single OpenMW UiElement from HTMl and CSS source code.
@@ -416,9 +425,9 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
 
     currentMainOffset = currentMainOffset + majorSize + resolvedGap
 
-    -- After grow is resolved, rebuild any nested custom layouts (grid or flex)
+    -- After grow is resolved, rebuild any nested custom layouts (grid, flex, or scroll canvas)
     -- using the child's now-resolved pixel dimensions.
-    local needsRebuild = (child.__anglesCustomGrid ~= nil or child.__anglesNestedFlexes ~= nil)
+    local needsRebuild = (child.__anglesCustomGrid ~= nil or child.__anglesNestedFlexes ~= nil or child.__anglesNestedScrollCanvases ~= nil or child.__anglesCustomScrollCanvas ~= nil)
     if (needsRebuild) then
       local childSize = child.props.size
       local childRelSize = child.props.relativeSize
@@ -453,6 +462,28 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
           if (nestedFlex.__anglesCustomFlex ~= nil) then
             local nestedInnerSize = self:ResolvePaddedPixelSize(childPixelSize, nestedFlex.__anglesCustomFlex.meta.padding)
             self:RebuildCustomFlexLayout(nestedFlex, nestedInnerSize)
+          end
+        end
+      end
+
+      -- Rebuild scroll canvases that are direct grow children of this flex.
+      if (child.__anglesCustomScrollCanvas ~= nil) then
+        self:RebuildScrollCanvas(child, childPixelSize)
+      end
+
+      -- Rebuild scroll canvases that are nested deeper (e.g. inside mw-window or a
+      -- padding-container wrapper).  Each entry carries the total horizontal/vertical
+      -- padding accumulated from intermediate padding containers so we can subtract it
+      -- from childPixelSize to arrive at the correct canvas pixel size.
+      if (child.__anglesNestedScrollCanvases ~= nil) then
+        for _, entry in ipairs(child.__anglesNestedScrollCanvases) do
+          local scrollCanvas = entry.scrollCanvas
+          if (scrollCanvas ~= nil and scrollCanvas.__anglesCustomScrollCanvas ~= nil) then
+            local effectiveSize = {
+              x = childPixelSize.x ~= nil and math.max(0, childPixelSize.x - (entry.padX or 0)) or nil,
+              y = childPixelSize.y ~= nil and math.max(0, childPixelSize.y - (entry.padY or 0)) or nil,
+            }
+            self:RebuildScrollCanvas(scrollCanvas, effectiveSize)
           end
         end
       end
@@ -690,6 +721,8 @@ function Renderer:Render(userContext)
       if (firstNode.tagName == "mw-root") then
         self.evaluatedRootNode = firstNode
         local rootParentPixelSize = self:ResolveRootParentPixelSize()
+        self._scrollCanvasIdCounter = 0
+        self._scrollStates = {}
         local rootLayout = self:BuildLayoutTree(firstNode, rootParentPixelSize)
         self.rootLayout = rootLayout
         local uiElement = UI.create(rootLayout)
@@ -750,6 +783,7 @@ function Renderer:Rerender()
   end
 
   local rootParentPixelSize = self:ResolveRootParentPixelSize()
+  self._scrollCanvasIdCounter = 0
   local newRootLayout = self:BuildLayoutTree(self.evaluatedRootNode, rootParentPixelSize)
 
 
@@ -870,6 +904,18 @@ end
   local childParentPixelSize = layoutPixelSize
   if (meta ~= nil and (meta.type == "custom-flex" or meta.type == "padding-container" or meta.type == "custom-grid")) then
     childParentPixelSize = self:ResolvePaddedPixelSize(layoutPixelSize, meta.padding)
+  elseif (meta ~= nil and meta.type == "custom-scroll-canvas") then
+    local sbSize = meta.scrollBarSize
+    local vpW = layoutPixelSize.x ~= nil and math.max(0, layoutPixelSize.x - sbSize) or nil
+    local vpH = layoutPixelSize.y ~= nil and math.max(0, layoutPixelSize.y - sbSize) or nil
+    local innerW = vpW ~= nil and math.max(0, vpW - meta.padding.Left - meta.padding.Right) or nil
+    local innerH = vpH ~= nil and math.max(0, vpH - meta.padding.Top - meta.padding.Bottom) or nil
+    -- Main axis is unconstrained so content can overflow; cross axis is bounded.
+    if (meta.direction == "row") then
+      childParentPixelSize = { x = nil, y = innerH }
+    else
+      childParentPixelSize = { x = innerW, y = nil }
+    end
   end
 
   -- Build the child container context.
@@ -976,8 +1022,35 @@ end
     self:ApplyCustomFlexContainer(layout, childLayouts, meta, childParentPixelSize)
   elseif (meta ~= nil and meta.type == "custom-grid") then
     self:ApplyCustomGridContainer(layout, childLayouts, meta, childParentPixelSize)
+  elseif (meta ~= nil and meta.type == "custom-scroll-canvas") then
+    self:ApplyScrollCanvasContainer(layout, childLayouts, meta, layoutPixelSize)
   elseif (meta ~= nil and meta.type == "padding-container") then
     self:ApplyPaddingContainer(layout, childLayouts, meta.padding)
+    -- Propagate scroll canvas tracking through the padding container, accumulating
+    -- the horizontal/vertical padding so RebuildScrollCanvas can subtract it from
+    -- the grow-resolved childPixelSize to get the true canvas pixel size.
+    local padX = meta.padding.Left + meta.padding.Right
+    local padY = meta.padding.Top + meta.padding.Bottom
+    for _, childLayout in ipairs(childLayouts) do
+      if (childLayout.__anglesCustomScrollCanvas ~= nil) then
+        if (layout.__anglesNestedScrollCanvases == nil) then
+          layout.__anglesNestedScrollCanvases = {}
+        end
+        table.insert(layout.__anglesNestedScrollCanvases, { scrollCanvas = childLayout, padX = padX, padY = padY })
+      end
+      if (childLayout.__anglesNestedScrollCanvases ~= nil) then
+        if (layout.__anglesNestedScrollCanvases == nil) then
+          layout.__anglesNestedScrollCanvases = {}
+        end
+        for _, entry in ipairs(childLayout.__anglesNestedScrollCanvases) do
+          table.insert(layout.__anglesNestedScrollCanvases, {
+            scrollCanvas = entry.scrollCanvas,
+            padX         = entry.padX + padX,
+            padY         = entry.padY + padY,
+          })
+        end
+      end
+    end
   else
     self:AppendChildren(layout, childLayouts)
     -- Track any immediate flex children so an ancestor ArrangeFlexChildren can
@@ -989,6 +1062,21 @@ end
           layout.__anglesNestedFlexes = {}
         end
         table.insert(layout.__anglesNestedFlexes, childLayout)
+      end
+      -- Bubble scroll canvas tracking up so an ancestor flex can rebuild after grow resolution.
+      if (childLayout.__anglesCustomScrollCanvas ~= nil) then
+        if (layout.__anglesNestedScrollCanvases == nil) then
+          layout.__anglesNestedScrollCanvases = {}
+        end
+        table.insert(layout.__anglesNestedScrollCanvases, { scrollCanvas = childLayout, padX = 0, padY = 0 })
+      end
+      if (childLayout.__anglesNestedScrollCanvases ~= nil) then
+        if (layout.__anglesNestedScrollCanvases == nil) then
+          layout.__anglesNestedScrollCanvases = {}
+        end
+        for _, entry in ipairs(childLayout.__anglesNestedScrollCanvases) do
+          table.insert(layout.__anglesNestedScrollCanvases, entry)
+        end
       end
     end
   end
@@ -1596,6 +1684,125 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       },
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
+  elseif (tagName == "mw-scroll-canvas") then
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { requireSize = true })
+    local parsedPadding = allProperties["parsedpadding"] or {
+      Top = 0,
+      Right = 0,
+      Bottom = 0,
+      Left = 0,
+    }
+
+    local sbSize    = self:ToNumber(allProperties["scrollbarsize"], "ScrollBarSize") or 16
+    local scrollStep = self:ToNumber(allProperties["scrollstep"], "ScrollStep") or 30
+
+    -- Assign a stable ID so scroll offsets survive Rerender() calls.
+    -- Named elements use their name; anonymous elements use a per-render counter.
+    self._scrollCanvasIdCounter = (self._scrollCanvasIdCounter or 0) + 1
+    local scrollId = name ~= nil and tostring(name) or ("__scroll_" .. self._scrollCanvasIdCounter)
+
+    if (self._scrollStates == nil) then
+      self._scrollStates = {}
+    end
+    local state = self._scrollStates[scrollId]
+    if (state == nil) then
+      state = { x = 0, y = 0 }
+      self._scrollStates[scrollId] = state
+    end
+
+    local rendererRef = self
+
+    -- updateScrollVisuals: directly mutates layout references stored in `state`
+    -- and triggers a lightweight update().  Captured by the drag handlers on
+    -- the outer widget AND by the scrollbar button handlers built later in
+    -- ApplyScrollCanvasContainer; both sets share the same persistent state table
+    -- so they always operate on the current layout after any Rerender().
+    local function updateScrollVisuals()
+      if (state.contentLayout ~= nil) then
+        local pad = state.padding or { Left = 0, Top = 0 }
+        state.contentLayout.props.position = Util.vector2(
+          -state.x + pad.Left,
+          -state.y + pad.Top
+        )
+      end
+      if (state.vThumbLayout ~= nil and (state.maxY or 0) > 0) then
+        local vRatio = state.y / state.maxY
+        local thumbY = vRatio * ((state.trackH or 0) - (state.vThumbH or 0))
+        state.vThumbLayout.props.position = Util.vector2(0, thumbY)
+      end
+      if (state.hThumbLayout ~= nil and (state.maxX or 0) > 0) then
+        local hRatio = state.x / state.maxX
+        local thumbX = hRatio * ((state.trackW or 0) - (state.hThumbW or 0))
+        state.hThumbLayout.props.position = Util.vector2(thumbX, 0)
+      end
+      if (rendererRef.rootElement ~= nil) then
+        rendererRef.rootElement:update()
+      end
+    end
+    state.updateScrollVisuals = updateScrollVisuals
+
+    self:MarkConsumed(consumed, {
+      "name", "padding", "parsedpadding", "direction", "gap", "scrollbarsize", "scrollstep"
+    })
+
+    return {
+      name  = name,
+      props = props,
+      userData = self:BuildUserData(allProperties, consumed),
+      -- Register drag-continuation and drag-release on the outer widget so the
+      -- thumb tracks the cursor even when the pointer moves outside the thumb.
+      __pendingSystemEvents = {
+        mouseMove = function(e, l)
+          if (state.vDragging and state.vLastMouse ~= nil) then
+            if (e.button ~= 1) then
+              state.vDragging  = false
+              state.vLastMouse = nil
+            else
+              local dy = e.position.y - state.vLastMouse.y
+              state.vLastMouse = e.position
+              local scrollable = (state.trackH or 0) - (state.vThumbH or 0)
+              if (scrollable > 0 and (state.maxY or 0) > 0) then
+                local delta = (dy / scrollable) * state.maxY
+                state.y = math.max(0, math.min(state.maxY, state.y + delta))
+                updateScrollVisuals()
+              end
+            end
+          end
+          if (state.hDragging and state.hLastMouse ~= nil) then
+            if (e.button ~= 1) then
+              state.hDragging  = false
+              state.hLastMouse = nil
+            else
+              local dx = e.position.x - state.hLastMouse.x
+              state.hLastMouse = e.position
+              local scrollable = (state.trackW or 0) - (state.hThumbW or 0)
+              if (scrollable > 0 and (state.maxX or 0) > 0) then
+                local delta = (dx / scrollable) * state.maxX
+                state.x = math.max(0, math.min(state.maxX, state.x + delta))
+                updateScrollVisuals()
+              end
+            end
+          end
+        end,
+        mouseRelease = function(e, l)
+          if (e.button == 1) then
+            state.vDragging  = false
+            state.hDragging  = false
+            state.vLastMouse = nil
+            state.hLastMouse = nil
+          end
+        end,
+      },
+    }, {
+      type          = "custom-scroll-canvas",
+      state         = state,
+      padding       = parsedPadding,
+      direction     = allProperties["direction"] or "column",
+      gap           = self:ToNumber(allProperties["gap"], "Gap") or 0,
+      scrollBarSize = sbSize,
+      scrollStep    = scrollStep,
+      scrollId      = scrollId,
+    }
   elseif (tagName == "mw-widget") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil)
     local parsedPadding = allProperties["parsedpadding"]
@@ -1686,7 +1893,7 @@ function Renderer:ParseAcceptedProperties(node, ancestors, containerContext)
     end
   end
 
-  if (node.tagName == "mw-flex" or node.tagName == "mw-widget" or node.tagName == "mw-grid") then
+  if (node.tagName == "mw-flex" or node.tagName == "mw-widget" or node.tagName == "mw-grid" or node.tagName == "mw-scroll-canvas") then
     local padding = properties["padding"]
     if (padding ~= nil) then
       properties["parsedpadding"] = self:ParsePadding(padding)
@@ -2149,6 +2356,335 @@ function Renderer:RebuildCustomFlexLayout(layout, innerPixelSize)
   )
 
   state.paddedContainer.content = UI.content(arrangedChildren)
+end
+
+function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, canvasPixelSize)
+  local state     = meta.state
+  local padding   = meta.padding
+  local sbSize    = meta.scrollBarSize
+  local gap       = meta.gap
+  local direction = meta.direction
+  local isRow     = direction == "row"
+
+  local canvasW = canvasPixelSize and canvasPixelSize.x or 0
+  local canvasH = canvasPixelSize and canvasPixelSize.y or 0
+
+  -- The viewport occupies the canvas minus one scrollbar strip on each edge.
+  local viewportW = math.max(0, canvasW - sbSize)
+  local viewportH = math.max(0, canvasH - sbSize)
+
+  -- Inner area inside the content padding.
+  local innerW = math.max(0, viewportW - padding.Left - padding.Right)
+  local innerH = math.max(0, viewportH - padding.Top - padding.Bottom)
+
+  -- Snapshot each child's original props before ArrangeFlexChildren modifies them.
+  -- RebuildScrollCanvas uses these to restore a clean slate before re-running.
+  local originalChildProps = {}
+  for i, child in ipairs(childLayouts) do
+    child.props = child.props or {}
+    originalChildProps[i] = {
+      size             = child.props.size,
+      relativeSize     = child.props.relativeSize,
+      position         = child.props.position,
+      relativePosition = child.props.relativePosition,
+      flexGrow         = child.__anglesFlexGrow,
+    }
+  end
+
+  -- For mw-text children that rely on autoSize (no explicit height defined), inject
+  -- a height estimate so ArrangeFlexChildren can stack them correctly and the content
+  -- bounds computation reflects their contribution to the scrollable area.
+  -- The snapshot above preserves the original nil size; RebuildScrollCanvas restores
+  -- it before the next pass so this estimate is re-applied cleanly each time.
+  for _, child in ipairs(childLayouts) do
+    if (child.type == UI.TYPE.Text) then
+      local sz = child.props.size
+      local rz = child.props.relativeSize
+      local hasExplicitHeight = (sz ~= nil and sz.y ~= nil and sz.y > 0)
+        or (rz ~= nil and rz.y ~= nil and rz.y > 0)
+      if (not hasExplicitHeight) then
+        local estimatedH = (child.props.textSize or defaultTextSize)
+        local existingW  = sz and sz.x or 0
+        child.props.size = Util.vector2(existingW, estimatedH)
+      end
+    end
+  end
+
+  -- Arrange children along the scroll direction.
+  -- Main axis is unconstrained (nil) so content can extend beyond the viewport;
+  -- the cross axis is bounded by the inner viewport dimension.
+  local arrangeSize = isRow and { x = nil, y = innerH } or { x = innerW, y = nil }
+  local arrangedChildren = self:ArrangeFlexChildren(childLayouts, direction, gap, arrangeSize)
+
+  -- Compute total content extent from the arranged children's pixel bounds.
+  -- For text elements the estimated height from above is still in props.size.y,
+  -- so the extent calculation correctly accounts for their contribution.
+  local contentW = innerW
+  local contentH = innerH
+  for _, child in ipairs(arrangedChildren) do
+    local p = child.props
+    if (p ~= nil) then
+      local px = (p.position and p.position.x) or 0
+      local py = (p.position and p.position.y) or 0
+      local sw = (p.size and p.size.x) or 0
+      local sh = (p.size and p.size.y) or 0
+      -- For text children the real rendered height may differ, but use the
+      -- estimated value for scroll extent (good-enough for typical single-line text).
+      if (child.type == UI.TYPE.Text and sh == 0) then
+        sh = child.props.textSize or defaultTextSize
+      end
+      contentW = math.max(contentW, px + sw)
+      contentH = math.max(contentH, py + sh)
+    end
+  end
+
+  -- Update persistent scroll state with the current layout dimensions.
+  local maxScrollX = math.max(0, contentW - innerW)
+  local maxScrollY = math.max(0, contentH - innerH)
+  state.x       = math.min(state.x, maxScrollX)
+  state.y       = math.min(state.y, maxScrollY)
+  state.maxX    = maxScrollX
+  state.maxY    = maxScrollY
+  state.padding = padding
+
+  -- Track geometry: arrow buttons occupy sbSize at each end of the track.
+  local vTrackH  = math.max(0, viewportH - 2 * sbSize)
+  local hTrackW  = math.max(0, viewportW - 2 * sbSize)
+  local minThumb = math.max(sbSize, 16)
+  local vThumbH  = maxScrollY > 0 and math.max(minThumb, (innerH / contentH) * vTrackH) or vTrackH
+  local hThumbW  = maxScrollX > 0 and math.max(minThumb, (innerW / contentW) * hTrackW) or hTrackW
+
+  state.trackH  = vTrackH
+  state.trackW  = hTrackW
+  state.vThumbH = vThumbH
+  state.hThumbW = hThumbW
+
+  -- Initial thumb offsets based on current scroll position.
+  local vThumbY = maxScrollY > 0 and ((state.y / maxScrollY) * (vTrackH - vThumbH)) or 0
+  local hThumbX = maxScrollX > 0 and ((state.x / maxScrollX) * (hTrackW - hThumbW)) or 0
+
+  local updateFn = state.updateScrollVisuals
+
+  -- ── Content & viewport ─────────────────────────────────────────────────────
+
+  local contentLayout = {
+    props = {
+      size     = Util.vector2(contentW, contentH),
+      position = Util.vector2(-state.x + padding.Left, -state.y + padding.Top),
+    },
+    content = UI.content(arrangedChildren),
+  }
+  state.contentLayout = contentLayout
+
+  local viewportLayout = {
+    props = {
+      size     = Util.vector2(viewportW, viewportH),
+      position = Util.vector2(0, 0),
+    },
+    content = UI.content({ contentLayout }),
+  }
+
+  -- ── Vertical scrollbar (right edge) ────────────────────────────────────────
+
+  local vThumbLayout = {
+    type = UI.TYPE.Image,
+    props = {
+      resource = UI.texture({ path = "textures/omw_menu_scroll_center_v.dds" }),
+      tileV    = true,
+      size     = Util.vector2(sbSize, vThumbH),
+      position = Util.vector2(0, vThumbY),
+    },
+    events = {
+      -- Start thumb drag; block the click from propagating to the track.
+      mousePress = async:callback(function(e, l)
+        if (e.button ~= 1) then return true end
+        state.vDragging  = true
+        state.vLastMouse = e.position
+        return true
+      end),
+      mouseClick = async:callback(function(e, l) end),
+    },
+  }
+  state.vThumbLayout = vThumbLayout
+
+  local vTrackLayout = {
+    props = {
+      size     = Util.vector2(sbSize, vTrackH),
+      position = Util.vector2(0, sbSize),
+    },
+    events = {
+      mouseClick = async:callback(function(e, l)
+        if (state.maxY <= 0) then return true end
+        local trackSize = state.trackH > 0 and state.trackH or 1
+        local ratio = math.max(0, math.min(1, e.offset.y / trackSize))
+        state.y = ratio * state.maxY
+        updateFn()
+        return true
+      end),
+    },
+    content = UI.content({ vThumbLayout }),
+  }
+
+  local vUpArrow = {
+    type = UI.TYPE.Image,
+    props = {
+      resource = UI.texture({ path = "textures/omw_menu_scroll_up.dds" }),
+      size     = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(0, 0),
+    },
+    events = {
+      mouseClick = async:callback(function(e, l)
+        state.y = math.max(0, state.y - meta.scrollStep)
+        updateFn()
+        return true
+      end),
+    },
+  }
+
+  local vDownArrow = {
+    type = UI.TYPE.Image,
+    props = {
+      resource = UI.texture({ path = "textures/omw_menu_scroll_down.dds" }),
+      size     = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(0, sbSize + vTrackH),
+    },
+    events = {
+      mouseClick = async:callback(function(e, l)
+        state.y = math.min(state.maxY, state.y + meta.scrollStep)
+        updateFn()
+        return true
+      end),
+    },
+  }
+
+  local vScrollbar = {
+    props = {
+      size     = Util.vector2(sbSize, viewportH),
+      position = Util.vector2(viewportW, 0),
+    },
+    content = UI.content({ vUpArrow, vTrackLayout, vDownArrow }),
+  }
+
+  -- ── Horizontal scrollbar (bottom edge) ─────────────────────────────────────
+
+  local hThumbLayout = {
+    type = UI.TYPE.Image,
+    props = {
+      resource = UI.texture({ path = "textures/omw_menu_scroll_center_v.dds" }),
+      tileH    = true,
+      size     = Util.vector2(hThumbW, sbSize),
+      position = Util.vector2(hThumbX, 0),
+    },
+    events = {
+      mousePress = async:callback(function(e, l)
+        if (e.button ~= 1) then return true end
+        state.hDragging  = true
+        state.hLastMouse = e.position
+        return true
+      end),
+      mouseClick = async:callback(function(e, l) end),
+    },
+  }
+  state.hThumbLayout = hThumbLayout
+
+  local hTrackLayout = {
+    props = {
+      size     = Util.vector2(hTrackW, sbSize),
+      position = Util.vector2(sbSize, 0),
+    },
+    events = {
+      mouseClick = async:callback(function(e, l)
+        if (state.maxX <= 0) then return true end
+        local trackSize = state.trackW > 0 and state.trackW or 1
+        local ratio = math.max(0, math.min(1, e.offset.x / trackSize))
+        state.x = ratio * state.maxX
+        updateFn()
+        return true
+      end),
+    },
+    content = UI.content({ hThumbLayout }),
+  }
+
+  local hLeftArrow = {
+    type = UI.TYPE.Image,
+    props = {
+      resource = UI.texture({ path = "textures/omw_menu_scroll_left.dds" }),
+      size     = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(0, 0),
+    },
+    events = {
+      mouseClick = async:callback(function(e, l)
+        state.x = math.max(0, state.x - meta.scrollStep)
+        updateFn()
+        return true
+      end),
+    },
+  }
+
+  local hRightArrow = {
+    type = UI.TYPE.Image,
+    props = {
+      resource = UI.texture({ path = "textures/omw_menu_scroll_right.dds" }),
+      size     = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(sbSize + hTrackW, 0),
+    },
+    events = {
+      mouseClick = async:callback(function(e, l)
+        state.x = math.min(state.maxX, state.x + meta.scrollStep)
+        updateFn()
+        return true
+      end),
+    },
+  }
+
+  local hScrollbar = {
+    props = {
+      size     = Util.vector2(viewportW, sbSize),
+      position = Util.vector2(0, viewportH),
+    },
+    content = UI.content({ hLeftArrow, hTrackLayout, hRightArrow }),
+  }
+
+  -- Small corner filler where the two scrollbar strips overlap.
+  local corner = {
+    props = {
+      size     = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(viewportW, viewportH),
+    },
+  }
+
+  -- Store rebuild state so an ancestor flex can call RebuildScrollCanvas after grow
+  -- resolution gives this element its true pixel dimensions.
+  outerLayout.__anglesCustomScrollCanvas = {
+    meta               = meta,
+    childLayouts       = childLayouts,
+    originalChildProps = originalChildProps,
+  }
+
+  outerLayout.content = UI.content({ viewportLayout, vScrollbar, hScrollbar, corner })
+end
+
+-- Re-runs ApplyScrollCanvasContainer for a scroll canvas layout using a new canvas pixel size.
+-- Called when an ancestor's grow resolution reveals the element's actual size.
+function Renderer:RebuildScrollCanvas(layout, canvasPixelSize)
+  local state = layout.__anglesCustomScrollCanvas
+  if (state == nil) then return end
+
+  -- Restore each child's original pre-arrangement props so ApplyScrollCanvasContainer
+  -- gets a clean slate (correct sizes, nil positions, grow values intact).
+  for i, child in ipairs(state.childLayouts) do
+    local original = state.originalChildProps[i]
+    if (original ~= nil) then
+      child.props              = child.props or {}
+      child.props.size         = original.size
+      child.props.relativeSize = original.relativeSize
+      child.props.position     = original.position
+      child.props.relativePosition = original.relativePosition
+      child.__anglesFlexGrow   = original.flexGrow
+    end
+  end
+
+  self:ApplyScrollCanvasContainer(layout, state.childLayouts, state.meta, canvasPixelSize)
 end
 
 function Renderer:ApplyCustomGridContainer(layout, childLayouts, meta, innerPixelSize)
