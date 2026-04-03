@@ -1,0 +1,16 @@
+<div class="button-container">
+  @if (IsRouterLink()){
+    <a [routerLink]="Href()">
+      <ng-container *ngTemplateOutlet="protectedContent"></ng-container>
+    </a>
+  } @else {
+    <a [attr.href]="Href()">
+      <ng-container *ngTemplateOutlet="protectedContent"></ng-container>
+    </a>
+  }
+</div>
+
+<!-- Only one ng-content allowed in a component, so we have to template the content and project it into other places. -->
+<ng-template #protectedContent>
+  <ng-content></ng-content>
+</ng-template>

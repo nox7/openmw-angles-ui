@@ -1,0 +1,32 @@
+:host {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100dvh;
+
+  & > * {
+    min-width: 0;
+    min-height: 0;
+  }
+}
+
+app-topbar {
+  display: none;
+}
+
+.primary-content-window {
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  padding: 40px;
+  flex-grow: 1;
+}
+
+aside {
+  z-index: 2;
+}
+
+app-footer {
+  z-index: 1;
+}

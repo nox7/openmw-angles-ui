@@ -1,0 +1,15 @@
+<div class="button-container">
+  @if (IsRouterLink()) {
+    <a [routerLink]="Href()">
+      <ng-container *ngTemplateOutlet="projectedContent"></ng-container>
+    </a>
+  } @else {
+    <a [href]="Href()">
+      <ng-container *ngTemplateOutlet="projectedContent"></ng-container>
+    </a>
+  }
+</div>
+
+<ng-template #projectedContent>
+  <ng-content></ng-content>
+</ng-template>

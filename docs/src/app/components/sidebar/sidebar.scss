@@ -1,0 +1,25 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-shadow: var(--sidebar-shadow);
+  height: 100%;
+}
+
+.title {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+
+section.links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .label {
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: color-mix(in srgb, var(--light) 35%, var(--body-font-color));
+  }
+}

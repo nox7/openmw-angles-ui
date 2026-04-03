@@ -1,0 +1,14 @@
+.content-container {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+hr {
+  margin-bottom: 1.3rem;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}

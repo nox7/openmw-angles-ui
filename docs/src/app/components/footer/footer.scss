@@ -1,0 +1,24 @@
+:host {
+  display: block;
+  background-color: var(--light);
+  padding: 40px;
+  box-shadow: var(--footer-shadow);
+}
+
+.content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.split {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  a {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+  }
+}

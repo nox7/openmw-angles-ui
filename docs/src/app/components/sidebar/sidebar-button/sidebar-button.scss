@@ -1,0 +1,19 @@
+a {
+  text-decoration: none;
+}
+
+.button-container {
+  & > * {
+    display: flex;
+    width: 100%;
+    padding: 8px;
+    border-radius: 3px;
+    &:hover {
+      background-color: color-mix(in srgb, var(--light) 95%, var(--dark));
+    }
+
+    &:active {
+      color: color-mix(in srgb, var(--light) 30%, var(--dark));
+    }
+  }
+}

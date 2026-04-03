@@ -1,0 +1,15 @@
+.button-container {
+  & > a, & > button {
+    display: inline-flex;
+    padding: 8px 22px;
+    border-radius: 4px;
+    text-decoration: none;
+    background-color: var(--primary-color);
+    color: var(--primary-text-color);
+
+    &:hover {
+      cursor: pointer;
+      background-color: color-mix(in srgb, var(--primary-color) 93%, var(--light));
+    }
+  }
+}
