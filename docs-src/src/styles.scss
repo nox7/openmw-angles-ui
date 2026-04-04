@@ -13,8 +13,8 @@
   --heading-3-font-color: hsl(0deg 0% 22%);
   --body-font-color: hsl(0deg 0% 15%);
   --border-color: color-mix(in srgb, var(--light) 85%, var(--dark));
-  --primary-color: hsl(22.76deg 36.71% 15.49%);
-  --accent-color: hsl(35.95deg 96.03% 50.59%);
+  --primary-color: hsl(5.45deg 82% 15.57%);
+  --accent-color: hsl(346.15deg 35.57% 15.02%);
   --link-color: hsl(202.67deg 67.58% 51.87%);
   --primary-text-color: hsl(0 0% 100%);
   --card-shadow: 0 2px 5px 0 color-mix(in srgb, var(--light) 80%, var(--dark));
@@ -36,7 +36,6 @@ html, body {
 }
 
 body.dark-theme {
-  --primary-color: hsl(35.95deg 100% 49.41%);
   --light: hsl(24.92deg 7.91% 4.52%);
   --dark: hsl(0deg 0% 100%);
   --bg-color: color-mix(in srgb, var(--light) 95%, var(--dark));
@@ -91,6 +90,11 @@ p code {
   background-color: color-mix(in srgb, var(--light) 90%, var(--dark));
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
+}
+
+hr {
+  margin: 1.3rem 0;
+  border-color: var(--border-color);
 }
 
 main {
