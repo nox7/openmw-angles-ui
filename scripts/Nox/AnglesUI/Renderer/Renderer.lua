@@ -42,6 +42,7 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["container-type"]      = "containertype",
   ["container-name"]      = "containername",
   ["scrollbar-width"]     = "scrollbarsize",
+  ["opacity"]             = "alpha",
 }
 
 -- Maps the lowercased JS-style property name from a [style.X] binding to the
@@ -83,6 +84,8 @@ local STYLE_BINDING_TO_ATTRIBUTE = {
   ["tilev"]               = "tilev",
   ["scrollbarsize"]       = "scrollbarsize",
   ["scrollstep"]          = "scrollstep",
+  ["opacity"]             = "alpha",
+  ["alpha"]               = "alpha",
 }
 
 -- HTML attributes that are structural, behavioral, or content-related and
@@ -1194,9 +1197,10 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
   local anchorX = self:ToNumber(allProperties["anchorx"], "AnchorX")
   local anchorY = self:ToNumber(allProperties["anchory"], "AnchorY")
   local visible = self:ToBoolean(allProperties["visible"], "Visible")
+  local alpha   = self:ToNumber(allProperties["alpha"], "Alpha")
 
   self:MarkConsumed(consumed, {
-    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible"
+    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha"
   })
 
   local requireSize = options ~= nil and options.requireSize == true
@@ -1233,6 +1237,10 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
 
   if (visible ~= nil) then
     props.visible = visible
+  end
+
+  if (alpha ~= nil) then
+    props.alpha = alpha
   end
 
   return props, consumed
@@ -1613,9 +1621,10 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     }, nil
   elseif (tagName == "mw-window") then
     local consumed = {}
-    self:MarkConsumed(consumed, { "name", "background", "dragger" })
+    self:MarkConsumed(consumed, { "name", "background", "dragger", "alpha" })
 
     local background = allProperties["background"]
+    local alpha = self:ToNumber(allProperties["alpha"], "Alpha")
     local includeBackground = background == nil or string.lower(tostring(background)) ~= "none"
 
     local windowContent = {}
@@ -1626,7 +1635,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
           resource = UI.texture({
             path = "black"
           }),
-          alpha = menuTransparencyAlphaValue,
+          alpha = alpha and alpha + menuTransparencyAlphaValue or menuTransparencyAlphaValue,
           relativeSize = Util.vector2(1, 1)
         }
       })
@@ -1635,6 +1644,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       template = MWUI.templates.bordersThick,
       props = {
         relativeSize = Util.vector2(1, 1),
+        alpha = alpha or 1,
       },
     })
 
@@ -1642,6 +1652,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       name = name,
       props = {
         relativeSize = Util.vector2(1, 1),
+        alpha = alpha or 1,
       },
       content = UI.content(windowContent),
       userData = self:BuildUserData(allProperties, consumed),
@@ -1844,11 +1855,6 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     return {
       name = name,
       template = MWUI.templates.horizontalLine,
-      props = {
-        size = Util.vector2(10, 20),
-        tileV = true,
-        tileH = false,
-      },
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-scroll-canvas") then
