@@ -26,7 +26,7 @@ local defaultTextSize = 16
 
 -- Mapping from CSS property names to our lowercased HTML attribute names
 local CSS_PROPERTY_TO_ATTRIBUTE = {
-  ["padding"]              = "padding",
+  ["padding"]             = "padding",
   ["color"]               = "textcolor",
   ["font-size"]           = "textsize",
   ["background"]          = "background",
@@ -97,7 +97,8 @@ local NON_STYLE_ATTRIBUTES = {
   ["resource"]  = true,  -- mw-image texture path
   ["src"]       = true,
   ["path"]      = true,
-  ["text"]      = true,  -- mw-text-edit initial content
+  ["text"]        = true,  -- mw-text-edit initial content
+  ["placeholder"] = true,  -- mw-text-edit placeholder text
   ["scrollbarsize"] = true,  -- mw-scroll-canvas scrollbar strip width
   ["scrollstep"]    = true,  -- mw-scroll-canvas pixels scrolled per arrow click
   ["edgemargin"]    = true,  -- mw-root resize edge hit-test width in pixels
@@ -1479,6 +1480,58 @@ function Renderer:BuildDraggerFuncs()
   }
 end
 
+-- Builds the focusGain / focusLoss / textInput handler functions that implement
+-- placeholder behaviour for mw-text-edit elements.
+-- Returns plain Lua functions (not async:callback wrapped).
+-- See BuildEventTable for the final wrapping step.
+---@param placeholder string The placeholder text shown when the field is empty and unfocused.
+---@param initialText string|nil The initial user-supplied text (from the "Text" attribute), or nil for an empty field.
+---@return {focusGain: fun(e,l), focusLoss: fun(e,l), textInput: fun(e,l)} Plain handler functions for placeholder behaviour.
+function Renderer:BuildPlaceholderFuncs(placeholder, initialText)
+  local state = {
+    placeholder          = placeholder,
+    userText             = initialText or "",
+    isShowingPlaceholder = (initialText == nil or initialText == ""),
+    isFocused            = false
+  }
+
+  local rendererRef = self
+
+  return {
+    ---@param e nil
+    focusGain = function(e, l)
+      state.isFocused = true
+      if state.isShowingPlaceholder then
+        state.isShowingPlaceholder = false
+        l.props.text = state.userText
+        if rendererRef.rootElement ~= nil then
+          rendererRef.rootElement:update()
+        end
+      end
+    end,
+    focusLoss = function(e, l)
+      state.isFocused = false
+      if (string.len(state.userText) == 0) then
+        state.isShowingPlaceholder = true
+        l.props.text = state.placeholder
+        if rendererRef.rootElement ~= nil then
+          rendererRef.rootElement:update()
+        end
+      end
+    end,
+    ---@param e string The new text after the user input.
+    textChanged = function(e, l)
+      if (string.len(e) == 0) then
+        state.userText = ""
+      else
+        state.userText = e
+        state.isShowingPlaceholder = false
+        l.props.text = e
+      end
+    end
+  }
+end
+
 -- Builds the final layout.events table from system and user event function tables.
 -- Both tables map event name strings to plain Lua functions.
 -- When both define the same event name, the system handler fires first then the user handler.
@@ -1727,9 +1780,22 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
   elseif (tagName == "mw-text-edit") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil)
 
+    local placeholder = allProperties["placeholder"]
+    if (placeholder ~= nil) then
+      consumed["placeholder"] = true
+    end
+
+    local initialText = nil
     if (allProperties["text"] ~= nil) then
-      props.text = tostring(allProperties["text"])
+      initialText = tostring(allProperties["text"])
+      props.text = initialText
       consumed["text"] = true
+    end
+
+    -- When a placeholder is defined and no initial text is present, display the
+    -- placeholder as the initial text so the field looks populated while unfocused.
+    if (placeholder ~= nil and (initialText == nil or initialText == "")) then
+      props.text = tostring(placeholder)
     end
 
     if (allProperties["textsize"] ~= nil) then
@@ -1749,10 +1815,17 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
 
     self:MarkConsumed(consumed, { "name" })
 
+    local placeholderFuncs = nil
+    if (placeholder ~= nil) then
+      placeholderFuncs = self:BuildPlaceholderFuncs(tostring(placeholder), initialText)
+    end
+
     return {
       name = name,
       type = UI.TYPE.TextEdit,
+      template = MWUI.templates.textEditBox,
       props = props,
+      __pendingSystemEvents = placeholderFuncs,
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-hr") then
