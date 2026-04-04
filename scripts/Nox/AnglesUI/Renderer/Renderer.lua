@@ -1620,11 +1620,12 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-window") then
-    local consumed = {}
-    self:MarkConsumed(consumed, { "name", "background", "dragger", "alpha" })
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true })
+    self:MarkConsumed(consumed, { "background", "padding", "parsedpadding" })
 
     local background = allProperties["background"]
-    local alpha = self:ToNumber(allProperties["alpha"], "Alpha")
+    -- alpha was already resolved by ApplyCommonWidgetProperties; nil means "no override".
+    local alpha = props.alpha
     local includeBackground = background == nil or string.lower(tostring(background)) ~= "none"
 
     local windowContent = {}
@@ -1648,15 +1649,21 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       },
     })
 
+    local parsedPadding = allProperties["parsedpadding"]
+    local meta = nil
+    if (parsedPadding ~= nil) then
+      meta = {
+        type    = "padding-container",
+        padding = parsedPadding,
+      }
+    end
+
     return {
       name = name,
-      props = {
-        relativeSize = Util.vector2(1, 1),
-        alpha = alpha or 1,
-      },
+      props = props,
       content = UI.content(windowContent),
       userData = self:BuildUserData(allProperties, consumed),
-    }, nil
+    }, meta
   elseif (tagName == "mw-flex") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true })
     local parsedPadding = allProperties["parsedpadding"] or {
@@ -2072,7 +2079,7 @@ function Renderer:ParseAcceptedProperties(node, ancestors, containerContext)
     end
   end
 
-  if (node.tagName == "mw-flex" or node.tagName == "mw-widget" or node.tagName == "mw-grid" or node.tagName == "mw-scroll-canvas") then
+  if (node.tagName == "mw-flex" or node.tagName == "mw-widget" or node.tagName == "mw-grid" or node.tagName == "mw-scroll-canvas" or node.tagName == "mw-window") then
     local padding = properties["padding"]
     if (padding ~= nil) then
       properties["parsedpadding"] = self:ParsePadding(padding)
