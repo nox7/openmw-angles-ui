@@ -15,6 +15,7 @@
   --border-color: color-mix(in srgb, var(--light) 85%, var(--dark));
   --primary-color: hsl(22.76deg 36.71% 15.49%);
   --accent-color: hsl(35.95deg 96.03% 50.59%);
+  --link-color: hsl(202.67deg 67.58% 51.87%);
   --primary-text-color: hsl(0 0% 100%);
   --card-shadow: 0 2px 5px 0 color-mix(in srgb, var(--light) 80%, var(--dark));
   --sidebar-shadow: 2px 0 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
@@ -48,10 +49,12 @@ h1 {
 
 h2 {
   color: var(--heading-2-font-color);
+  margin: 2rem 0 1rem 0;
 }
 
 h3 {
   color: var(--heading-3-font-color);
+  margin: 1.5rem 0 1rem 0;
 }
 
 p {
@@ -59,7 +62,7 @@ p {
 }
 
 a {
-  color: var(--primary-color);
+  color: var(--link-color);
   text-decoration: none;
 
   &:hover {
@@ -69,6 +72,13 @@ a {
 
 img {
   max-width: 100%;
+}
+
+p code {
+  font-family: "Source Code Pro", monospace;
+  background-color: color-mix(in srgb, var(--light) 90%, var(--dark));
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
 }
 
 main {

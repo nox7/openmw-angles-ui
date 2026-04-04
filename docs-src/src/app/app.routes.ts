@@ -11,4 +11,9 @@ export const routes: Routes = [
     loadComponent: () => import("./pages/installing/installing").then(m => m.Installing),
     title: "Installing AnglesUI"
   },
+  {
+    path: "making-a-ui",
+    loadComponent: () => import("./pages/making-a-ui/making-a-ui").then(m => m.MakingAUi),
+    title: "Making a UI | Your First UI"
+  },
 ];

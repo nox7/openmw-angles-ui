@@ -4,6 +4,7 @@ a {
 
 .button-container {
   & > a {
+    color: var(--body-font-color);
     display: flex;
     width: 100%;
     padding: 8px;

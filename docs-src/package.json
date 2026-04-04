@@ -28,7 +28,9 @@
     "@angular/forms": "^20.3.0",
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
+    "@shikijs/transformers": "^4.0.2",
     "rxjs": "~7.8.0",
+    "shiki": "^4.0.2",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

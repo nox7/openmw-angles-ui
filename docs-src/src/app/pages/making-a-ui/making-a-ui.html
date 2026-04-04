@@ -1,0 +1,72 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>Making a Basic UI With AnglesUI</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        Now that you have <a href="installation">installed AnglesUI</a>, you can start making your UIs with enhanced-HTML and CSS. We write <em>enhanced</em> here because the HTML syntax is expaned to be a template language that can support if statements, for loops, and variable output directives.
+      </p>
+      <h2>File and Folder Structure</h2>
+      <p>
+        We recommend creating a folder dedicated to your UIs in your mod directory. This is where your HTML and CSS files will live for your Lua code to load and render them when you need them.
+      </p>
+      <app-content-image Src="images/making-a-ui/step-1.png" Alt="Example folder structure"></app-content-image>
+      <app-content-image Src="images/making-a-ui/step-2.png" Alt="Example HTML and CSS files"></app-content-image>
+      <h2>Syntax for a Basic Morrowind-Theme Window</h2>
+      <p>
+        Getting right into it, open up your new HTML file you have created in your UI folder in your editor. All root-level UIs require the first element to be <code>mw-root</code>. More on this later, as you can create child components to better segment and organize your HTML and CSS that do not required this root element. For now, we will just put everything in the root element. This is the basic syntax for a Morrowind-themed window:
+      </p>
+      <app-code-highlighter [Code]="Code1()" Language="angular-html"></app-code-highlighter>
+      <p>
+        With this, you will get a basic Morrowind-theme window as shown below. <code>mw-root</code> does not inheritently have any visual styling and serves more as the available canvas for your UI to be drawn on. <code>mw-window</code> is a pre-styled element that has a Morrowind-window appearance.
+      </p>
+      <p>
+        However, you will also need to render this in your Lua code somewhere. Currently, only <strong>Player</strong> and <strong>Menu</strong> scripts allow for UI rendering. A brief, minimal example of a <em>Player</em> script that will render this UI would look like this:
+      </p>
+      <app-code-highlighter [Code]="LuaRenderCode1()" Language="lua"></app-code-highlighter>
+      <app-content-image Src="images/making-a-ui/render-1.png" Alt="Basic Morrowind-theme window"></app-content-image>
+      <p>
+        The black background will match the user's UI transparency setting.
+      </p>
+      <p>
+        The <strong>Layer</strong> attribute is directly used for when we create the OpenMW Element object using <code>ui.create()</code>. More information on that OpenMW API property <a target="_blank" href="https://openmw.readthedocs.io/en/latest/reference/lua-scripting/openmw_ui.html##(Layout).layer">here</a>. All available options for it <a target="_blank" href="https://openmw.readthedocs.io/en/latest/reference/lua-scripting/user_interface.html#layers">here</a>.
+      </p>
+      <h2>Introducing CSS</h2>
+      <p>
+        You probably noticed the strange syntax in the <code>mw-root</code> attributes. Those are called style attribute bindings. You can read more about those on the <a href="bindings">bindings reference</a> page. For now, they're ugly in our minimal example. We can do all stylings (that don't need variable bindings and are just plain strings) in a separate CSS file.
+      </p>
+      <p>
+        AnglesUI enforces that your accompanying CSS file must be in the same directory as your HTML file and named the same, but with a .css extension instead of a .html one. So, create a new file with the same name as your HTML file and make it a .css extension. Then add the following code:
+      </p>
+      <app-code-highlighter [Code]="Code2()" Language="css"></app-code-highlighter>
+      <p>
+        Then, we'll remove the style attribute bindings in our HTML file since we can now do those stylings in our CSS file. So, your HTML file should now look like this:
+      </p>
+      <app-code-highlighter [Code]="Code3()" Language="angular-html"></app-code-highlighter>
+      <p>
+        You'll get the same result in-game, but the HTML looks cleaner as we've moved the styling out of it. This is the baseline of a basic UI.
+      </p>
+      <h2>More Advanced Techniques: Signal Bindings</h2>
+      <p>
+        Just like in the web framework, Angular, AnglesUI allows you to pass in signals to the renderer which you can use to bind data to your UI. We'll do an example where we create a window, text, and then change the text by clicking on the text itself (which is a short intro into event bindings). All events in AnglesUI are 1-to-1 with their definitions found in the <a target="_blank" href="https://openmw.readthedocs.io/en/latest/reference/lua-scripting/widgets/widget.html#events">OpenMW UI docs</a>.
+      </p>
+      <p>
+        We'll re-use the same Lua code, but we'll register a signal and a function to send into our renderer.
+      </p>
+      <app-code-highlighter [Code]="LuaRenderCode2()" Language="lua"></app-code-highlighter>
+      <p>
+        Now, we'll change our HTML code to use these bindings. Signals get their data fetched by calling the signal like a function.
+      </p>
+      <app-code-highlighter [Code]="Code4()" Language="angular-html"></app-code-highlighter>
+      <p>
+        We open the OpenMW terminal in the game (by pressing ~ on the keyboard) and type <code>reloadlua</code> to reload our UI (for this example).
+      </p>
+      <app-content-image Src="images/making-a-ui/render-2.png" Alt="Basic Morrowind-theme window"></app-content-image>
+      <p>
+        Now, clicking on the text we see our event fires and our signal is updated - automatically re-evaluating and re-rendering the necessary portions of the UI for you.
+      </p>
+      <app-content-image Src="images/making-a-ui/render-3.png" Alt="Basic Morrowind-theme window"></app-content-image>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>
