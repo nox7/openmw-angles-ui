@@ -43,6 +43,7 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["container-name"]      = "containername",
   ["scrollbar-width"]     = "scrollbarsize",
   ["opacity"]             = "alpha",
+  ["visibility"]          = "visibility",
 }
 
 -- Maps the lowercased JS-style property name from a [style.X] binding to the
@@ -86,6 +87,7 @@ local STYLE_BINDING_TO_ATTRIBUTE = {
   ["scrollstep"]          = "scrollstep",
   ["opacity"]             = "alpha",
   ["alpha"]               = "alpha",
+  ["visibility"]          = "visibility",
 }
 
 -- HTML attributes that are structural, behavioral, or content-related and
@@ -1199,8 +1201,20 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
   local visible = self:ToBoolean(allProperties["visible"], "Visible")
   local alpha   = self:ToNumber(allProperties["alpha"], "Alpha")
 
+  local visibilityRaw = allProperties["visibility"]
+  local visibilityBool = nil
+  if (visibilityRaw ~= nil) then
+    if (visibilityRaw == "visible") then
+      visibilityBool = true
+    elseif (visibilityRaw == "hidden") then
+      visibilityBool = false
+    else
+      error("Invalid CSS visibility value '" .. tostring(visibilityRaw) .. "': must be 'visible' or 'hidden'.")
+    end
+  end
+
   self:MarkConsumed(consumed, {
-    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha"
+    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha", "visibility"
   })
 
   local requireSize = options ~= nil and options.requireSize == true
@@ -1233,6 +1247,10 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
 
   if (anchorX ~= nil and anchorY ~= nil) then
     props.anchor = Util.vector2(anchorX, anchorY)
+  end
+
+  if (visibilityBool ~= nil) then
+    props.visible = visibilityBool
   end
 
   if (visible ~= nil) then
