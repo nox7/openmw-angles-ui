@@ -44,6 +44,8 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["scrollbar-width"]     = "scrollbarsize",
   ["opacity"]             = "alpha",
   ["visibility"]          = "visibility",
+  ["text-align"]          = "textalign",
+  ["vertical-align"]      = "verticalalign",
 }
 
 -- Maps the lowercased JS-style property name from a [style.X] binding to the
@@ -88,6 +90,8 @@ local STYLE_BINDING_TO_ATTRIBUTE = {
   ["opacity"]             = "alpha",
   ["alpha"]               = "alpha",
   ["visibility"]          = "visibility",
+  ["textalign"]           = "textalign",
+  ["verticalalign"]       = "verticalalign",
 }
 
 -- HTML attributes that are structural, behavioral, or content-related and
@@ -255,6 +259,30 @@ function Renderer:ToBoolean(value, propertyName)
   end
 
   error("Invalid boolean value for property '" .. propertyName .. "': " .. tostring(value))
+end
+
+---@param value any A string: "start", "center", or "end".
+---@param propertyName string Displayed in the error message on conversion failure.
+---@return userdata|nil The UI.ALIGNMENT value, or nil when value is nil.
+function Renderer:ToTextAlignH(value, propertyName)
+  if (value == nil) then return nil end
+  local s = tostring(value)
+  if (s == "start") then return UI.ALIGNMENT.Start end
+  if (s == "center") then return UI.ALIGNMENT.Center end
+  if (s == "end") then return UI.ALIGNMENT.End end
+  error("Invalid text-align value for property '" .. propertyName .. "': must be 'start', 'center', or 'end'.")
+end
+
+---@param value any A string: "top", "middle", or "bottom".
+---@param propertyName string Displayed in the error message on conversion failure.
+---@return userdata|nil The UI.ALIGNMENT value, or nil when value is nil.
+function Renderer:ToTextAlignV(value, propertyName)
+  if (value == nil) then return nil end
+  local s = tostring(value)
+  if (s == "top") then return UI.ALIGNMENT.Start end
+  if (s == "middle") then return UI.ALIGNMENT.Center end
+  if (s == "bottom") then return UI.ALIGNMENT.End end
+  error("Invalid vertical-align value for property '" .. propertyName .. "': must be 'top', 'middle', or 'bottom'.")
 end
 
 ---@param layout table The OpenMW Layout table to receive children.
@@ -1159,8 +1187,9 @@ end
 
 ---@param allProperties table<string, any> Normalised attribute map from ParseAcceptedProperties.
 ---@param options {requireSize: boolean|nil, defaultRelativeSize: boolean|nil}|nil Parsing options.
+---@param tagName string|nil The HTML tag name of the element being processed, shown in error messages.
 ---@return table props, table consumed The populated `props` table and a map of consumed attribute keys.
-function Renderer:ApplyCommonWidgetProperties(allProperties, options)
+function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
   local props = {}
   local consumed = {}
 
@@ -1209,7 +1238,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
     elseif (visibilityRaw == "hidden") then
       visibilityBool = false
     else
-      error("Invalid CSS visibility value '" .. tostring(visibilityRaw) .. "': must be 'visible' or 'hidden'.")
+      error("[" .. (tagName or "?") .. "] Invalid CSS visibility value '" .. tostring(visibilityRaw) .. "': must be 'visible' or 'hidden'.")
     end
   end
 
@@ -1221,7 +1250,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options)
   local defaultRelativeSize = options ~= nil and options.defaultRelativeSize == true
 
   if (requireSize and (width == nil or height == nil) and (relativeWidth == nil or relativeHeight == nil)) then
-    error("Element must have either Width/Height or RelativeWidth/RelativeHeight attributes.")
+    error("[" .. (tagName or "?") .. "] Element must have either Width/Height or RelativeWidth/RelativeHeight attributes.")
   end
 
   if (defaultRelativeSize and width == nil and height == nil and relativeWidth == nil and relativeHeight == nil) then
@@ -1616,7 +1645,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       error("mw-root elements must have a 'Layer' attribute.")
     end
 
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { requireSize = true })
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { requireSize = true }, tagName)
     local resizable     = self:ToBoolean(allProperties["resizable"], "Resizable")
     local edgeMarginRaw = allProperties["edgemargin"]
     if (type(edgeMarginRaw) == "string") then
@@ -1630,6 +1659,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       resizeFuncs = self:BuildResizeFuncs(edgeMargin)
     end
 
+    print(TableUtils.PrintTable(props));
     return {
       layer = layer,
       name = name,
@@ -1638,7 +1668,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-window") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true })
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true }, tagName)
     self:MarkConsumed(consumed, { "background", "padding", "parsedpadding" })
 
     local background = allProperties["background"]
@@ -1683,7 +1713,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       userData = self:BuildUserData(allProperties, consumed),
     }, meta
   elseif (tagName == "mw-flex") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true })
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true }, tagName)
     local parsedPadding = allProperties["parsedpadding"] or {
       Top = 0,
       Right = 0,
@@ -1704,7 +1734,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       padding = parsedPadding,
     }
   elseif (tagName == "mw-grid") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true })
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true }, tagName)
     local parsedPadding = allProperties["parsedpadding"] or {
       Top = 0,
       Right = 0,
@@ -1730,7 +1760,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       columnGap = allProperties["columngap"],
     }
   elseif (tagName == "mw-text") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil)
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
 
     local textNodesText = ""
     local textColorAttribute = allProperties["textcolor"]
@@ -1763,6 +1793,16 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       consumed["textshadow"] = true
     end
 
+    if (allProperties["textalign"] ~= nil) then
+      props.textAlignH = self:ToTextAlignH(allProperties["textalign"], "TextAlign")
+      consumed["textalign"] = true
+    end
+
+    if (allProperties["verticalalign"] ~= nil) then
+      props.textAlignV = self:ToTextAlignV(allProperties["verticalalign"], "VerticalAlign")
+      consumed["verticalalign"] = true
+    end
+
     for _, childNode in pairs(node.children) do
       if (childNode.type == Node.TYPE_TEXT) then
         textNodesText = textNodesText .. childNode.text
@@ -1790,7 +1830,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-image") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil)
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
 
     local resourcePath = allProperties["resource"] or allProperties["src"] or allProperties["path"]
     if (resourcePath ~= nil) then
@@ -1819,7 +1859,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-text-edit") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil)
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
 
     local placeholder = allProperties["placeholder"]
     if (placeholder ~= nil) then
@@ -1854,6 +1894,16 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       consumed["wordwrap"] = true
     end
 
+    if (allProperties["textalign"] ~= nil) then
+      props.textAlignH = self:ToTextAlignH(allProperties["textalign"], "TextAlign")
+      consumed["textalign"] = true
+    end
+
+    if (allProperties["verticalalign"] ~= nil) then
+      props.textAlignV = self:ToTextAlignV(allProperties["verticalalign"], "VerticalAlign")
+      consumed["verticalalign"] = true
+    end
+
     if (allProperties["autosize"] ~= nil) then
       props.autoSize = self:ToBoolean(allProperties["autosize"], "AutoSize")
       consumed["autosize"] = true
@@ -1883,7 +1933,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-scroll-canvas") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { requireSize = true })
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { requireSize = true }, tagName)
     local parsedPadding = allProperties["parsedpadding"] or {
       Top = 0,
       Right = 0,
@@ -2004,7 +2054,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       scrollId      = scrollId,
     }
   elseif (tagName == "mw-widget") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil)
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
     local parsedPadding = allProperties["parsedpadding"]
 
     self:MarkConsumed(consumed, { "name", "padding", "parsedpadding" })
