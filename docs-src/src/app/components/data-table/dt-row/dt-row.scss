@@ -1,0 +1,7 @@
+.row {
+  display: flex;
+
+  & > app-dt-cell:not(:last-child) {
+    border-right: 1px solid var(--border-color);
+  }
+}

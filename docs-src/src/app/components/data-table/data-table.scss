@@ -1,0 +1,24 @@
+.table-container {
+  --cell-padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--dark) 5%, var(--light));
+}
+
+.headers {
+  display: flex;
+
+  & > app-dt-header {
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  & > app-dt-header:not(:last-child) {
+    border-right: 1px solid var(--border-color);
+  }
+}
+
+.data-rows {
+  & > app-dt-row:not(:last-child) .row {
+    border-bottom: 1px solid var(--border-color);
+  }
+}

@@ -31,4 +31,14 @@ export const routes: Routes = [
     loadComponent: () => import("./pages/css/css").then(m => m.Css),
     title: "Using CSS in AnglesUI"
   },
+  {
+    path: "elements",
+    children: [
+      {
+        path: "root",
+        loadComponent: () => import("./pages/elements/root/root").then(m => m.Root),
+        title: "Root Element | AnglesUI Elements"
+      }
+    ]
+  },
 ];

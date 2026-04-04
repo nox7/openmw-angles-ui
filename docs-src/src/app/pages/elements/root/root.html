@@ -1,0 +1,85 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>Root Element</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        This is the required root element in a parent-level component. It must always be the first element in your hierarchy for the main file that is passed to the renderer.
+      </p>
+      <h2>Selector</h2>
+      <p>
+        <code>&lt;mw-root&gt;</code>
+      </p>
+      <h2>Attributes</h2>
+      <app-data-table [ColumnWidthPercentages]="['20%', '15%', '65%']">
+        <app-dt-header>
+          <div>Attribute</div>
+        </app-dt-header>
+        <app-dt-header>
+          <div>Data Type</div>
+        </app-dt-header>
+        <app-dt-header>
+          <div>Description</div>
+        </app-dt-header>
+        <app-dt-row>
+          <app-dt-cell>id</app-dt-cell>
+          <app-dt-cell>string</app-dt-cell>
+          <app-dt-cell>The HTML element id. Used in CSS selectors.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>class</app-dt-cell>
+          <app-dt-cell>string</app-dt-cell>
+          <app-dt-cell>The HTML element class string. Used in CSS selectors.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>Layer</app-dt-cell>
+          <app-dt-cell>string</app-dt-cell>
+          <app-dt-cell><span>The UI layer this root will be rendered onto. 1-to-1 to the <a target="_blank" href="https://openmw.readthedocs.io/en/latest/reference/lua-scripting/user_interface.html#layers">OpenMW UI layers</a>.</span></app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>Resizable</app-dt-cell>
+          <app-dt-cell>boolean</app-dt-cell>
+          <app-dt-cell>Implements the behavior that when the user drags the edge or corner of the root element, it resizes with the drag operation.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>Dragger</app-dt-cell>
+          <app-dt-cell>boolean</app-dt-cell>
+          <app-dt-cell>Implements the behavior that when the user drags this element, the root element will be moved with the cursor. Works on any UI element, but will only ever drag the root element.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>EdgeMargin</app-dt-cell>
+          <app-dt-cell>pixels</app-dt-cell>
+          <app-dt-cell>The margin at the edges of the root element that will be considered for resizing operations when the user clicks within that threshold and drags.</app-dt-cell>
+        </app-dt-row>
+      </app-data-table>
+      <h2>CSS Properties</h2>
+      <app-data-table [ColumnWidthPercentages]="['20%', '15%', '65%']">
+        <app-dt-header>
+          <div>Property</div>
+        </app-dt-header>
+        <app-dt-header>
+          <div>Data Type</div>
+        </app-dt-header>
+        <app-dt-header>
+          <div>Description</div>
+        </app-dt-header>
+        <app-dt-row>
+          <app-dt-cell>width</app-dt-cell>
+          <app-dt-cell>pixels or percentage</app-dt-cell>
+          <app-dt-cell>The width of the element.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>height</app-dt-cell>
+          <app-dt-cell>pixels or percentage</app-dt-cell>
+          <app-dt-cell>The height of the element.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>visibility</app-dt-cell>
+          <app-dt-cell>"hidden" or "visible"</app-dt-cell>
+          <app-dt-cell>The visibility of the element.</app-dt-cell>
+        </app-dt-row>
+      </app-data-table>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>
