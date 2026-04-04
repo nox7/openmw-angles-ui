@@ -14,6 +14,7 @@
   --body-font-color: hsl(0deg 0% 15%);
   --border-color: color-mix(in srgb, var(--light) 85%, var(--dark));
   --primary-color: hsl(22.76deg 36.71% 15.49%);
+  --accent-color: hsl(35.95deg 96.03% 50.59%);
   --primary-text-color: hsl(0 0% 100%);
   --card-shadow: 0 2px 5px 0 color-mix(in srgb, var(--light) 80%, var(--dark));
   --sidebar-shadow: 2px 0 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
@@ -60,6 +61,10 @@ p {
 a {
   color: var(--primary-color);
   text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 img {

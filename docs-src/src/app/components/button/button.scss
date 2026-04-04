@@ -6,8 +6,7 @@
     text-decoration: none;
     background-color: var(--primary-color);
     color: var(--primary-text-color);
-    border: 4px solid transparent;
-    border-image: url("/images/button-border-1.jpg") 30 repeat;
+    border: 2px solid var(--accent-color);
 
     &:hover {
       cursor: pointer;

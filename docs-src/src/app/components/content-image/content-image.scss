@@ -1,0 +1,9 @@
+.image-container {
+  margin: 1.3rem 0;
+  text-align: center;
+  img {
+    padding: 8px;
+    box-shadow: var(--card-shadow);
+    border-radius: 4px;
+  }
+}
