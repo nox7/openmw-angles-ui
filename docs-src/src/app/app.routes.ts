@@ -21,4 +21,9 @@ export const routes: Routes = [
     loadComponent: () => import("./pages/html-syntax/html-syntax").then(m => m.HtmlSyntax),
     title: "HTML Syntax in AnglesUI"
   },
+  {
+    path: "data-binding",
+    loadComponent: () => import("./pages/data-binding/data-binding").then(m => m.DataBinding),
+    title: "Data Binding in AnglesUI"
+  },
 ];

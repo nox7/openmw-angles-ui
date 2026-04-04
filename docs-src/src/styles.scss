@@ -14,6 +14,7 @@
   --card-shadow: 0 2px 5px 0 color-mix(in srgb, var(--light) 80%, var(--dark));
   --sidebar-shadow: 2px 0 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
   --footer-shadow: 0 -2px 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
+  --alert-bg-color: hsl(6, 83%, 25%);
 }
 
 @mixin dark-theme {
@@ -28,6 +29,7 @@
   --card-shadow: 0 2px 5px 0 color-mix(in srgb, var(--light) 80%, var(--dark));
   --sidebar-shadow: 2px 0 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
   --footer-shadow: 0 -2px 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
+  --alert-bg-color: hsl(6, 83%, 25%);
 }
 
 :root {

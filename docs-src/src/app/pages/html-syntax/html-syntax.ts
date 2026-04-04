@@ -32,4 +32,24 @@ export class HtmlSyntax {
   </mw-window>
 </mw-root>
   `.trim());
+
+  public Code3 = signal<string>(`
+<mw-root
+  Layer="Windows"
+  [style.width]="InitialWidth()"
+  [style.height]="InitialHeight()"
+  >
+  @if (ShowManageKingdomWindow()){
+    <mw-window>
+      <mw-text>Manage Your Kingdom's Staff Schedules</mw-text>
+    </mw-window>
+  }
+
+  @if (ShowOverviewWindow()){
+    <mw-window>
+      <mw-text>Overview of Your Castle</mw-text>
+    </mw-window>
+  }
+</mw-root>
+  `.trim());
 }

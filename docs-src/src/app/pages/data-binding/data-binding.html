@@ -1,0 +1,72 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>Data Bindings</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        When you need your UI to display dynamic data, react to data changes, or handle the general UI state (state being its context of variables it can use), then you use data binds. More specifically, AnglesUI follows the Angular principle that any data used in a UI should be a <strong>Signal</strong>. AnglesUI implements signals for you to use.
+      </p>
+      <h2>What are Signals?</h2>
+      <p>
+        In previous iterations of web frameworks, you would provide variables into the scope of your UI. However, the only way for this framework to determine when to update the UI was to use a primitive "change detection" process which typically involved looping through all variables in the scope and checking if they had changed since the last update. This process was inefficient and could lead to performance issues, especially in larger applications. Signals, on the other hand, are a more efficient way to manage data changes. They are essentially observable values that can be subscribed to, allowing the UI to react to changes in real-time without the need for a full change detection cycle.
+      </p>
+      <h2>How to Create Signals and Pass Them to Your UI</h2>
+      <p>
+        Signal creation happens on the Lua side before you render your element. You can create the signals anywhere you like and use them however you like - so long as they get passed into the renderer when you show your UI.
+      </p>
+      <app-code-highlighter [Code]="Code1()" Language="lua"></app-code-highlighter>
+      <p>
+        Now, register them when you render the UI file.
+      </p>
+      <app-code-highlighter [Code]="Code2()" Language="lua"></app-code-highlighter>
+      <p>
+        Whenever you need to, anywhere in the code after the UI is rendered, you can update the signal's value and the UI will react to it.
+      </p>
+      <app-code-highlighter [Code]="Code3()" Language="lua"></app-code-highlighter>
+      <app-alert>
+        <strong>Important:</strong> The text you will type to reference your signals are the indices of the table you are passing into Render().
+      </app-alert>
+      <p>
+        Examples of how to call and use signals in your UI's HTML are in a few sections below on individual data binding types.
+      </p>
+      <h2>What Data Binds Are Available?</h2>
+      <p>
+        Data binding is only available in the HTML files. CSS files do not support data binding. There are four types of data binds available in AnglesUI: interpolation, style property binding, class attribute binding, and event binding.
+      </p>
+      <h2>Interpolation</h2>
+      <p ngNonBindable>
+        This is the most basic form of data binding. It allows you to display the value of a signal directly in the UI. It's used by wrapping the signal reference in double curly braces {{}}.
+      </p>
+      <app-code-highlighter [Code]="InterpolationCode()" Language="angular-html"></app-code-highlighter>
+      <h2>Style Property Binding</h2>
+      <p>
+        All styling is done in CSS, but sometimes you need to set a style with a dynamic value. You can do this on elements using [style.propName] on the attributes. These expect to be evaluated, so you must use a data-type (such as a string, number) and now just plain text.
+      </p>
+      <app-code-highlighter [Code]="StyleBindingCode1()" Language="angular-html"></app-code-highlighter>
+      <p>
+        When we say use a data type and not plain text, we mean that if you wanted to provide a raw value and not a signal you must do this:
+      </p>
+      <app-code-highlighter [Code]="StyleBindingCode3()" Language="angular-html"></app-code-highlighter>
+      <p>
+        And <strong>not this</strong>:
+      </p>
+      <app-code-highlighter [Code]="StyleBindingCode2()" Language="angular-html"></app-code-highlighter>
+      <app-alert>
+        Style bind names are based on their JavaScript CSS property names. For example, you wouldn't put [style.flex-grow] but use [style.flexGrow]. Reference the MDN documentation for the names of CSS properties in JavaScript terminology, and reference <a routerLink="css">our support CSS properties</a> for which ones are available on an element.
+      </app-alert>
+      <h2>Class Attribute Binding</h2>
+      <p>
+        Class bindings work similarly to style property bindings, but they allow you to set the class attribute of an element dynamically. This is done using [class.className] on the attributes. These also expect to be evaluated, so you must use a data-type (such as a string, number) and now just plain text. The class <strong>will not be applied</strong> if the expression evaluates to either false or nil.
+      </p>
+      <app-code-highlighter [Code]="ClassBindingCode()" Language="angular-html"></app-code-highlighter>
+      <p>
+        This is useful for dynamically applying classes that you have defined in your CSS.
+      </p>
+      <h2>Event Binding</h2>
+      <p>
+        For event bindings, see <a routerLink="event-binding">event binding</a>.
+      </p>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>

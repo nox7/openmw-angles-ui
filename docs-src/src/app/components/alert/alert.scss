@@ -1,0 +1,11 @@
+:host {
+  display: block;
+  margin: var(--paragraph-bottom-margin) 0;
+}
+
+.wrapper {
+  padding: 12px;
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--alert-bg-color) 30%, transparent);
+  border: 1px solid var(--alert-bg-color);
+}
