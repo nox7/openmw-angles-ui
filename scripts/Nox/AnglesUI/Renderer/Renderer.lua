@@ -99,6 +99,7 @@ local NON_STYLE_ATTRIBUTES = {
   ["path"]      = true,
   ["text"]        = true,  -- mw-text-edit initial content
   ["placeholder"] = true,  -- mw-text-edit placeholder text
+  ["autosize"]    = true,  -- mw-text / mw-text-edit autoSize toggle
   ["scrollbarsize"] = true,  -- mw-scroll-canvas scrollbar strip width
   ["scrollstep"]    = true,  -- mw-scroll-canvas pixels scrolled per arrow click
   ["edgemargin"]    = true,  -- mw-root resize edge hit-test width in pixels
@@ -1735,7 +1736,11 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     end
 
     props.text = textNodesText
-    if (props.autoSize == nil) then
+
+    if (allProperties["autosize"] ~= nil) then
+      props.autoSize = self:ToBoolean(allProperties["autosize"], "AutoSize")
+      consumed["autosize"] = true
+    elseif (props.autoSize == nil) then
       props.autoSize = true
     end
 
@@ -1811,6 +1816,11 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     if (allProperties["wordwrap"] ~= nil) then
       props.wordWrap = self:ToBoolean(allProperties["wordwrap"], "WordWrap")
       consumed["wordwrap"] = true
+    end
+
+    if (allProperties["autosize"] ~= nil) then
+      props.autoSize = self:ToBoolean(allProperties["autosize"], "AutoSize")
+      consumed["autosize"] = true
     end
 
     self:MarkConsumed(consumed, { "name" })
