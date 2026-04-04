@@ -1,0 +1,17 @@
+<div class="label-button">
+  <button type="button" (click)="Toggle()">
+    <span>{{ Label() }}</span>
+    <i class="bi bi-chevron-down"></i>
+  </button>
+</div>
+<div class="collapse-container">
+  <div 
+    class="contents"
+    [class.opening]="IsOpening()"
+    [class.closing]="IsClosing()"
+    [style.--expanded-height]="ExpandedHeight()"
+    (animationend)="OnAnimationEnded($event)"
+    >
+    <ng-content select="app-sidebar-button"></ng-content>
+  </div>
+</div>

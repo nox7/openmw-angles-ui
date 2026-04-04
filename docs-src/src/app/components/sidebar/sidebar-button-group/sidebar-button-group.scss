@@ -1,0 +1,55 @@
+@keyframes open {
+  from {
+    height: 0;
+  }
+
+  to {
+    height: var(--expanded-height);
+  }
+}
+
+@keyframes close {
+  from {
+    height: var(--expanded-height);
+  }
+
+  to {
+    height: 0;
+  }
+}
+
+button {
+  background: none;
+  border: none;
+  appearance: none;
+  color: var(--body-font-color);
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px;
+  border-radius: 3px;
+  font-size: 0.9rem;
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--light) 90%, var(--dark));
+    cursor: pointer;
+  }
+}
+
+.collapse-container {
+  // Set in the TypeScript file
+  padding-left: 8px;;
+
+  .contents {
+    height: var(--expanded-height);;
+    overflow: hidden;
+
+    &.opening {
+      animation: open 150ms linear forwards;
+    }
+
+    &.closing {
+      animation: close 150ms linear forwards;
+    }
+  }
+}

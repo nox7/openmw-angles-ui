@@ -54,6 +54,12 @@ html, body {
   font-size: 16px;
 }
 
+input, select, button, textarea {
+  font-family: var(--body-font-family);
+  line-height: 150%;
+  font-size: 16px;
+}
+
 body {
   @include light-theme()
 }
