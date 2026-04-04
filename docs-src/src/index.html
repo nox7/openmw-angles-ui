@@ -13,5 +13,11 @@
 </head>
 <body>
   <app-root></app-root>
+  <script>
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (prefersDark) {
+      document.body.classList.add('dark-theme');
+    }
+  </script>
 </body>
 </html>

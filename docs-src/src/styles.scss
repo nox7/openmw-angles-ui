@@ -37,6 +37,18 @@ html, body {
 
 body.dark-theme {
   --primary-color: hsl(35.95deg 100% 49.41%);
+  --light: hsl(24.92deg 7.91% 4.52%);
+  --dark: hsl(0deg 0% 100%);
+  --bg-color: color-mix(in srgb, var(--light) 95%, var(--dark));
+  --border-color: color-mix(in srgb, var(--light) 85%, var(--dark));
+  --heading-1-font-color: hsl(0deg 0% 85%);
+  --heading-2-font-color: hsl(0deg 0% 82%);
+  --heading-3-font-color: hsl(0deg 0% 78%);
+  --body-font-color: hsl(0deg 0% 85%);
+  --card-shadow: 0 2px 5px 0 color-mix(in srgb, var(--light) 80%, var(--dark));
+  --sidebar-shadow: 2px 0 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
+  --footer-shadow: 0 -2px 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
+  background-color: var(--bg-color);
 }
 
 h1, h2, h3, h4, h5, h6 {
