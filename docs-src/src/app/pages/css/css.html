@@ -1,0 +1,55 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>The AnglesUI Framework</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        In AnglesUI, you write styling for your elements in dedicated CSS files. These files must have the same base name as your HTML file, but with a .css extension.
+      </p>
+      <app-content-image Alt="Same base name file structure" Src="images/css/file-structure.png"></app-content-image>
+      <p>
+        The renderer will automatically find this file when you load your HTML into the renderer and parse, evaluate, and apply the CSS rules.
+      </p>
+      <h2>What CSS is Supported?</h2>
+      <p>
+        Not all of CSS properties and features are supported, naturally. This page serves as an <em>exhaustive list</em> of what is supported. In general, try to write simple CSS.
+      </p>
+      <app-alert>
+        Not all properties are supported on all elements. View that element's individual documentation for what properties it supports.
+      </app-alert>
+      <h3>General Rules and Compound Selectors</h3>
+      <p>
+        All single rules are supported as well as compound selectors.
+      </p>
+      <app-code-highlighter [Code]="GeneralAndCompoundCode()" Language="css"></app-code-highlighter>
+      <h3>Rule Nesting</h3>
+      <p>
+        Nested rules (a relatively new baseline CSS feature) is supported.
+      </p>
+      <app-code-highlighter [Code]="NestedRuleCode()" Language="css"></app-code-highlighter>
+      <h3>Pseudo-States</h3>
+      <p>
+        We <strong>do not</strong> support psuedo states such as :hover, :active, :focus, etc.
+      </p>
+      <h3>:not() Selector</h3>
+      <p>
+        This selector is supported.
+      </p>
+      <app-code-highlighter [Code]="NotSelectorCode()" Language="css"></app-code-highlighter>
+      <h3>Media Queries</h3>
+      <p>
+        We support media queries in the following format:
+      </p>
+      <app-code-highlighter [Code]="MediaQueriesCode()" Language="css"></app-code-highlighter>
+      <h3>Container Queries</h3>
+      <p>
+        In general, we highly recommend using containers instead of media queries. They are cheaper to process but also more relevant - as they apply specifically to the containing element's side instead of the entire viewport.
+      </p>
+      <p>
+        Container queries are also "relatively new" in the CSS world, and can be confusing at first. Read the <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Containment/Container_queries">MDN documentation</a> on them.
+      </p>
+      <app-code-highlighter [Code]="ContainerQueriesCode()" Language="css"></app-code-highlighter>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>

@@ -26,4 +26,9 @@ export const routes: Routes = [
     loadComponent: () => import("./pages/data-binding/data-binding").then(m => m.DataBinding),
     title: "Data Binding in AnglesUI"
   },
+  {
+    path: "css",
+    loadComponent: () => import("./pages/css/css").then(m => m.Css),
+    title: "Using CSS in AnglesUI"
+  },
 ];
