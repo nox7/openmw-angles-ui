@@ -46,6 +46,7 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["visibility"]          = "visibility",
   ["text-align"]          = "textalign",
   ["vertical-align"]      = "verticalalign",
+  ["aspect-ratio"]        = "aspectratio",
 }
 
 -- Maps the lowercased JS-style property name from a [style.X] binding to the
@@ -92,6 +93,7 @@ local STYLE_BINDING_TO_ATTRIBUTE = {
   ["visibility"]          = "visibility",
   ["textalign"]           = "textalign",
   ["verticalalign"]       = "verticalalign",
+  ["aspectratio"]         = "aspectratio",
 }
 
 -- HTML attributes that are structural, behavioral, or content-related and
@@ -283,6 +285,40 @@ function Renderer:ToTextAlignV(value, propertyName)
   if (s == "middle") then return UI.ALIGNMENT.Center end
   if (s == "bottom") then return UI.ALIGNMENT.End end
   error("Invalid vertical-align value for property '" .. propertyName .. "': must be 'top', 'middle', or 'bottom'.")
+end
+
+---@param value any A positive number or a "W / H" division expression string (e.g. "16 / 9").
+---@param propertyName string Used in error messages on parse failure.
+---@return number|nil The aspect ratio (width ÷ height), or nil when value is nil.
+function Renderer:ParseAspectRatio(value, propertyName)
+  if (value == nil) then return nil end
+
+  if (type(value) == "number") then
+    if (value <= 0) then
+      error("Invalid aspect-ratio value for property '" .. propertyName .. "': must be a positive number.")
+    end
+    return value
+  end
+
+  if (type(value) == "string") then
+    local n = tonumber(value)
+    if (n ~= nil) then
+      if (n <= 0) then
+        error("Invalid aspect-ratio value for property '" .. propertyName .. "': must be a positive number.")
+      end
+      return n
+    end
+
+    local a, b = string.match(value, "^%s*([%d%.]+)%s*/%s*([%d%.]+)%s*$")
+    if (a ~= nil and b ~= nil) then
+      local na, nb = tonumber(a), tonumber(b)
+      if (na ~= nil and nb ~= nil and nb > 0) then
+        return na / nb
+      end
+    end
+  end
+
+  error("Invalid aspect-ratio value for property '" .. propertyName .. "': expected a positive number or 'W / H' expression, got '" .. tostring(value) .. "'.")
 end
 
 ---@param layout table The OpenMW Layout table to receive children.
@@ -1002,6 +1038,43 @@ end
 
   local layoutPixelSize = self:ResolveLayoutPixelSize(layout, parentPixelSize)
 
+  -- Aspect-ratio post-resolution: when aspect-ratio was paired with a relative
+  -- dimension in ApplyCommonWidgetProperties the constraint was deferred until the
+  -- parent pixel size became known here.  Now that we have resolved pixel extents,
+  -- apply the ratio and rewrite layout.props so downstream layout logic (flex,
+  -- grid, scroll-canvas) sees the fully-constrained size.
+  local aspectRatioAttr = normalizedProperties["aspectratio"]
+  if (aspectRatioAttr ~= nil) then
+    local ratio = self:ParseAspectRatio(aspectRatioAttr, "AspectRatio")
+    local rW = layoutPixelSize.x
+    local rH = layoutPixelSize.y
+    local hasW = (rW ~= nil and rW > 0)
+    local hasH = (rH ~= nil and rH > 0)
+    if (hasW and not hasH) then
+      rH = rW / ratio
+      -- Contain: if the derived height would exceed the parent's available height,
+      -- pivot and derive from the height constraint instead, keeping the ratio.
+      if (parentPixelSize ~= nil and parentPixelSize.y ~= nil and rH > parentPixelSize.y) then
+        rH = parentPixelSize.y
+        rW = rH * ratio
+      end
+      layout.props.size = Util.vector2(rW, rH)
+      layout.props.relativeSize = nil
+      layoutPixelSize = { x = rW, y = rH }
+    elseif (hasH and not hasW) then
+      rW = rH * ratio
+      -- Contain: if the derived width would exceed the parent's available width,
+      -- pivot and derive from the width constraint instead, keeping the ratio.
+      if (parentPixelSize ~= nil and parentPixelSize.x ~= nil and rW > parentPixelSize.x) then
+        rW = parentPixelSize.x
+        rH = rW / ratio
+      end
+      layout.props.size = Util.vector2(rW, rH)
+      layout.props.relativeSize = nil
+      layoutPixelSize = { x = rW, y = rH }
+    end
+  end
+
   local childParentPixelSize = layoutPixelSize
   if (meta ~= nil and (meta.type == "custom-flex" or meta.type == "padding-container" or meta.type == "custom-grid")) then
     childParentPixelSize = self:ResolvePaddedPixelSize(layoutPixelSize, meta.padding)
@@ -1112,9 +1185,42 @@ end
   table.insert(childAncestors, node)
 
   if (#node.children > 0) then
+    -- For grid containers, pre-compute each direct child's cell pixel size so that
+    -- relative dimensions (e.g. width: 100%) inside grid children resolve against
+    -- the actual cell, not the full grid inner area.  The self-aware container
+    -- query re-evaluation above may have already updated meta.templateColumns, so
+    -- this must run after that block.
+    local gridChildCellSizes = nil
+    if (meta ~= nil and meta.type == "custom-grid") then
+      local preChildMetas = {}
+      for _, childNode in pairs(node.children) do
+        if (childNode.type == Node.TYPE_ENGINE_COMPONENT) then
+          local childProps = self:ParseAcceptedProperties(childNode, childAncestors, childContainerContext)
+          table.insert(preChildMetas, {
+            gridColumn     = self:ToNumber(childProps["gridcolumn"],     "GridColumn"),
+            gridRow        = self:ToNumber(childProps["gridrow"],        "GridRow"),
+            gridColumnSpan = self:ToNumber(childProps["gridcolumnspan"], "GridColumnSpan"),
+            gridRowSpan    = self:ToNumber(childProps["gridrowspan"],    "GridRowSpan"),
+          })
+        end
+      end
+      if (#preChildMetas > 0) then
+        gridChildCellSizes = self:PrecomputeGridCellSizes(preChildMetas, meta, childParentPixelSize)
+      end
+    end
+
+    local gridChildIdx = 0
     for _, childNode in pairs(node.children) do
       if (childNode.type == Node.TYPE_ENGINE_COMPONENT) then
-        table.insert(childLayouts, self:BuildLayoutTree(childNode, childParentPixelSize, childAncestors, childContainerContext))
+        local effectiveParentPixelSize = childParentPixelSize
+        if (gridChildCellSizes ~= nil) then
+          gridChildIdx = gridChildIdx + 1
+          local cellSize = gridChildCellSizes[gridChildIdx]
+          if (cellSize ~= nil) then
+            effectiveParentPixelSize = cellSize
+          end
+        end
+        table.insert(childLayouts, self:BuildLayoutTree(childNode, effectiveParentPixelSize, childAncestors, childContainerContext))
       end
     end
   end
@@ -1229,6 +1335,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
   local anchorY = self:ToNumber(allProperties["anchory"], "AnchorY")
   local visible = self:ToBoolean(allProperties["visible"], "Visible")
   local alpha   = self:ToNumber(allProperties["alpha"], "Alpha")
+  local aspectRatio = self:ParseAspectRatio(allProperties["aspectratio"], "AspectRatio")
 
   local visibilityRaw = allProperties["visibility"]
   local visibilityBool = nil
@@ -1243,7 +1350,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
   end
 
   self:MarkConsumed(consumed, {
-    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha", "visibility"
+    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha", "visibility", "aspectratio"
   })
 
   local requireSize = options ~= nil and options.requireSize == true
@@ -1253,9 +1360,28 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
     error("[" .. (tagName or "?") .. "] Element must have either Width/Height or RelativeWidth/RelativeHeight attributes.")
   end
 
+  local hasExplicitWidth  = (width ~= nil or relativeWidth ~= nil)
+  local hasExplicitHeight = (height ~= nil or relativeHeight ~= nil)
+
   if (defaultRelativeSize and width == nil and height == nil and relativeWidth == nil and relativeHeight == nil) then
     relativeWidth = 1
     relativeHeight = 1
+  end
+
+  if (aspectRatio ~= nil) then
+    if (hasExplicitWidth and not hasExplicitHeight) then
+      if (width ~= nil) then
+        -- pixel width known at build time → derive pixel height immediately
+        height = width / aspectRatio
+      end
+      -- relative-only width → deferred to BuildLayoutTree once parent px size is known
+    elseif (hasExplicitHeight and not hasExplicitWidth) then
+      if (height ~= nil) then
+        -- pixel height known at build time → derive pixel width immediately
+        width = height * aspectRatio
+      end
+      -- relative-only height → deferred to BuildLayoutTree
+    end
   end
 
   if (width ~= nil or height ~= nil) then
@@ -1659,7 +1785,6 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       resizeFuncs = self:BuildResizeFuncs(edgeMargin)
     end
 
-    print(TableUtils.PrintTable(props));
     return {
       layer = layer,
       name = name,
@@ -2453,6 +2578,112 @@ function Renderer:MarkGridArea(occupancy, row, col, rowSpan, colSpan)
       occupancy[r][c] = true
     end
   end
+end
+
+---@param preChildMetas {gridColumn: number|nil, gridRow: number|nil, gridColumnSpan: number|nil, gridRowSpan: number|nil}[] Lightweight placement metadata for each direct engine-component child (derived from a ParseAcceptedProperties pre-pass).
+---@param meta table Grid metadata (templateColumns, templateRows, gap, rowGap, columnGap).
+---@param innerPixelSize {x: number|nil, y: number|nil}|nil Inner pixel area of the grid container.
+---@return {x: number, y: number}[] Per-child cell pixel sizes in the same order as `preChildMetas`.
+function Renderer:PrecomputeGridCellSizes(preChildMetas, meta, innerPixelSize)
+  local rowGap, columnGap = self:ParseSpacingPair(meta.gap, 0)
+  if (meta.rowGap ~= nil) then
+    rowGap = self:ToNumber(meta.rowGap, "RowGap")
+  end
+  if (meta.columnGap ~= nil) then
+    columnGap = self:ToNumber(meta.columnGap, "ColumnGap")
+  end
+
+  local columnTracks = self:ParseGridTracks(meta.templateColumns)
+  if (#columnTracks == 0) then
+    columnTracks = { { kind = "fr", value = 1 } }
+  end
+  local numColumns = #columnTracks
+
+  local containerWidth  = innerPixelSize and innerPixelSize.x or nil
+  local containerHeight = innerPixelSize and innerPixelSize.y or nil
+
+  -- Phase 1: placement (mirrors ArrangeGridChildren)
+  local placements = {}
+  local occupancy  = {}
+  local autoRow    = 1
+  local autoColumn = 1
+  local maxUsedRow = 0
+
+  for i, childMeta in ipairs(preChildMetas) do
+    local columnSpan = math.max(1, childMeta.gridColumnSpan or 1)
+    local rowSpan    = math.max(1, childMeta.gridRowSpan    or 1)
+    if (columnSpan > numColumns) then columnSpan = numColumns end
+
+    local placedRow    = childMeta.gridRow
+    local placedColumn = childMeta.gridColumn
+
+    if (placedRow ~= nil and placedColumn ~= nil) then
+      self:MarkGridArea(occupancy, placedRow, placedColumn, rowSpan, columnSpan)
+    else
+      local found = false
+      for r = autoRow, autoRow + #preChildMetas + numColumns do
+        local colStart = (r == autoRow) and autoColumn or 1
+        for c = colStart, numColumns do
+          if (c + columnSpan - 1 <= numColumns and self:IsGridAreaFree(occupancy, r, c, rowSpan, columnSpan)) then
+            placedRow    = r
+            placedColumn = c
+            autoRow      = r
+            autoColumn   = c + columnSpan
+            if (autoColumn > numColumns) then
+              autoColumn = 1
+              autoRow    = autoRow + 1
+            end
+            found = true
+            break
+          end
+        end
+        if (found) then break end
+      end
+      if (not found) then
+        placedRow    = autoRow
+        placedColumn = 1
+      end
+      self:MarkGridArea(occupancy, placedRow, placedColumn, rowSpan, columnSpan)
+    end
+
+    local bottomRow = (placedRow or 1) + rowSpan - 1
+    if (bottomRow > maxUsedRow) then maxUsedRow = bottomRow end
+
+    placements[i] = {
+      row        = placedRow or 1,
+      column     = placedColumn or 1,
+      rowSpan    = rowSpan,
+      columnSpan = columnSpan,
+    }
+  end
+
+  -- Phase 2: build implicit row tracks
+  local rowTracks = self:ParseGridTracks(meta.templateRows)
+  while (#rowTracks < maxUsedRow) do
+    table.insert(rowTracks, { kind = "fr", value = 1 })
+  end
+
+  -- Phase 3: resolve track pixel sizes
+  local columnSizes = self:ResolveGridTrackSizes(columnTracks, containerWidth,  columnGap)
+  local rowSizes    = self:ResolveGridTrackSizes(rowTracks,    containerHeight, rowGap)
+
+  -- Phase 4: sum cell pixel sizes per child
+  local cellSizes = {}
+  for i, p in ipairs(placements) do
+    local w = 0
+    for c = p.column, p.column + p.columnSpan - 1 do
+      w = w + (columnSizes[c] or 0)
+      if (c < p.column + p.columnSpan - 1) then w = w + columnGap end
+    end
+    local h = 0
+    for r = p.row, p.row + p.rowSpan - 1 do
+      h = h + (rowSizes[r] or 0)
+      if (r < p.row + p.rowSpan - 1) then h = h + rowGap end
+    end
+    cellSizes[i] = { x = w, y = h }
+  end
+
+  return cellSizes
 end
 
 ---@param childLayouts table[] Child Layout tables to place in the grid.
