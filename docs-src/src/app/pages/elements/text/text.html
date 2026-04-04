@@ -1,15 +1,21 @@
 <app-content-width-container>
   <app-card>
     <app-card-header>
-      <h1>Window Element</h1>
+      <h1>Text Element</h1>
     </app-card-header>
     <app-card-body>
       <p>
-        A pre-styled (to Morrowind style) element that automatically expands to fit its parent element.
+        A basic element that renders text. The text content must be a child text node. As in, between the HTML tags of the element. There is no HTML attribute for the text content.
       </p>
+      <p>
+        This element does not support padding. If you need padding, wrap it in an &lt;md-widget&gt; element and add padding to that widget.
+      </p>
+      <app-alert>
+        Text is auto-sized based on the text inside the element by default. This means you cannot set a height or width on this element. Turn AutoSize off by setting its attribute to false to use custom sizing.
+      </app-alert>
       <h2>Selector</h2>
       <p>
-        <code>&lt;mw-window&gt;</code>
+        <code>&lt;mw-text&gt;</code>
       </p>
       <h2>Attributes</h2>
       <app-data-table [ColumnWidthPercentages]="['20%', '15%', '65%']">
@@ -31,6 +37,21 @@
           <app-dt-cell>class</app-dt-cell>
           <app-dt-cell>string</app-dt-cell>
           <app-dt-cell>The HTML element class string. Used in CSS selectors.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>AutoSize</app-dt-cell>
+          <app-dt-cell>boolean</app-dt-cell>
+          <app-dt-cell>Defaults to true. Automatically sizes the element based on the text size in it, but can be turned off to use custom element width and height.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>MultiLine</app-dt-cell>
+          <app-dt-cell>boolean</app-dt-cell>
+          <app-dt-cell>Whether the text element supports multiple lines. <strong>Note:</strong> only functions correctly when AutoSize is false.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>WordWrap</app-dt-cell>
+          <app-dt-cell>boolean</app-dt-cell>
+          <app-dt-cell>Whether the text element supports word wrapping. <strong>Note:</strong> only functions correctly when AutoSize is false.</app-dt-cell>
         </app-dt-row>
         <app-dt-row>
           <app-dt-cell>Dragger</app-dt-cell>
@@ -65,11 +86,6 @@
           <app-dt-cell>The visibility of the element.</app-dt-cell>
         </app-dt-row>
         <app-dt-row>
-          <app-dt-cell>padding</app-dt-cell>
-          <app-dt-cell>pixels</app-dt-cell>
-          <app-dt-cell>Padding inside the element.</app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
           <app-dt-cell>opacity</app-dt-cell>
           <app-dt-cell>number</app-dt-cell>
           <app-dt-cell>How opaque the element is. A number between 0 and 1.</app-dt-cell>
@@ -95,9 +111,24 @@
           <app-dt-cell><span>If the parent is a grid element, this specifies the row this element takes and/or how many it spans. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-row">MDN docs</a>. We accept only the formats of "1" or "1 / span 2" as examples.</span></app-dt-cell>
         </app-dt-row>
         <app-dt-row>
-          <app-dt-cell>background</app-dt-cell>
-          <app-dt-cell>"none"</app-dt-cell>
-          <app-dt-cell>Only accepts "none". Removes the background from the window element and leaves only the borders.</app-dt-cell>
+          <app-dt-cell>color</app-dt-cell>
+          <app-dt-cell>rgb string</app-dt-cell>
+          <app-dt-cell>The color of the text. Accepts any valid CSS color value in RGB format.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>font-size</app-dt-cell>
+          <app-dt-cell>pixels</app-dt-cell>
+          <app-dt-cell>The size of the text. Accepts any valid CSS size value in pixels.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>text-align</app-dt-cell>
+          <app-dt-cell>"start" "center" or "end"</app-dt-cell>
+          <app-dt-cell>The horizontal alignment of the text.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>vertical-align</app-dt-cell>
+          <app-dt-cell>"top" "middle" or "bottom"</app-dt-cell>
+          <app-dt-cell>The vertical alignment of the text.</app-dt-cell>
         </app-dt-row>
       </app-data-table>
     </app-card-body>

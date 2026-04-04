@@ -44,6 +44,46 @@ export const routes: Routes = [
         loadComponent: () => import("./pages/elements/window/window").then(m => m.Window),
         title: "Window Element | AnglesUI Elements"
       },
+      {
+        path: "widget",
+        loadComponent: () => import("./pages/elements/widget/widget").then(m => m.Widget),
+        title: "Widget Element | AnglesUI Elements"
+      },
+      {
+        path: "flex",
+        loadComponent: () => import("./pages/elements/flex/flex").then(m => m.Flex),
+        title: "Flex Element | AnglesUI Elements"
+      },
+      {
+        path: "grid",
+        loadComponent: () => import("./pages/elements/grid/grid").then(m => m.Grid),
+        title: "Grid Element | AnglesUI Elements"
+      },
+      {
+        path: "image",
+        loadComponent: () => import("./pages/elements/image/image").then(m => m.Image),
+        title: "Image Element | AnglesUI Elements"
+      },
+      {
+        path: "text",
+        loadComponent: () => import("./pages/elements/text/text").then(m => m.Text),
+        title: "Text Element | AnglesUI Elements"
+      },
+      {
+        path: "text-edit",
+        loadComponent: () => import("./pages/elements/text-edit/text-edit").then(m => m.TextEdit),
+        title: "Text Edit Element | AnglesUI Elements"
+      },
+      {
+        path: "hr",
+        loadComponent: () => import("./pages/elements/hr/hr").then(m => m.Hr),
+        title: "HR Element | AnglesUI Elements"
+      },
+      {
+        path: "scroll-canvas",
+        loadComponent: () => import("./pages/elements/scroll-canvas/scroll-canvas").then(m => m.ScrollCanvas),
+        title: "Scroll Canvas Element | AnglesUI Elements"
+      },
     ]
   },
 ];

@@ -1,15 +1,15 @@
 <app-content-width-container>
   <app-card>
     <app-card-header>
-      <h1>Root Element</h1>
+      <h1>Widget Element</h1>
     </app-card-header>
     <app-card-body>
       <p>
-        This is the required root element in a parent-level component. It must always be the first element in your hierarchy for the main file that is passed to the renderer.
+        An empty, unstyled and blank element. For those familiar with with development, think of this like a &lt;div&gt; element.
       </p>
       <h2>Selector</h2>
       <p>
-        <code>&lt;mw-root&gt;</code>
+        <code>&lt;mw-widget&gt;</code>
       </p>
       <h2>Attributes</h2>
       <app-data-table [ColumnWidthPercentages]="['20%', '15%', '65%']">
@@ -33,24 +33,9 @@
           <app-dt-cell>The HTML element class string. Used in CSS selectors.</app-dt-cell>
         </app-dt-row>
         <app-dt-row>
-          <app-dt-cell>Layer</app-dt-cell>
-          <app-dt-cell>string</app-dt-cell>
-          <app-dt-cell><span>The UI layer this root will be rendered onto. 1-to-1 to the <a target="_blank" href="https://openmw.readthedocs.io/en/latest/reference/lua-scripting/user_interface.html#layers">OpenMW UI layers</a>.</span></app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>Resizable</app-dt-cell>
-          <app-dt-cell>boolean</app-dt-cell>
-          <app-dt-cell>Implements the behavior that when the user drags the edge or corner of the root element, it resizes with the drag operation.</app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
           <app-dt-cell>Dragger</app-dt-cell>
           <app-dt-cell>boolean</app-dt-cell>
           <app-dt-cell>Implements the behavior that when the user drags this element, the root element will be moved with the cursor. Works on any UI element, but will only ever drag the root element.</app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>EdgeMargin</app-dt-cell>
-          <app-dt-cell>pixels</app-dt-cell>
-          <app-dt-cell>The margin at the edges of the root element that will be considered for resizing operations when the user clicks within that threshold and drags.</app-dt-cell>
         </app-dt-row>
       </app-data-table>
       <h2>CSS Properties</h2>
@@ -80,9 +65,34 @@
           <app-dt-cell>The visibility of the element.</app-dt-cell>
         </app-dt-row>
         <app-dt-row>
+          <app-dt-cell>padding</app-dt-cell>
+          <app-dt-cell>pixels</app-dt-cell>
+          <app-dt-cell>Padding inside the element.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
           <app-dt-cell>opacity</app-dt-cell>
           <app-dt-cell>number</app-dt-cell>
           <app-dt-cell>How opaque the element is. A number between 0 and 1.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>aspect-ratio</app-dt-cell>
+          <app-dt-cell>number or division</app-dt-cell>
+          <app-dt-cell>Forces the element to maintain the aspect ratio. This is ignored if you define <strong>both</strong> a width and height. For this to work, define only one. <strong>Note:</strong> may not function as expected, or at all, on <em>direct</em> grid or flex children.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>flex-grow</app-dt-cell>
+          <app-dt-cell>number</app-dt-cell>
+          <app-dt-cell><span>Specifies how much the element will grow relative to the rest of the flexible items inside the same container. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/flex-grow">MDN docs</a>. Only works if the parent element is a flex element.</span></app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>grid-column</app-dt-cell>
+          <app-dt-cell>mixed string</app-dt-cell>
+          <app-dt-cell><span>If the parent is a grid element, this specifies the column this element takes and/or how many it spans. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-column">MDN docs</a>. We accept only the formats of "1" or "1 / span 2" as examples.</span></app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>grid-row</app-dt-cell>
+          <app-dt-cell>mixed string</app-dt-cell>
+          <app-dt-cell><span>If the parent is a grid element, this specifies the row this element takes and/or how many it spans. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-row">MDN docs</a>. We accept only the formats of "1" or "1 / span 2" as examples.</span></app-dt-cell>
         </app-dt-row>
       </app-data-table>
     </app-card-body>

@@ -1,15 +1,15 @@
 <app-content-width-container>
   <app-card>
     <app-card-header>
-      <h1>Window Element</h1>
+      <h1>Flex Element</h1>
     </app-card-header>
     <app-card-body>
       <p>
-        A pre-styled (to Morrowind style) element that automatically expands to fit its parent element.
+        An implementation of the Chromium Blink rendering engine's flexbox. It's important to note that this <strong>does not</strong> use OpenMW's "flex" element. This is a custom implementation.
       </p>
       <h2>Selector</h2>
       <p>
-        <code>&lt;mw-window&gt;</code>
+        <code>&lt;mw-flex&gt;</code>
       </p>
       <h2>Attributes</h2>
       <app-data-table [ColumnWidthPercentages]="['20%', '15%', '65%']">
@@ -80,6 +80,16 @@
           <app-dt-cell>Forces the element to maintain the aspect ratio. This is ignored if you define <strong>both</strong> a width and height. For this to work, define only one. <strong>Note:</strong> may not function as expected, or at all, on <em>direct</em> grid or flex children.</app-dt-cell>
         </app-dt-row>
         <app-dt-row>
+          <app-dt-cell>flex-direction</app-dt-cell>
+          <app-dt-cell>"column" or "row"</app-dt-cell>
+          <app-dt-cell>Sets the major axis that this element's children will be aligned on. Only "column" and "row" are supported and not the reverse variants.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>gap</app-dt-cell>
+          <app-dt-cell>pixels</app-dt-cell>
+          <app-dt-cell>Specifies the gap between the children of this element.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
           <app-dt-cell>flex-grow</app-dt-cell>
           <app-dt-cell>number</app-dt-cell>
           <app-dt-cell><span>Specifies how much the element will grow relative to the rest of the flexible items inside the same container. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/flex-grow">MDN docs</a>. Only works if the parent element is a flex element.</span></app-dt-cell>
@@ -93,11 +103,6 @@
           <app-dt-cell>grid-row</app-dt-cell>
           <app-dt-cell>mixed string</app-dt-cell>
           <app-dt-cell><span>If the parent is a grid element, this specifies the row this element takes and/or how many it spans. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-row">MDN docs</a>. We accept only the formats of "1" or "1 / span 2" as examples.</span></app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>background</app-dt-cell>
-          <app-dt-cell>"none"</app-dt-cell>
-          <app-dt-cell>Only accepts "none". Removes the background from the window element and leaves only the borders.</app-dt-cell>
         </app-dt-row>
       </app-data-table>
     </app-card-body>

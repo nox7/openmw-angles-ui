@@ -1,15 +1,15 @@
 <app-content-width-container>
   <app-card>
     <app-card-header>
-      <h1>Window Element</h1>
+      <h1>Image Element</h1>
     </app-card-header>
     <app-card-body>
       <p>
-        A pre-styled (to Morrowind style) element that automatically expands to fit its parent element.
+        A basic element that renders an image. The image resource must be defined an attribute.
       </p>
       <h2>Selector</h2>
       <p>
-        <code>&lt;mw-window&gt;</code>
+        <code>&lt;mw-image&gt;</code>
       </p>
       <h2>Attributes</h2>
       <app-data-table [ColumnWidthPercentages]="['20%', '15%', '65%']">
@@ -31,6 +31,21 @@
           <app-dt-cell>class</app-dt-cell>
           <app-dt-cell>string</app-dt-cell>
           <app-dt-cell>The HTML element class string. Used in CSS selectors.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>Resource</app-dt-cell>
+          <app-dt-cell>string</app-dt-cell>
+          <app-dt-cell>The path to the image file. This operates within OpenMW's virtual file system and is <strong>not</strong> an absolute file path.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>TileH</app-dt-cell>
+          <app-dt-cell>boolean</app-dt-cell>
+          <app-dt-cell>Whether the image should be tiled horizontally.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>TileV</app-dt-cell>
+          <app-dt-cell>boolean</app-dt-cell>
+          <app-dt-cell>Whether the image should be tiled vertically.</app-dt-cell>
         </app-dt-row>
         <app-dt-row>
           <app-dt-cell>Dragger</app-dt-cell>
@@ -93,11 +108,6 @@
           <app-dt-cell>grid-row</app-dt-cell>
           <app-dt-cell>mixed string</app-dt-cell>
           <app-dt-cell><span>If the parent is a grid element, this specifies the row this element takes and/or how many it spans. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-row">MDN docs</a>. We accept only the formats of "1" or "1 / span 2" as examples.</span></app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>background</app-dt-cell>
-          <app-dt-cell>"none"</app-dt-cell>
-          <app-dt-cell>Only accepts "none". Removes the background from the window element and leaves only the borders.</app-dt-cell>
         </app-dt-row>
       </app-data-table>
     </app-card-body>
