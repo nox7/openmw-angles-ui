@@ -38,7 +38,12 @@ export const routes: Routes = [
         path: "root",
         loadComponent: () => import("./pages/elements/root/root").then(m => m.Root),
         title: "Root Element | AnglesUI Elements"
-      }
+      },
+      {
+        path: "window",
+        loadComponent: () => import("./pages/elements/window/window").then(m => m.Window),
+        title: "Window Element | AnglesUI Elements"
+      },
     ]
   },
 ];
