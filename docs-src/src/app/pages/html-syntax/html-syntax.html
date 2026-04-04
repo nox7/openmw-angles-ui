@@ -1,0 +1,39 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>HTML Templating Syntax</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        Instead of just plain HTML, AnglesUI is extended to use a custom templating syntax. However, at the baseline it is just plain HTML.
+      </p>
+      <app-code-highlighter [Code]="Code1()" Language="angular-html"></app-code-highlighter>
+      <p>
+        An example of using the extended syntax may look something like the below:
+      </p>
+      <app-code-highlighter [Code]="Code2()" Language="angular-html"></app-code-highlighter>
+      <p>
+        This form is called data binding - where you input signals of data for the UI to react to. You can read more about how to register signals and how data binding works <a routerLink="data-binding">on this page</a>.
+      </p>
+      <h2>All Valid HTML Elements</h2>
+      <p>
+        This is a list of all of the HTML elements that AnglesUI supports and what they do and any valid attributes on them.
+      </p>
+      <ul>
+        <li><strong>mw-root</strong>: The root element of an AnglesUI rendered parent.</li>
+        <li><strong>mw-window</strong>: A pre-styled Morrowind-UI window. Automatically has height 100% and width 100% of its parent.</li>
+        <li><strong>mw-text</strong>: A text element pre-styled to use Morrowind-style text. Has OpenMW UI autoSize set to true by default.</li>
+        <li><strong>mw-widget</strong>: A generic widget element with no styling. Think of it as a base container for styling or elements. In the HTML world, this would be your &lt;div&gt;</li>
+        <li><strong>mw-flex</strong>: A custom flexbox implementation. Used for putting your elements in rows or columns, but not usually both.</li>
+        <li><strong>mw-grid</strong>: A custom grid implementation. Used for creating more complex grid-like layouts with multiple cells in rows and column format.</li>
+        <li><strong>mw-image</strong>: Renders an image resource.</li>
+        <li><strong>mw-text-edit</strong>: A text input field for the user to type into. Listen for the textInput or textChanged events to react to user input.</li>
+        <li><strong>mw-hr</strong>: A horizontal line styled in Morrowind-UI theme.</li>
+        <li><strong>mw-scroll-canvas</strong>: An element that provides a scrollable canvas area for arbitrary content. Works for both vertical and horizontal scrolling. Styled in Morrowind-UI theme.</li>
+      </ul>
+      <p>
+        You may be wondering why you don't see something like a button, for example. The reason is because AnglesUI is a framework for you to make your own components - with some pre-configured for a "batteries partially included" effect. Read <a href="examples/making-a-button">making a button</a> for a guide on how to make your own Morrowind-themed clickable button.
+      </p>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>

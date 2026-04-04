@@ -1,10 +1,4 @@
-:root {
-  --body-font-family: "Google Sans", sans-serif;
-  --heading-font-family: "Inter", sans-serif;
-
-  --sidebar-width: 260px;
-  --content-max-width: 1080px;
-
+@mixin light-theme {
   --light: hsl(0deg 0% 100%);
   --dark: hsl(0deg 0% 0%);
   --bg-color: color-mix(in srgb, var(--light) 95%, var(--dark));
@@ -22,6 +16,29 @@
   --footer-shadow: 0 -2px 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
 }
 
+@mixin dark-theme {
+  --light: hsl(24.92deg 7.91% 4.52%);
+  --dark: hsl(0deg 0% 100%);
+  --bg-color: color-mix(in srgb, var(--light) 95%, var(--dark));
+  --border-color: color-mix(in srgb, var(--light) 85%, var(--dark));
+  --heading-1-font-color: hsl(0deg 0% 85%);
+  --heading-2-font-color: hsl(0deg 0% 82%);
+  --heading-3-font-color: hsl(0deg 0% 78%);
+  --body-font-color: hsl(0deg 0% 85%);
+  --card-shadow: 0 2px 5px 0 color-mix(in srgb, var(--light) 80%, var(--dark));
+  --sidebar-shadow: 2px 0 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
+  --footer-shadow: 0 -2px 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
+}
+
+:root {
+  --body-font-family: "Google Sans", sans-serif;
+  --heading-font-family: "Inter", sans-serif;
+
+  --sidebar-width: 260px;
+  --content-max-width: 1080px;
+  --paragraph-bottom-margin: 1.3rem;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -35,18 +52,12 @@ html, body {
   font-size: 16px;
 }
 
+body {
+  @include light-theme()
+}
+
 body.dark-theme {
-  --light: hsl(24.92deg 7.91% 4.52%);
-  --dark: hsl(0deg 0% 100%);
-  --bg-color: color-mix(in srgb, var(--light) 95%, var(--dark));
-  --border-color: color-mix(in srgb, var(--light) 85%, var(--dark));
-  --heading-1-font-color: hsl(0deg 0% 85%);
-  --heading-2-font-color: hsl(0deg 0% 82%);
-  --heading-3-font-color: hsl(0deg 0% 78%);
-  --body-font-color: hsl(0deg 0% 85%);
-  --card-shadow: 0 2px 5px 0 color-mix(in srgb, var(--light) 80%, var(--dark));
-  --sidebar-shadow: 2px 0 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
-  --footer-shadow: 0 -2px 5px 0 color-mix(in srgb, var(--light) 90%, var(--dark));
+  @include dark-theme();
   background-color: var(--bg-color);
 }
 
@@ -69,7 +80,7 @@ h3 {
 }
 
 p {
-  margin-bottom: 1.3rem;
+  margin-bottom: var(--paragraph-bottom-margin);
 }
 
 a {
@@ -93,10 +104,18 @@ p code {
 }
 
 hr {
-  margin: 1.3rem 0;
+  margin: var(--paragraph-bottom-margin) 0;
   border-color: var(--border-color);
 }
 
 main {
   background-color: var(--bg-color);
+}
+
+ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;;
+  padding: 0 1.5rem;
+  margin-bottom: var(--paragraph-bottom-margin);
 }

@@ -16,4 +16,9 @@ export const routes: Routes = [
     loadComponent: () => import("./pages/making-a-ui/making-a-ui").then(m => m.MakingAUi),
     title: "Making a UI | Your First UI"
   },
+  {
+    path: "html-syntax",
+    loadComponent: () => import("./pages/html-syntax/html-syntax").then(m => m.HtmlSyntax),
+    title: "HTML Syntax in AnglesUI"
+  },
 ];
