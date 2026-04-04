@@ -12,3 +12,11 @@ hr {
   flex-wrap: wrap;
   gap: 20px;
 }
+
+.quote {
+  font-size: 1.5rem;
+  font-style: italic;
+  margin-bottom: calc(var(--paragraph-bottom-margin) * 1.5);
+  color: color-mix(in srgb, var(--dark) 50%, var(--light));
+  text-align: center;
+}
