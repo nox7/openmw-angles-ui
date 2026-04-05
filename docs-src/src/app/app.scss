@@ -41,6 +41,10 @@
 main {
   padding: 40px;
   flex-grow: 1;
+
+  @media (max-width: 1200px) {
+    padding: 12px;
+  }
 }
 
 aside {
