@@ -1,4 +1,4 @@
-import{a as S}from"./chunk-2KYT5NT2.js";import{a as C}from"./chunk-RI7MM73A.js";import{a as g}from"./chunk-3TMNW2FJ.js";import{a as m,b as u,c}from"./chunk-ARCBSOD7.js";import{Aa as o,Ba as i,Ca as t,Da as n,Ra as e,X as r,ea as a,hb as h,na as p}from"./chunk-Z5QWJB5W.js";import"./chunk-Q7L6LLAK.js";var f=class d{GeneralAndCompoundCode=r(`
+import{a as S}from"./chunk-2KYT5NT2.js";import{a as C}from"./chunk-F7I6EKGG.js";import{a as g}from"./chunk-3TMNW2FJ.js";import{a as m,b as u,c}from"./chunk-ARCBSOD7.js";import{Aa as o,Ba as i,Ca as t,Da as n,Ra as e,X as r,ea as a,hb as h,na as p}from"./chunk-Z5QWJB5W.js";import"./chunk-Q7L6LLAK.js";var f=class d{GeneralAndCompoundCode=r(`
 .red-text {
   color: rgb(255, 0, 0);
 }
