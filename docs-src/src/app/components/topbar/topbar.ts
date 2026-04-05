@@ -12,6 +12,7 @@ export class Topbar {
 
   public ToggleSidebar(): void {
     if (!this.SidebarService.IsClosing() && !this.SidebarService.IsOpening()) {
+      document.body.style.overflow = "hidden";
       this.SidebarService.IsOpening.set(true);
     }
   }

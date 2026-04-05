@@ -21,6 +21,7 @@ export class App {
     } else if (e.animationName.endsWith("close-sidebar")) {
       this.SidebarService.IsClosing.set(false);
       this.SidebarService.IsOpen.set(false);
+      document.body.style.overflow = "";
     }
   }
 }
