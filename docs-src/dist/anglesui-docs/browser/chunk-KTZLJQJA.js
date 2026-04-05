@@ -1,4 +1,4 @@
-import{a as x}from"./chunk-NZBZERZ3.js";import{a as p,b as g,c as h}from"./chunk-ARCBSOD7.js";import{b as w}from"./chunk-LIGEQLLR.js";import{Aa as r,Ba as i,Ca as t,Da as l,Ra as e,X as o,ea as a,hb as u,na as s}from"./chunk-Z5QWJB5W.js";import"./chunk-Q7L6LLAK.js";var c=class d{Code1=o(`
+import{a as x}from"./chunk-RI7MM73A.js";import{a as p,b as g,c as h}from"./chunk-ARCBSOD7.js";import{b as w}from"./chunk-LIGEQLLR.js";import{Aa as r,Ba as i,Ca as t,Da as l,Ra as e,X as o,ea as a,hb as u,na as s}from"./chunk-Z5QWJB5W.js";import"./chunk-Q7L6LLAK.js";var c=class d{Code1=o(`
 <mw-root Layer="Windows">
   <mw-window>
     <mw-text>Hello world!</mw-text>

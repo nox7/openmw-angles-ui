@@ -1,4 +1,4 @@
-import{a as x}from"./chunk-NZBZERZ3.js";import{a as w}from"./chunk-3TMNW2FJ.js";import{a as c,b as p,c as g}from"./chunk-ARCBSOD7.js";import{b as h}from"./chunk-LIGEQLLR.js";import{Aa as o,Ba as n,Ca as t,Da as i,Ra as e,X as a,ea as r,hb as u,na as s}from"./chunk-Z5QWJB5W.js";import"./chunk-Q7L6LLAK.js";var y=class m{Code1=a(`
+import{a as x}from"./chunk-RI7MM73A.js";import{a as w}from"./chunk-3TMNW2FJ.js";import{a as c,b as p,c as g}from"./chunk-ARCBSOD7.js";import{b as h}from"./chunk-LIGEQLLR.js";import{Aa as o,Ba as n,Ca as t,Da as i,Ra as e,X as a,ea as r,hb as u,na as s}from"./chunk-Z5QWJB5W.js";import"./chunk-Q7L6LLAK.js";var y=class m{Code1=a(`
 <mw-root
   Layer="Windows"
   [style.width]="'800px'"
