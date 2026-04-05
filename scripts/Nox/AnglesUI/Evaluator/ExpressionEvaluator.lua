@@ -86,6 +86,26 @@ function ExpressionEvaluator:evaluate(expression, context)
     return self:evaluate(right, context)
   end
 
+  -- Try === (strict equality) - must be checked before == to avoid splitting "===" at the leading "=="
+  local seqPos = findTopLevelOperator(expression, "===")
+  if seqPos then
+    local left = trim(string.sub(expression, 1, seqPos - 1))
+    local right = trim(string.sub(expression, seqPos + 3))
+    local leftVal = self:evaluate(left, context)
+    local rightVal = self:evaluate(right, context)
+    return leftVal == rightVal
+  end
+
+  -- Try !== (strict inequality) - must be checked before != for the same reason
+  local sneqPos = findTopLevelOperator(expression, "!==")
+  if sneqPos then
+    local left = trim(string.sub(expression, 1, sneqPos - 1))
+    local right = trim(string.sub(expression, sneqPos + 3))
+    local leftVal = self:evaluate(left, context)
+    local rightVal = self:evaluate(right, context)
+    return leftVal ~= rightVal
+  end
+
   -- Try == (equality)
   local eqPos = findTopLevelOperator(expression, "==")
   if eqPos then

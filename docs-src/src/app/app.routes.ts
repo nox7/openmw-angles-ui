@@ -32,6 +32,11 @@ export const routes: Routes = [
     title: "Using CSS in AnglesUI"
   },
   {
+    path: "if-directives",
+    loadComponent: () => import("./pages/if-directives/if-directives").then(m => m.IfDirectives),
+    title: "If Directives in AnglesUI"
+  },
+  {
     path: "elements",
     children: [
       {
