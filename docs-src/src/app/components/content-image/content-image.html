@@ -1,3 +1,7 @@
-<div class="image-container">
+<div 
+  class="image-container"
+  [class.float-right]="Float() === 'right'"
+  [class.float-left]="Float() === 'left'"
+  >
   <img alt="{{ Alt() }}" src="{{ Src() }}">
 </div>

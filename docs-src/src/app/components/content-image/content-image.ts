@@ -9,4 +9,5 @@ import { Component, input } from '@angular/core';
 export class ContentImage {
   public Alt = input.required<string>();
   public Src = input.required<string>();
+  public Float = input<undefined | "right" | "left">();
 }

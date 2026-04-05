@@ -1,9 +1,28 @@
 .image-container {
-  margin: 1.3rem 0;
+  margin: var(--paragraph-bottom-margin) 0;
   text-align: center;
   img {
     padding: 8px;
     box-shadow: var(--card-shadow);
     border-radius: 4px;
+  }
+
+  &.float-right {
+    float: right;
+    margin-left: var(--paragraph-bottom-margin);
+  }
+
+  &.float-left {
+    float: left;
+    margin-right: var(--paragraph-bottom-margin);
+  }
+
+  @media (max-width: 1100px) {
+    &.float-right,
+    &.float-left {
+      float: none;
+      margin-right: unset;
+      margin-left: unset;
+    }
   }
 }
