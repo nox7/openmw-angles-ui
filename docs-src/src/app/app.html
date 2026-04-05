@@ -1,5 +1,10 @@
 <app-topbar></app-topbar>
-<aside>
+<aside
+  [class.open]="SidebarService.IsOpen()"
+  [class.opening]="SidebarService.IsOpening()"
+  [class.closing]="SidebarService.IsClosing()"
+  (animationend)="OnAnimationEnd($event)"
+  >
   <app-sidebar></app-sidebar>
 </aside>
 <div class="primary-content-window">
@@ -8,3 +13,7 @@
   </main>
   <app-footer></app-footer>
 </div>
+<div 
+  id="backdrop"
+  [class.active]="SidebarService.IsOpen() || SidebarService.IsOpening() || SidebarService.IsClosing()"
+  ></div>

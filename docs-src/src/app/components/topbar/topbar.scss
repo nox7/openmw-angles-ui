@@ -1,0 +1,25 @@
+:host {
+  display: none;
+
+  @media (max-width: 1200px) {
+    display: block;
+  }
+}
+
+div {
+  display: flex;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 8px;
+}
+
+button {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--dark);
+  padding: 8px;
+  &:hover {
+    cursor: pointer;
+  }
+}
