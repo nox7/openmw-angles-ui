@@ -5,6 +5,12 @@
   box-shadow: var(--sidebar-shadow);
   height: 100%;
   background-color: var(--light);
+
+  &.open, &.opening {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--dark), var(--light)) transparent;
+  }
 }
 
 .title {

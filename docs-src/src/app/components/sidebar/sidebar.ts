@@ -9,6 +9,11 @@ import { SidebarService } from './sidebar-service';
   imports: [SidebarButton, RouterLink, SidebarButtonGroup],
   templateUrl: './sidebar.html',
   styleUrl: './sidebar.scss',
+  host: {
+    "[class.open]": "SidebarService.IsOpen()",
+    "[class.opening]": "SidebarService.IsOpening()",
+    "[class.closing]": "SidebarService.IsClosing()"
+  }
 })
 export class Sidebar implements OnDestroy {
   private readonly Element = inject(ElementRef).nativeElement as HTMLElement;
