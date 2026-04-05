@@ -7,10 +7,11 @@ import { DataTable } from "../../../components/data-table/data-table";
 import { DtHeader } from "../../../components/data-table/dt-header/dt-header";
 import { DtRow } from "../../../components/data-table/dt-row/dt-row";
 import { DtCell } from "../../../components/data-table/dt-row/dt-cell/dt-cell";
+import { ContentImage } from "../../../components/content-image/content-image";
 
 @Component({
   selector: 'app-grid',
-  imports: [ContentWidthContainer, Card, CardHeader, CardBody, DataTable, DtHeader, DtRow, DtCell],
+  imports: [ContentWidthContainer, Card, CardHeader, CardBody, DataTable, DtHeader, DtRow, DtCell, ContentImage],
   templateUrl: './grid.html',
   styleUrl: './grid.scss',
 })
