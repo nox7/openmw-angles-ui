@@ -46,6 +46,14 @@ main {
 aside {
   z-index: 2;
 
+  &.opening {
+    animation: open-sidebar 100ms linear forwards;
+  }
+
+  &.closing {
+    animation: close-sidebar 100ms linear forwards;
+  }
+
   @media (max-width: 1200px) {
     z-index: 6;
     width: var(--sidebar-width);
@@ -53,14 +61,6 @@ aside {
     height: 100%;
     left: calc(var(--sidebar-width) * -1);
     top: 0;
-
-    &.opening {
-      animation: open-sidebar 100ms linear forwards;
-    }
-
-    &.closing {
-      animation: close-sidebar 100ms linear forwards;
-    }
 
     &.open {
       left: 0;
