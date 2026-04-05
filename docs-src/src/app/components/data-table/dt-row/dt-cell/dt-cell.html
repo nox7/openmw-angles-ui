@@ -1,3 +1,7 @@
-<div class="cell-content">
-  <ng-content></ng-content>
-</div>
+@if (!OverrideContent()){
+  <div class="cell-content">
+    <ng-content></ng-content>
+  </div>
+} @else {
+  <div class="cell-content" [innerHTML]="OverrideContent()"></div>
+}

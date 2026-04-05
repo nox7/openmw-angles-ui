@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ContentWidthContainer } from "../../../components/content-width-container/content-width-container";
 import { Card } from "../../../components/card/card";
 import { CardHeader } from "../../../components/card/card-header/card-header";
@@ -8,6 +8,8 @@ import { DtHeader } from "../../../components/data-table/dt-header/dt-header";
 import { DtRow } from "../../../components/data-table/dt-row/dt-row";
 import { DtCell } from "../../../components/data-table/dt-row/dt-cell/dt-cell";
 import { Alert } from "../../../components/alert/alert";
+import { GetCommonCSSProperties } from '../CommonProperties';
+import { DomSanitizer } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-text',
@@ -16,5 +18,5 @@ import { Alert } from "../../../components/alert/alert";
   styleUrl: './text.scss',
 })
 export class Text {
-
+  public CommonCSSProperties = GetCommonCSSProperties(inject(DomSanitizer), ["padding"]);
 }

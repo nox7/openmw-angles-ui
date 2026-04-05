@@ -1,0 +1,73 @@
+import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
+
+type CSSPropertyDoc = {
+  Property: string;
+  DataType: string;
+  Description: SafeHtml | string;
+}
+
+/**
+ * Returns common CSS properties for documentation. An array of property names
+ * to not include can be passed in.
+ * @param ignoreProperties
+ * @returns 
+ */
+export function GetCommonCSSProperties(
+  sanitizer: DomSanitizer,
+  ignoreProperties: string[] | undefined = undefined,
+):  CSSPropertyDoc[] {
+  
+  const props: CSSPropertyDoc[] = [
+    {
+      Property: 'width',
+      DataType: 'pixels or percentage',
+      Description: 'The width of the element.'
+    },
+    { 
+      Property: 'height', 
+      DataType: 'pixels or percentage', 
+      Description: 'The height of the element.' 
+    },
+    {
+      Property: "padding",
+      DataType: "pixels",
+      Description: "Padding inside the element."
+    },
+    { 
+      Property: 'flex-grow', 
+      DataType: 'number', 
+      Description: sanitizer.bypassSecurityTrustHtml(`Specifies how much the element will grow relative to the rest of the flexible items inside the same container. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/flex-grow">MDN docs</a>. Only works if the parent element is a flex element.`)
+    },
+    { 
+      Property: 'grid-column', 
+      DataType: 'number or range', 
+      Description: sanitizer.bypassSecurityTrustHtml(`If the parent is a grid element, this specifies the column this element takes and/or how many it spans. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-column">MDN docs</a>. We accept only the formats of "1" or "1 / span 2" as examples.`)
+    },
+    { 
+      Property: 'grid-row', 
+      DataType: 'number or range', 
+      Description: sanitizer.bypassSecurityTrustHtml(`If the parent is a grid element, this specifies the row this element takes and/or how many it spans. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-row">MDN docs</a>. We accept only the formats of "1" or "1 / span 2" as examples.`)
+    },
+    { 
+      Property: 'visibility', 
+      DataType: '"hidden" or "visible"', 
+      Description: 'The visibility of the element.' 
+    },
+    { 
+      Property: 'opacity', 
+      DataType: 'number', 
+      Description: 'Opacity between 0 and 1.' 
+    },
+    { 
+      Property: 'aspect-ratio', 
+      DataType: 'number', 
+      Description: sanitizer.bypassSecurityTrustHtml(`Forces the element to maintain the aspect ratio. This is ignored if you define <strong>both</strong> a width and height. For this to work, define only one. <strong>Note:</strong> may not function as expected, or at all, on <em>direct</em> grid or flex children.`)
+    },
+  ];
+
+  if (ignoreProperties !== undefined){
+    return props.filter(p => !ignoreProperties.includes(p.Property));
+  }
+
+  return props;
+}

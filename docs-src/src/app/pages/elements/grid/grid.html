@@ -50,36 +50,13 @@
         <app-dt-header>
           <div>Description</div>
         </app-dt-header>
-        <app-dt-row>
-          <app-dt-cell>width</app-dt-cell>
-          <app-dt-cell>pixels or percentage</app-dt-cell>
-          <app-dt-cell>The width of the element.</app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>height</app-dt-cell>
-          <app-dt-cell>pixels or percentage</app-dt-cell>
-          <app-dt-cell>The height of the element.</app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>visibility</app-dt-cell>
-          <app-dt-cell>"hidden" or "visible"</app-dt-cell>
-          <app-dt-cell>The visibility of the element.</app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>padding</app-dt-cell>
-          <app-dt-cell>pixels</app-dt-cell>
-          <app-dt-cell>Padding inside the element.</app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>opacity</app-dt-cell>
-          <app-dt-cell>number</app-dt-cell>
-          <app-dt-cell>How opaque the element is. A number between 0 and 1.</app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>aspect-ratio</app-dt-cell>
-          <app-dt-cell>number or division</app-dt-cell>
-          <app-dt-cell>Forces the element to maintain the aspect ratio. This is ignored if you define <strong>both</strong> a width and height. For this to work, define only one. <strong>Note:</strong> may not function as expected, or at all, on <em>direct</em> grid or flex children.</app-dt-cell>
-        </app-dt-row>
+        @for (prop of CommonCSSProperties; track $index) {
+          <app-dt-row>
+            <app-dt-cell>{{ prop.Property }}</app-dt-cell>
+            <app-dt-cell>{{ prop.DataType }}</app-dt-cell>
+            <app-dt-cell [OverrideContent]="prop.Description"></app-dt-cell>
+          </app-dt-row>
+        }
         <app-dt-row>
           <app-dt-cell>grid-template-columns</app-dt-cell>
           <app-dt-cell>string</app-dt-cell>
@@ -94,21 +71,6 @@
           <app-dt-cell>gap</app-dt-cell>
           <app-dt-cell>pixels</app-dt-cell>
           <app-dt-cell>Specifies the gap between the children of this element.</app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>flex-grow</app-dt-cell>
-          <app-dt-cell>number</app-dt-cell>
-          <app-dt-cell><span>Specifies how much the element will grow relative to the rest of the flexible items inside the same container. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/flex-grow">MDN docs</a>. Only works if the parent element is a flex element.</span></app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>grid-column</app-dt-cell>
-          <app-dt-cell>mixed string</app-dt-cell>
-          <app-dt-cell><span>If the parent is a grid element, this specifies the column this element takes and/or how many it spans. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-column">MDN docs</a>. We accept only the formats of "1" or "1 / span 2" as examples.</span></app-dt-cell>
-        </app-dt-row>
-        <app-dt-row>
-          <app-dt-cell>grid-row</app-dt-cell>
-          <app-dt-cell>mixed string</app-dt-cell>
-          <app-dt-cell><span>If the parent is a grid element, this specifies the row this element takes and/or how many it spans. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-row">MDN docs</a>. We accept only the formats of "1" or "1 / span 2" as examples.</span></app-dt-cell>
         </app-dt-row>
       </app-data-table>
     </app-card-body>
