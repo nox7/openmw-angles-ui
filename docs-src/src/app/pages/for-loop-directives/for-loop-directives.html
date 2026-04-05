@@ -1,0 +1,40 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>For Loop Directives in AnglesUI</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        In AnglesUI, you can use <code ngNonBindable>for (item in array) &lbrace;&rbrace;</code> syntax to iterate over data and render elements dynamically. The data iterated over is data-type agnostic. This allows for complex data structures to be easily rendered in your UI.
+      </p>
+      <p>
+        For this example, we will present Lua code that has an array of "Castle Staff" objects. Then, we'll use a flex container in column direction to generate boxes with their names and job descriptions.
+      </p>
+      <app-code-highlighter [Code]="LuaCode()" Language="lua"></app-code-highlighter>
+      <p>
+        Then, our HTML will look like such:
+      </p>
+      <app-code-highlighter [Code]="HTMLCode()" Language="angular-html"></app-code-highlighter>
+      <p>
+        We'll be presented with the following rendered result (the CSS styling for this is below the image):
+      </p>
+      <app-content-image Alt="Rendered result of a for loop directive" Src="images/examples/for-loop-directive-1.png"></app-content-image>
+      <app-code-highlighter [Code]="CSSCode()" Language="css"></app-code-highlighter>
+      <h2>Common Pitfalls with Loops and Signals</h2>
+      <p>
+        Because we are dealing with signals and for loops, that means we're dealing with a table of data. There may be a time where you mutate an existing table and expect the UI to update when you set your signal value to the same table. This will not work, as the signal will not detect a change in value since the reference is the same. To get around this, you can create a new table and copy the values over, then set your signal to that new table. This will trigger the UI to update as the reference has changed.
+      </p>
+      <p>
+        For example, do <strong>not</strong> do this:
+      </p>
+      <app-code-highlighter [Code]="PitfallCode()" Language="lua"></app-code-highlighter>
+      <p>
+        This will just set the signal to the same table reference - which will not trigger a UI update.
+      </p>
+      <p>
+        Instead, you must get a new table reference. This is required because we do not use index tracking in our for loop (currently, we may support this in the future if performance requires it).
+      </p>
+      <app-code-highlighter [Code]="GoodSignalLuaCode()" Language="lua"></app-code-highlighter>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>

@@ -37,6 +37,11 @@ export const routes: Routes = [
     title: "If Directives in AnglesUI"
   },
   {
+    path: "for-loop-directives",
+    loadComponent: () => import("./pages/for-loop-directives/for-loop-directives").then(m => m.ForLoopDirectives),
+    title: "For Loop Directives in AnglesUI"
+  },
+  {
     path: "elements",
     children: [
       {

@@ -19,4 +19,34 @@ export class IfDirectives {
   }
 </mw-root>
     `);
+
+  public Code2 = signal<string>(`
+<mw-root>
+  @if (1 === 1) {
+    <mw-window></mw-window>
+  }
+</mw-root>
+    `);
+
+  public Code3 = signal<string>(`
+<mw-root>
+  @if (ShowWindow()) {
+    <mw-window></mw-window>
+  } @else {
+     <mw-text>No window</mw-text>
+  }
+</mw-root>
+    `);
+
+  public Code4 = signal<string>(`
+<mw-root>
+  @if (ShowWindow()) {
+    <mw-window></mw-window>
+  } @else if (!ShowWindow() && ShowText()) {
+     <mw-text>No window, but we'll show text.</mw-text>
+  } @else {
+    <mw-text>No conditions passed.</mw-text>
+  }
+</mw-root>
+    `);
 }

@@ -8,10 +8,11 @@ import { DtHeader } from "../../../components/data-table/dt-header/dt-header";
 import { DtRow } from "../../../components/data-table/dt-row/dt-row";
 import { DtCell } from "../../../components/data-table/dt-row/dt-cell/dt-cell";
 import { ContentImage } from "../../../components/content-image/content-image";
+import { Alert } from "../../../components/alert/alert";
 
 @Component({
   selector: 'app-scroll-canvas',
-  imports: [ContentWidthContainer, Card, CardHeader, CardBody, DataTable, DtHeader, DtRow, DtCell, ContentImage],
+  imports: [ContentWidthContainer, Card, CardHeader, CardBody, DataTable, DtHeader, DtRow, DtCell, ContentImage, Alert],
   templateUrl: './scroll-canvas.html',
   styleUrl: './scroll-canvas.scss',
 })
