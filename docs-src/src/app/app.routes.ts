@@ -42,6 +42,11 @@ export const routes: Routes = [
     title: "For Loop Directives in AnglesUI"
   },
   {
+    path: "event-binding",
+    loadComponent: () => import("./pages/event-binding/event-binding").then(m => m.EventBinding),
+    title: "Event Bindings in AnglesUI"
+  },
+  {
     path: "elements",
     children: [
       {

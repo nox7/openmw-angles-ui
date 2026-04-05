@@ -1,0 +1,31 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>Event Bindings in AnglesUI</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        Event bindings in AnglesUI are simple and 1-to-1 with OpenMW's Lua event API for UIs. Additionally, that means the layer that you place your <code>mw-root</code> component on will determine if interactive events even fire. Make sure to <a href="https://openmw.readthedocs.io/en/stable/reference/lua-scripting/user_interface.html#layers" target="_blank">read their docs carefully</a> on which layers are interactive.
+      </p>
+      <p>
+        Let's say we have the following Lua code to register a renderer on an HTML file:
+      </p>
+      <app-code-highlighter [Code]="LuaCode1()" Language="lua"></app-code-highlighter>
+      <p>
+        Then, we would use parenthesis on the element we want to bind the event to, and then assign it a function. For example, if we wanted to bind the <code>mouseClick</code> event to our function registered above, then we'd:
+      </p>
+      <app-code-highlighter [Code]="HTMLCode1()" Language="html"></app-code-highlighter>
+      <p>
+        You may remember that we <strong>only allow</strong> functions and signals to be registered in the rendering context.
+      </p>
+      <h2>Arguments Passed to Event Callbacks</h2>
+      <p>
+        All event callbacks will pass two parameters to the callback function: the first is the event object, and the second is the OpenMW UI element that triggered the event. The data type of the first event object is defined in OpenMW's UI docs for that particular event.
+      </p>
+      <h2>What Are the Events?</h2>
+      <p>
+        We are 1-to-1 with the OpenMW event implementations. You can find them on the UI section of OpenMW's docs. Check each individual element to see which events they support. <a target="_blank" href="https://openmw.readthedocs.io/en/stable/reference/lua-scripting/widgets/widget.html">Here is a link</a> to docs on the Widget UI element, which is the base of all UI elements.
+      </p>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>
