@@ -1,8 +1,16 @@
+.wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--dark), var(--light)) transparent;
+}
+
 .table-container {
   --cell-padding: 8px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   background-color: color-mix(in srgb, var(--dark) 5%, var(--light));
+  min-width: 850px;
 }
 
 .headers {
