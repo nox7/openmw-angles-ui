@@ -1,10 +1,12 @@
 .code-container {
   display: block;
   margin: 1.3rem 0;
-
+  
   pre {
     padding: 12px 0;
     overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--dark), var(--light)) transparent;
   }
 
   code {
