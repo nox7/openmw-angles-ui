@@ -5,10 +5,11 @@ import { CardHeader } from "../../components/card/card-header/card-header";
 import { CardBody } from "../../components/card/card-body/card-body";
 import { ContentImage } from "../../components/content-image/content-image";
 import { CodeHighlighter } from "../../components/code-highlighter/code-highlighter";
+import { RouterLink } from "@angular/router";
 
 @Component({
   selector: 'app-making-a-ui',
-  imports: [ContentWidthContainer, Card, CardHeader, CardBody, ContentImage, CodeHighlighter],
+  imports: [ContentWidthContainer, Card, CardHeader, CardBody, ContentImage, CodeHighlighter, RouterLink],
   templateUrl: './making-a-ui.html',
   styleUrl: './making-a-ui.scss',
 })

@@ -5,7 +5,7 @@
     </app-card-header>
     <app-card-body>
       <p>
-        Now that you have <a href="installation">installed AnglesUI</a>, you can start making your UIs with enhanced-HTML and CSS. We write <em>enhanced</em> here because the HTML syntax is expaned to be a template language that can support if statements, for loops, and variable output directives.
+        Now that you have <a routerLink="installation">installed AnglesUI</a>, you can start making your UIs with enhanced-HTML and CSS. We write <em>enhanced</em> here because the HTML syntax is expaned to be a template language that can support if statements, for loops, and variable output directives.
       </p>
       <h2>File and Folder Structure</h2>
       <p>
@@ -34,7 +34,7 @@
       </p>
       <h2>Introducing CSS</h2>
       <p>
-        You probably noticed the strange syntax in the <code>mw-root</code> attributes. Those are called style attribute bindings. You can read more about those on the <a href="bindings">bindings reference</a> page. For now, they're ugly in our minimal example. We can do all stylings (that don't need variable bindings and are just plain strings) in a separate CSS file.
+        You probably noticed the strange syntax in the <code>mw-root</code> attributes. Those are called style attribute bindings. You can read more about those on the <a routerLink="data-binding">bindings reference</a> page. For now, they're ugly in our minimal example. We can do all stylings (that don't need variable bindings and are just plain strings) in a separate CSS file.
       </p>
       <p>
         AnglesUI enforces that your accompanying CSS file must be in the same directory as your HTML file and named the same, but with a .css extension instead of a .html one. So, create a new file with the same name as your HTML file and make it a .css extension. Then add the following code:
