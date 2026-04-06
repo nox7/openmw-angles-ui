@@ -1,22 +1,185 @@
-.content-container {
-  max-width: var(--content-max-width);
-  margin: 0 auto;
+:host {
+  display: block;
 }
 
-hr {
-  margin-bottom: 1.3rem;
+// ─── Hero ────────────────────────────────────────────────────────────────────
+
+.hero {
+  background-color: var(--primary-color);
+  background-image:
+    radial-gradient(ellipse 70% 90% at 10% 60%, color-mix(in srgb, var(--accent-color) 70%, transparent) 0%, transparent 65%),
+    radial-gradient(ellipse 55% 70% at 90% 10%, color-mix(in srgb, var(--primary-color) 60%, white) 0%, transparent 60%);
+  padding: 96px 40px 88px;
+  color: hsl(0deg 0% 100%);
+
+  @media (max-width: 1200px) {
+    padding: 64px 20px 56px;
+  }
+}
+
+.hero-inner {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hero-title {
+  font-size: clamp(3.5rem, 8vw, 6rem);
+  font-weight: 800;
+  color: hsl(0deg 0% 100%);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-bottom: 20px;
+}
+
+.hero-tagline {
+  font-size: 1.2rem;
+  font-style: italic;
+  color: hsl(0deg 0% 100% / 0.7);
+  margin-bottom: 20px;
+}
+
+.hero-desc {
+  font-size: 1.1rem;
+  max-width: 660px;
+  margin: 0 auto 44px;
+  color: hsl(0deg 0% 100% / 0.85);
+  line-height: 1.7;
+}
+
+.hero-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+}
+
+.hero-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 28px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: var(--heading-font-family);
+  text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.hero-btn-primary {
+  background-color: hsl(0deg 0% 100%);
+  color: var(--primary-color);
+  border: 2px solid hsl(0deg 0% 100%);
+
+  &:hover {
+    background-color: hsl(0deg 0% 90%);
+    border-color: hsl(0deg 0% 90%);
+  }
+}
+
+.hero-btn-outline {
+  background-color: transparent;
+  color: hsl(0deg 0% 100%);
+  border: 2px solid hsl(0deg 0% 100% / 0.5);
+
+  &:hover {
+    background-color: hsl(0deg 0% 100% / 0.1);
+    border-color: hsl(0deg 0% 100% / 0.9);
+  }
+}
+
+// ─── Features ────────────────────────────────────────────────────────────────
+
+.features-section {
+  padding: 80px 40px;
+  background-color: var(--bg-color);
+
+  @media (max-width: 1200px) {
+    padding: 56px 20px;
+  }
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 48px;
+  color: var(--heading-2-font-color);
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.feature-card {
+  background-color: var(--light);
+  border-radius: 10px;
+  padding: 28px;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
+
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--heading-3-font-color);
+  }
+
+  p {
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: var(--body-font-color);
+    opacity: 0.8;
+
+    code {
+      font-family: monospace;
+      font-size: 0.88em;
+      background-color: var(--border-color);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+  }
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background-color: color-mix(in srgb, var(--primary-color) 12%, var(--light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+
+  svg {
+    width: 22px;
+    height: 22px;
+    color: var(--primary-color);
+  }
+}
+
+// ─── About ───────────────────────────────────────────────────────────────────
+
+.about-section {
+  padding: 0 40px 80px;
+
+  @media (max-width: 1200px) {
+    padding: 0 20px 56px;
+  }
 }
 
 .buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
-}
-
-.quote {
-  font-size: 1.5rem;
-  font-style: italic;
-  margin-bottom: calc(var(--paragraph-bottom-margin) * 1.5);
-  color: color-mix(in srgb, var(--dark) 50%, var(--light));
-  text-align: center;
+  gap: 16px;
+  margin-top: var(--paragraph-bottom-margin);
 }

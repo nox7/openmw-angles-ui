@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Card } from "../../components/card/card";
 import { CardHeader } from "../../components/card/card-header/card-header";
 import { CardBody } from "../../components/card/card-body/card-body";
@@ -7,7 +8,7 @@ import { ContentWidthContainer } from "../../components/content-width-container/
 
 @Component({
   selector: 'app-home',
-  imports: [Card, CardHeader, CardBody, Button, ContentWidthContainer],
+  imports: [RouterLink, Card, CardHeader, CardBody, Button, ContentWidthContainer],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

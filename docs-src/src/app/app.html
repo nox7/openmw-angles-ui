@@ -8,7 +8,7 @@
   <app-sidebar></app-sidebar>
 </aside>
 <div class="primary-content-window">
-  <main>
+  <main [class.no-padding]="HasNoPadding()">
     <router-outlet></router-outlet>
   </main>
   <app-footer></app-footer>

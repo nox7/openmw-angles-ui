@@ -4,7 +4,8 @@ export const routes: Routes = [
   {
     path: "",
     loadComponent: () => import("./pages/home/home").then(m => m.Home),
-    title: "AnglesUI | OpenMW UI Framework"
+    title: "AnglesUI | OpenMW UI Framework",
+    data: { noPadding: true }
   },
   {
     path: "installation",

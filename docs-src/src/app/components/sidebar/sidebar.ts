@@ -3,6 +3,7 @@ import { SidebarButton } from "./sidebar-button/sidebar-button";
 import { RouterLink } from "@angular/router";
 import { SidebarButtonGroup } from "./sidebar-button-group/sidebar-button-group";
 import { SidebarService } from './sidebar-service';
+import { ThemeSwitcher } from '../theme-switcher/theme-switcher';
 
 @Component({
   selector: 'app-sidebar',
@@ -18,6 +19,7 @@ import { SidebarService } from './sidebar-service';
 export class Sidebar implements OnDestroy {
   private readonly Element = inject(ElementRef).nativeElement as HTMLElement;
   public readonly SidebarService = inject(SidebarService);
+  public readonly ThemeSwitcher = inject(ThemeSwitcher);
   public WindowClickCallback: (e: MouseEvent) => void;
 
   public constructor() {

@@ -30,3 +30,34 @@ section.links {
     color: color-mix(in srgb, var(--light) 35%, var(--body-font-color));
   }
 }
+
+.theme-toggle-container {
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: none;
+  background-color: transparent;
+  color: var(--body-font-color);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background-color: var(--border-color);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+}
