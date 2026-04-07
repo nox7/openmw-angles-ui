@@ -28,6 +28,10 @@
         Nested rules (a relatively new baseline CSS feature) is supported.
       </p>
       <app-code-highlighter [Code]="NestedRuleCode()" Language="css"></app-code-highlighter>
+      <h3>calc() Function</h3>
+      <p>
+        The <code>calc()</code> function is supported, allowing you to perform calculations to determine CSS property values. For example, the center of the screen on the X axis would be <code>left: calc(50% - calc(800px / 2))</code> if your element was 800px wide.
+      </p>
       <h3>Pseudo-States</h3>
       <p>
         We <strong>do not</strong> support psuedo states such as :hover, :active, :focus, etc.

@@ -28,6 +28,26 @@ export function GetCommonCSSProperties(
       DataType: 'pixels or percentage', 
       Description: 'The height of the element.' 
     },
+    { 
+      Property: 'left', 
+      DataType: 'pixels or percentage', 
+      Description: 'The distance the left side of the element is from the left side of its relative position parent, or the screen.' 
+    },
+    { 
+      Property: 'right', 
+      DataType: 'pixels or percentage', 
+      Description: 'The distance the right side of the element is from the right side of its relative position parent, or the screen.' 
+    },
+    { 
+      Property: 'top', 
+      DataType: 'pixels or percentage', 
+      Description: 'The distance the top side of the element is from the top side of its relative position parent, or the screen.' 
+    },
+    { 
+      Property: 'bottom', 
+      DataType: 'pixels or percentage', 
+      Description: 'The distance the bottom side of the element is from the bottom side of its relative position parent, or the screen.' 
+    },
     {
       Property: "padding",
       DataType: "pixels",
@@ -62,6 +82,16 @@ export function GetCommonCSSProperties(
       Property: 'aspect-ratio', 
       DataType: 'number', 
       Description: sanitizer.bypassSecurityTrustHtml(`Forces the element to maintain the aspect ratio. This is ignored if you define <strong>both</strong> a width and height. For this to work, define only one. <strong>Note:</strong> may not function as expected, or at all, on <em>direct</em> grid or flex children.`)
+    },
+    { 
+      Property: 'container-type', 
+      DataType: '"size"', 
+      Description: sanitizer.bypassSecurityTrustHtml(`Marks the element as a container for use in @container queries. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@container">MDN docs</a>. We only support "size" as a value, which allows you to use the width and height of this element in your container queries.`)
+    },
+    { 
+      Property: 'container-name', 
+      DataType: 'string', 
+      Description: sanitizer.bypassSecurityTrustHtml(`Defines the name of the container to be used in @container queries. See <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@container">MDN docs</a>. If not defined, then container queries are evaluated against the nearest ancestor query container that has the matching container-type for the container query parameter property. For <code>container-type: size</code>, it is "width" or "height".`)
     },
   ];
 
