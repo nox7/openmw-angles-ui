@@ -47,6 +47,12 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["text-align"]          = "textalign",
   ["vertical-align"]      = "verticalalign",
   ["aspect-ratio"]        = "aspectratio",
+  ["align-items"]         = "alignitems",
+  ["justify-content"]     = "justifycontent",
+  ["left"]                = "left",
+  ["top"]                 = "top",
+  ["right"]               = "right",
+  ["bottom"]              = "bottom",
 }
 
 -- Maps the lowercased JS-style property name from a [style.X] binding to the
@@ -94,6 +100,12 @@ local STYLE_BINDING_TO_ATTRIBUTE = {
   ["textalign"]           = "textalign",
   ["verticalalign"]       = "verticalalign",
   ["aspectratio"]         = "aspectratio",
+  ["alignitems"]          = "alignitems",
+  ["justifycontent"]      = "justifycontent",
+  ["left"]                = "left",
+  ["top"]                 = "top",
+  ["right"]               = "right",
+  ["bottom"]              = "bottom",
 }
 
 -- HTML attributes that are structural, behavioral, or content-related and
@@ -429,8 +441,9 @@ end
 ---@param direction string|nil "row" or "column" (default "column").
 ---@param gap number|nil Pixel gap between adjacent children (default 0).
 ---@param containerPixelSize {x: number|nil, y: number|nil}|nil Available container space for flex-grow distribution.
+---@param options {alignItems: string|nil, justifyContent: string|nil}|nil Alignment options. alignItems: "start"|"center"|"end"|"stretch". justifyContent: "start"|"center"|"end"|"stretch".
 ---@return table[] The same `childLayouts` with positions, sizes, and relative sizes resolved.
-function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPixelSize)
+function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPixelSize, options)
   local childCount = #childLayouts
   if (childCount == 0) then
     return childLayouts
@@ -439,6 +452,9 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
   local resolvedDirection = direction or "column"
   local resolvedGap = gap or 0
   local isRow = resolvedDirection == "row"
+
+  local alignItems    = options and options.alignItems    or nil
+  local justifyContent = options and options.justifyContent or nil
 
   local containerMainSize = nil
   local containerCrossSize = nil
@@ -471,7 +487,17 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
       totalGrow = totalGrow + grow
     end
 
-    if (size ~= nil and relativeSize == nil) then
+    -- For justify-content: stretch, implicitly grant grow=1 to children that
+    -- have no explicit main-axis size and no existing grow weight so the
+    -- remaining space is distributed evenly among them.
+    if (justifyContent == "stretch" and mainSize == nil and grow == 0) then
+      child.__anglesFlexGrow = 1
+      totalGrow = totalGrow + 1
+    end
+
+    -- Auto-stretch on the cross axis when alignItems is nil or "stretch".
+    -- When any other explicit alignItems is provided, children keep their own cross-axis size.
+    if ((alignItems == nil or alignItems == "stretch") and size ~= nil and relativeSize == nil) then
       if (isRow and size.y == 0) then
         child.props.relativeSize = Util.vector2(0, 1)
       elseif ((not isRow) and size.x == 0) then
@@ -488,7 +514,25 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
     end
   end
 
+  -- Compute main-axis starting offset for justify-content.
+  -- When grow children are present they fill remaining space so the effective
+  -- total content size equals containerMainSize and the offset is always 0.
   local currentMainOffset = 0
+  -- "stretch" distributes remaining space via implicit grow (handled above); skip offset.
+  if (justifyContent ~= nil and justifyContent ~= "start" and justifyContent ~= "stretch" and containerMainSize ~= nil) then
+    local totalContentMainSize = totalFixedMainSize
+    if (totalGrow > 0) then
+      totalContentMainSize = containerMainSize
+    end
+    local leftover = containerMainSize - totalContentMainSize
+    if (leftover > 0) then
+      if (justifyContent == "end") then
+        currentMainOffset = leftover
+      elseif (justifyContent == "center") then
+        currentMainOffset = math.floor(leftover / 2)
+      end
+    end
+  end
 
   for _, child in ipairs(childLayouts) do
     child.props = child.props or {}
@@ -532,11 +576,41 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
       majorSize = majorSize + grownSize
     end
 
+    -- Compute cross-axis offset for align-items.
+    -- "stretch" is handled above (relativeSize set to fill cross axis); skip offset.
+    local crossOffset = 0
+    if (alignItems ~= nil and alignItems ~= "start" and alignItems ~= "stretch" and containerCrossSize ~= nil) then
+      local childCrossSize = 0
+      local cs  = child.props.size
+      local crs = child.props.relativeSize
+      if (isRow) then
+        if (cs ~= nil and (cs.y or 0) ~= 0) then
+          childCrossSize = cs.y
+        elseif (crs ~= nil and (crs.y or 0) ~= 0) then
+          childCrossSize = (crs.y or 0) * containerCrossSize
+        end
+      else
+        if (cs ~= nil and (cs.x or 0) ~= 0) then
+          childCrossSize = cs.x
+        elseif (crs ~= nil and (crs.x or 0) ~= 0) then
+          childCrossSize = (crs.x or 0) * containerCrossSize
+        end
+      end
+      local remaining = containerCrossSize - childCrossSize
+      if (remaining > 0) then
+        if (alignItems == "end") then
+          crossOffset = remaining
+        elseif (alignItems == "center") then
+          crossOffset = math.floor(remaining / 2)
+        end
+      end
+    end
+
     if (not hasRelativePosition and not hasPosition) then
       if (isRow) then
-        child.props.position = Util.vector2(currentMainOffset, 0)
+        child.props.position = Util.vector2(currentMainOffset, crossOffset)
       else
-        child.props.position = Util.vector2(0, currentMainOffset)
+        child.props.position = Util.vector2(crossOffset, currentMainOffset)
       end
     end
 
@@ -631,7 +705,10 @@ function Renderer:ApplyCustomFlexContainer(layout, childLayouts, meta, innerPixe
     }
   end
 
-  local arrangedChildren = self:ArrangeFlexChildren(childLayouts, meta.direction, meta.gap, innerPixelSize)
+  local arrangedChildren = self:ArrangeFlexChildren(childLayouts, meta.direction, meta.gap, innerPixelSize, {
+    alignItems    = meta.alignItems,
+    justifyContent = meta.justifyContent,
+  })
 
   local paddedContainer = {
     props = {
@@ -1075,6 +1152,60 @@ end
     end
   end
 
+  -- Resolve left/top/right/bottom CSS position properties.
+  -- These override any position already set by ApplyCommonWidgetProperties (X/Y).
+  -- Percentages are resolved against parentPixelSize; right/bottom also use
+  -- the element's own resolved pixel size.
+  -- Skipped once the user has manually dragged or resized the root (position
+  -- is then owned by the drag/resize handlers and must not be clobbered).
+  if (not self._userPositionOverridden) then do
+    local parentW = parentPixelSize and parentPixelSize.x or nil
+    local parentH = parentPixelSize and parentPixelSize.y or nil
+    local leftPx,   leftRel   = self:ParseNumericOrPercent(normalizedProperties["left"],   "Left")
+    local topPx,    topRel    = self:ParseNumericOrPercent(normalizedProperties["top"],    "Top")
+    local rightPx,  rightRel  = self:ParseNumericOrPercent(normalizedProperties["right"],  "Right")
+    local bottomPx, bottomRel = self:ParseNumericOrPercent(normalizedProperties["bottom"], "Bottom")
+
+    local function resolveAxis(px, rel, parentSize)
+      if px ~= nil then return px end
+      if rel ~= nil and parentSize ~= nil then return rel * parentSize end
+      return nil
+    end
+
+    local resolvedLeft   = resolveAxis(leftPx,   leftRel,   parentW)
+    local resolvedTop    = resolveAxis(topPx,    topRel,    parentH)
+    local resolvedRight  = resolveAxis(rightPx,  rightRel,  parentW)
+    local resolvedBottom = resolveAxis(bottomPx, bottomRel, parentH)
+
+    -- left takes precedence over right; top takes precedence over bottom.
+    local posX = nil
+    if resolvedLeft ~= nil then
+      posX = resolvedLeft
+    elseif resolvedRight ~= nil and parentW ~= nil then
+      local elemW = (layoutPixelSize and layoutPixelSize.x) or 0
+      posX = parentW - elemW - resolvedRight
+    end
+
+    local posY = nil
+    if resolvedTop ~= nil then
+      posY = resolvedTop
+    elseif resolvedBottom ~= nil and parentH ~= nil then
+      local elemH = (layoutPixelSize and layoutPixelSize.y) or 0
+      posY = parentH - elemH - resolvedBottom
+    end
+
+    if posX ~= nil or posY ~= nil then
+      local existingPos = layout.props.position
+      local existingX = existingPos and existingPos.x or 0
+      local existingY = existingPos and existingPos.y or 0
+      layout.props.position = Util.vector2(
+        posX ~= nil and posX or existingX,
+        posY ~= nil and posY or existingY
+      )
+      layout.props.relativePosition = nil
+    end
+  end end
+
   local childParentPixelSize = layoutPixelSize
   if (meta ~= nil and (meta.type == "custom-flex" or meta.type == "padding-container" or meta.type == "custom-grid")) then
     childParentPixelSize = self:ResolvePaddedPixelSize(layoutPixelSize, meta.padding)
@@ -1350,7 +1481,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
   end
 
   self:MarkConsumed(consumed, {
-    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha", "visibility", "aspectratio"
+    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha", "visibility", "aspectratio", "left", "top", "right", "bottom"
   })
 
   local requireSize = options ~= nil and options.requireSize == true
@@ -1580,6 +1711,10 @@ function Renderer:BuildResizeFuncs(edgeMargin)
       l.props.position     = Util.vector2(newX, newY)
       l.props.relativePosition = nil
 
+      -- Suppress CSS left/top/right/bottom position overrides after the user
+      -- has manually repositioned or resized the root.
+      rendererRef._userPositionOverridden = true
+
       if (rendererRef.rootElement ~= nil) then
         rendererRef:Rerender()
       end
@@ -1654,6 +1789,10 @@ function Renderer:BuildDraggerFuncs()
 
       rootLayout.props.position         = Util.vector2(newX, newY)
       rootLayout.props.relativePosition = nil
+
+      -- Suppress CSS left/top/right/bottom position overrides after the user
+      -- has manually dragged the root.
+      rendererRef._userPositionOverridden = true
 
       if (rendererRef.rootElement ~= nil) then
         rendererRef.rootElement:update()
@@ -1846,7 +1985,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       Left = 0,
     }
 
-    self:MarkConsumed(consumed, { "name", "padding", "parsedpadding", "direction", "gap" })
+    self:MarkConsumed(consumed, { "name", "padding", "parsedpadding", "direction", "gap", "alignitems", "justifycontent" })
 
     return {
       name = name,
@@ -1857,6 +1996,8 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       direction = allProperties["direction"] or "column",
       gap = self:ToNumber(allProperties["gap"], "Gap") or 0,
       padding = parsedPadding,
+      alignItems = allProperties["alignitems"],
+      justifyContent = allProperties["justifycontent"],
     }
   elseif (tagName == "mw-grid") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true }, tagName)
@@ -1868,7 +2009,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     }
 
     self:MarkConsumed(consumed, {
-      "name", "padding", "parsedpadding", "gap", "rowgap", "columngap", "gridtemplaterows", "gridtemplatecolumns"
+      "name", "padding", "parsedpadding", "gap", "rowgap", "columngap", "gridtemplaterows", "gridtemplatecolumns", "alignitems", "justifycontent"
     })
 
     return {
@@ -1883,6 +2024,8 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       gap = allProperties["gap"],
       rowGap = allProperties["rowgap"],
       columnGap = allProperties["columngap"],
+      alignItems = allProperties["alignitems"],
+      justifyContent = allProperties["justifycontent"],
     }
   elseif (tagName == "mw-text") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
@@ -2427,7 +2570,7 @@ function Renderer:ParseSpacingPair(value, fallback)
   return self:ToNumber(tokens[1], "RowGap"), self:ToNumber(tokens[2], "ColumnGap")
 end
 
----@param trackDefinition any CSS-style track template string (e.g. "1fr 2fr", "100 50%", bare integer "3" for equal columns) or nil.
+---@param trackDefinition any CSS-style track template string (e.g. "1fr 2fr", "100 50%", "repeat(3, 1fr)") or nil.
 ---@return {kind: string, value: number}[] Ordered track descriptors where `kind` is "fr", "px", "percent", or "auto".
 function Renderer:ParseGridTracks(trackDefinition)
   local tracks = {}
@@ -2437,13 +2580,21 @@ function Renderer:ParseGridTracks(trackDefinition)
   end
 
   local definition = tostring(trackDefinition):match("^%s*(.-)%s*$")
-  local count = tonumber(definition)
-  if (count ~= nil and math.floor(count) == count and count > 0 and not string.find(definition, "%s")) then
-    for _ = 1, count do
-      table.insert(tracks, { kind = "fr", value = 1 })
+
+  -- Expand repeat() calls before tokenising.
+  -- Supports: repeat(3, 1fr)  repeat(5, 100px)  repeat(2, 50%)  repeat(4, auto)
+  -- Multiple repeat() calls in the same string are all expanded.
+  definition = definition:gsub("repeat%(%s*(%d+)%s*,%s*(.-)%s*%)", function(countStr, trackStr)
+    local count = tonumber(countStr)
+    if (count == nil or count < 1) then
+      error("Invalid repeat() count: '" .. countStr .. "'")
     end
-    return tracks
-  end
+    local expanded = {}
+    for _ = 1, count do
+      table.insert(expanded, trackStr)
+    end
+    return table.concat(expanded, " ")
+  end)
 
   for token in string.gmatch(definition, "%S+") do
     local trimmed = token:match("^%s*(.-)%s*$")
@@ -2687,9 +2838,9 @@ function Renderer:PrecomputeGridCellSizes(preChildMetas, meta, innerPixelSize)
 end
 
 ---@param childLayouts table[] Child Layout tables to place in the grid.
----@param meta {type: string, padding: table, templateRows: any, templateColumns: any, gap: any, rowGap: any, columnGap: any} Grid metadata.
+---@param meta {type: string, padding: table, templateRows: any, templateColumns: any, gap: any, rowGap: any, columnGap: any, alignItems: string|nil, justifyContent: string|nil} Grid metadata. alignItems/justifyContent accept "start"|"center"|"end"|"stretch".
 ---@param innerPixelSize {x: number|nil, y: number|nil}|nil Inner pixel area of the grid container.
----@return table[] The same `childLayouts` with `props.position` and `props.size` set to grid-computed values.
+---@return table[] The same `childLayouts` with `props.position` set to grid-computed values (child sizes are preserved or resolved from relativeSize relative to cell).
 function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
   local rowGap, columnGap = self:ParseSpacingPair(meta.gap, 0)
   if (meta.rowGap ~= nil) then
@@ -2791,35 +2942,111 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
   local columnStarts = self:BuildGridStarts(columnSizes, columnGap)
   local rowStarts = self:BuildGridStarts(rowSizes, rowGap)
 
-  -- Phase 4: Apply geometry to each child
+  -- Phase 4: Apply geometry to each child.
+  -- justify-content: start/center/end shifts the entire column track group within the container.
+  --                  stretch forces each child's width to fill its cell width.
+  -- align-items:     start/center/end positions each child vertically within its row cell.
+  --                  stretch forces each child's height to fill its cell height.
+  -- Children keep their own size otherwise; relativeSize is resolved against the cell.
+  local justifyContent = meta.justifyContent or "start"
+  local alignItems     = meta.alignItems     or "start"
+
+  -- Compute the column-group horizontal offset for justify-content (not used for stretch).
+  local justifyContentOffsetX = 0
+  if (justifyContent ~= "start" and justifyContent ~= "stretch" and containerWidth ~= nil) then
+    local totalColumnsWidth = 0
+    for _, sz in ipairs(columnSizes) do
+      totalColumnsWidth = totalColumnsWidth + sz
+    end
+    if (#columnSizes > 1) then
+      totalColumnsWidth = totalColumnsWidth + (#columnSizes - 1) * columnGap
+    end
+    local available = containerWidth - totalColumnsWidth
+    if (available > 0) then
+      if (justifyContent == "center") then
+        justifyContentOffsetX = math.floor(available / 2)
+      elseif (justifyContent == "end") then
+        justifyContentOffsetX = available
+      end
+    end
+  end
+
   for i, child in ipairs(childLayouts) do
     local p = placements[i]
 
-    local width = 0
+    -- Compute cell pixel bounds (position of top-left corner + span extents).
+    local cellX = (columnStarts[p.column] or 0) + justifyContentOffsetX
+    local cellY = rowStarts[p.row] or 0
+
+    local cellW = 0
     for c = p.column, p.column + p.columnSpan - 1 do
-      width = width + (columnSizes[c] or 0)
+      cellW = cellW + (columnSizes[c] or 0)
       if (c < p.column + p.columnSpan - 1) then
-        width = width + columnGap
+        cellW = cellW + columnGap
       end
     end
 
-    local height = 0
+    local cellH = 0
     for r = p.row, p.row + p.rowSpan - 1 do
-      height = height + (rowSizes[r] or 0)
+      cellH = cellH + (rowSizes[r] or 0)
       if (r < p.row + p.rowSpan - 1) then
-        height = height + rowGap
+        cellH = cellH + rowGap
       end
     end
 
-    child.props.position = Util.vector2(columnStarts[p.column] or 0, rowStarts[p.row] or 0)
-    child.props.relativePosition = nil
-    child.props.relativeSize = nil
-    child.props.size = Util.vector2(width, height)
+    -- Resolve the child's effective pixel size.
+    -- If the child has a relativeSize, evaluate it against the cell dimensions and
+    -- convert to an absolute size so OpenMW doesn't resolve it against the padded
+    -- container (which is the wrong parent for per-cell percentages).
+    child.props = child.props or {}
+    local childAbsSize = child.props.size
+    local childRelSize = child.props.relativeSize
 
-    child.__anglesGridColumn = nil
-    child.__anglesGridRow = nil
+    local childW = 0
+    local childH = 0
+
+    if (childRelSize ~= nil) then
+      local baseW = childAbsSize and (childAbsSize.x or 0) or 0
+      local baseH = childAbsSize and (childAbsSize.y or 0) or 0
+      childW = (childRelSize.x or 0) * cellW + baseW
+      childH = (childRelSize.y or 0) * cellH + baseH
+      child.props.size     = Util.vector2(childW, childH)
+      child.props.relativeSize = nil
+    elseif (childAbsSize ~= nil) then
+      childW = childAbsSize.x or 0
+      childH = childAbsSize.y or 0
+    end
+
+    -- Apply stretch: override child dimensions to fill the full cell on the relevant axis.
+    if (justifyContent == "stretch") then
+      childW = cellW
+    end
+    if (alignItems == "stretch") then
+      childH = cellH
+    end
+    if (justifyContent == "stretch" or alignItems == "stretch") then
+      child.props.size     = Util.vector2(childW, childH)
+      child.props.relativeSize = nil
+    end
+
+    -- Compute vertical alignment offset within the row cell (align-items).
+    local offsetY = 0
+    local availY = cellH - childH
+    if (availY > 0) then
+      if (alignItems == "center") then
+        offsetY = math.floor(availY / 2)
+      elseif (alignItems == "end") then
+        offsetY = availY
+      end
+    end
+
+    child.props.position         = Util.vector2(cellX, cellY + offsetY)
+    child.props.relativePosition = nil
+
+    child.__anglesGridColumn     = nil
+    child.__anglesGridRow        = nil
     child.__anglesGridColumnSpan = nil
-    child.__anglesGridRowSpan = nil
+    child.__anglesGridRowSpan    = nil
   end
 
   return childLayouts
@@ -2836,10 +3063,16 @@ function Renderer:RebuildCustomGridLayout(layout, innerPixelSize)
   -- Restore original placement metadata before each arrangement so spans are re-read
   for i, child in ipairs(state.childLayouts) do
     local original = state.originalChildMeta[i]
-    child.__anglesGridColumn = original.gridColumn
-    child.__anglesGridRow = original.gridRow
+    child.__anglesGridColumn     = original.gridColumn
+    child.__anglesGridRow        = original.gridRow
     child.__anglesGridColumnSpan = original.gridColumnSpan
-    child.__anglesGridRowSpan = original.gridRowSpan
+    child.__anglesGridRowSpan    = original.gridRowSpan
+    -- Restore size/relativeSize so ArrangeGridChildren re-resolves from scratch.
+    child.props              = child.props or {}
+    child.props.size         = original.size
+    child.props.relativeSize = original.relativeSize
+    child.props.position     = original.position
+    child.props.relativePosition = original.relativePosition
   end
 
   local arrangedChildren = self:ArrangeGridChildren(state.childLayouts, state.meta, innerPixelSize)
@@ -2881,7 +3114,8 @@ function Renderer:RebuildCustomFlexLayout(layout, innerPixelSize)
   end
 
   local arrangedChildren = self:ArrangeFlexChildren(
-    state.childLayouts, state.meta.direction, state.meta.gap, innerPixelSize
+    state.childLayouts, state.meta.direction, state.meta.gap, innerPixelSize,
+    { alignItems = state.meta.alignItems, justifyContent = state.meta.justifyContent }
   )
 
   state.paddedContainer.content = UI.content(arrangedChildren)
@@ -3284,14 +3518,22 @@ end
 ---@param meta table Grid metadata (padding, templateRows, templateColumns, gap, rowGap, columnGap).
 ---@param innerPixelSize {x: number|nil, y: number|nil}|nil Available inner pixel area of the grid.
 function Renderer:ApplyCustomGridContainer(layout, childLayouts, meta, innerPixelSize)
-  -- Snapshot original placement metadata so RebuildCustomGridLayout can restore it
+  -- Snapshot original placement metadata AND child props so RebuildCustomGridLayout
+  -- can restore a clean slate before each re-arrangement pass.
+  -- ArrangeGridChildren resolves relativeSize into absolute size, so without this
+  -- snapshot subsequent rebuilds would lose the original relative dimensions.
   local originalChildMeta = {}
   for i, child in ipairs(childLayouts) do
+    child.props = child.props or {}
     originalChildMeta[i] = {
-      gridColumn = child.__anglesGridColumn,
-      gridRow = child.__anglesGridRow,
+      gridColumn     = child.__anglesGridColumn,
+      gridRow        = child.__anglesGridRow,
       gridColumnSpan = child.__anglesGridColumnSpan,
-      gridRowSpan = child.__anglesGridRowSpan,
+      gridRowSpan    = child.__anglesGridRowSpan,
+      size           = child.props.size,
+      relativeSize   = child.props.relativeSize,
+      position       = child.props.position,
+      relativePosition = child.props.relativePosition,
     }
   end
 
