@@ -53,6 +53,7 @@ local CSS_PROPERTY_TO_ATTRIBUTE = {
   ["top"]                 = "top",
   ["right"]               = "right",
   ["bottom"]              = "bottom",
+  ["position"]            = "cssposition",
 }
 
 -- Maps the lowercased JS-style property name from a [style.X] binding to the
@@ -106,6 +107,7 @@ local STYLE_BINDING_TO_ATTRIBUTE = {
   ["top"]                 = "top",
   ["right"]               = "right",
   ["bottom"]              = "bottom",
+  ["position"]            = "cssposition",
 }
 
 -- HTML attributes that are structural, behavioral, or content-related and
@@ -1070,8 +1072,9 @@ end
 ---@param ancestors Node[]|nil Ordered ancestor chain from root to this node's parent for CSS matching.
 ---@param containerContext {pixelSize: {x:number,y:number}|nil, named: table<string,{x:number,y:number}>}|nil Container query size context.
 ---@return table The OpenMW Layout table with props, content, and events fully populated.
-function Renderer:BuildLayoutTree(node, parentPixelSize, ancestors, containerContext)
+function Renderer:BuildLayoutTree(node, parentPixelSize, ancestors, containerContext, positionAncestors)
 ancestors = ancestors or {}
+positionAncestors = positionAncestors or {}
 local layout, meta = self:GetEngineUIElement(node, ancestors, containerContext)
 local normalizedProperties = self:ParseAcceptedProperties(node, ancestors, containerContext)
 
@@ -1209,15 +1212,43 @@ end
     end
   end
 
+  -- Append this node to the position-ancestor chain so children can find the
+  -- nearest 'position: relative' containing block.
+  local childPositionAncestors = {}
+  for _, entry in ipairs(positionAncestors) do
+    table.insert(childPositionAncestors, entry)
+  end
+  table.insert(childPositionAncestors, {
+    pixelSize   = layoutPixelSize,
+    cssPosition = normalizedProperties["cssposition"],
+  })
+
   -- Resolve left/top/right/bottom CSS position properties.
-  -- These override any position already set by ApplyCommonWidgetProperties (X/Y).
-  -- Percentages are resolved against parentPixelSize; right/bottom also use
-  -- the element's own resolved pixel size.
-  -- Skipped once the user has manually dragged or resized the root (position
-  -- is then owned by the drag/resize handlers and must not be clobbered).
-  if (not self._userPositionOverridden) then do
-    local parentW = parentPixelSize and parentPixelSize.x or nil
-    local parentH = parentPixelSize and parentPixelSize.y or nil
+  -- Only applies when this element has 'position: absolute'.
+  -- The containing block is the nearest ancestor with 'position: relative' or 'position: absolute';
+  -- if none exists, UI.screenSize() is used as the containing block.
+  -- For mw-root specifically, skipped once the user has manually dragged or resized it
+  -- (position is then owned by the drag/resize handlers and must not be clobbered).
+  -- For all other elements the drag/resize override does not apply.
+  local isRoot = (node.tagName == "mw-root")
+  if (not (isRoot and self._userPositionOverridden) and normalizedProperties["cssposition"] == "absolute") then do
+    -- Find the nearest ancestor with position: relative, scanning backwards.
+    local containingPixelSize = nil
+    for i = #positionAncestors, 1, -1 do
+      local entry = positionAncestors[i]
+      if (entry.cssPosition == "relative" or entry.cssPosition == "absolute") then
+        containingPixelSize = entry.pixelSize
+        break
+      end
+    end
+    -- Fall back to screen size when no positioned ancestor exists.
+    if (containingPixelSize == nil) then
+      local screen = UI.screenSize()
+      containingPixelSize = { x = screen.x, y = screen.y }
+    end
+
+    local parentW = containingPixelSize.x
+    local parentH = containingPixelSize.y
 
     local resolvedLeft   = self:ResolveToPixels(normalizedProperties["left"],   parentW, "Left")
     local resolvedTop    = self:ResolveToPixels(normalizedProperties["top"],    parentH, "Top")
@@ -1398,7 +1429,7 @@ end
             effectiveParentPixelSize = cellSize
           end
         end
-        table.insert(childLayouts, self:BuildLayoutTree(childNode, effectiveParentPixelSize, childAncestors, childContainerContext))
+        table.insert(childLayouts, self:BuildLayoutTree(childNode, effectiveParentPixelSize, childAncestors, childContainerContext, childPositionAncestors))
       end
     end
   end
@@ -1528,7 +1559,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
   end
 
   self:MarkConsumed(consumed, {
-    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha", "visibility", "aspectratio", "left", "top", "right", "bottom"
+    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha", "visibility", "aspectratio", "left", "top", "right", "bottom", "cssposition"
   })
 
   local requireSize = options ~= nil and options.requireSize == true
