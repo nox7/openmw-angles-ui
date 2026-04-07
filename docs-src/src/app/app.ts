@@ -7,10 +7,11 @@ import { Sidebar } from "./components/sidebar/sidebar";
 import { Footer } from "./components/footer/footer";
 import { SidebarService } from './components/sidebar/sidebar-service';
 import { ThemeSwitcher } from './components/theme-switcher/theme-switcher';
+import { PageLoadingBar } from "./components/page-loading-bar/page-loading-bar";
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Topbar, Sidebar, Footer],
+  imports: [RouterOutlet, Topbar, Sidebar, Footer, PageLoadingBar],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

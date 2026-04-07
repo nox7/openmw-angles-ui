@@ -1,0 +1,59 @@
+@keyframes nav-start-bar {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 35%;
+  }
+}
+
+@keyframes nav-end-bar {
+  from {
+    width: 35%;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+:host {
+  position: fixed;
+  z-index: 100;
+}
+
+#page-loading-bar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 6px;
+  width: 100%;
+  background-color: color-mix(in srgb, var(--light) 80%, var(--dark));
+  z-index: 10000;
+
+  .inner-bar {
+    height: 100%;
+    background-color: var(--primary-color);
+    width: 0%;
+  }
+
+  &.nav-start {
+    display: block;
+
+    .inner-bar {
+      animation: nav-start-bar 350ms 1;
+      animation-fill-mode: forwards;
+    }
+  }
+
+  &.nav-end {
+    display: block;
+
+    .inner-bar {
+      animation: nav-end-bar 200ms 1;
+      animation-fill-mode: forwards;
+    }
+  }
+}

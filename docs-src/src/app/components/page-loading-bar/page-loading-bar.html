@@ -1,0 +1,8 @@
+<div 
+  id="page-loading-bar"
+  [class.nav-start]="NavigationState() === 'start'"
+  [class.nav-end]="NavigationState() === 'end'"
+  (animationend)="PageLoadingBarAnimationEnd($event)"
+  >
+  <div class="inner-bar"></div>
+</div>
