@@ -48,6 +48,11 @@ export const routes: Routes = [
     title: "Event Bindings in AnglesUI"
   },
   {
+    path: "bugs-and-support",
+    loadComponent: () => import("./pages/bugs-and-support/bugs-and-support").then(m => m.BugsAndSupport),
+    title: "Bugs and Support | AnglesUI"
+  },
+  {
     path: "elements",
     children: [
       {
