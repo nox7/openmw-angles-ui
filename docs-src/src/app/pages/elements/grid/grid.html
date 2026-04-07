@@ -60,17 +60,27 @@
         <app-dt-row>
           <app-dt-cell>grid-template-columns</app-dt-cell>
           <app-dt-cell>string</app-dt-cell>
-          <app-dt-cell>Defines the number of columns and their size in the grid. Example of three columns all equal size: "1fr 1fr 1fr". Example of 2 columns where the second one takes up exactly 200 pixels: "1fr 200px".</app-dt-cell>
+          <app-dt-cell>Defines the number of columns and their size in the grid. Example of three columns all equal size: "1fr 1fr 1fr". Example of 2 columns where the second one takes up exactly 200 pixels: "1fr 200px". Also accepts repeat(Num, Size) such as repeat(3, 1fr) for three equal cells.</app-dt-cell>
         </app-dt-row>
         <app-dt-row>
           <app-dt-cell>grid-template-rows</app-dt-cell>
           <app-dt-cell>string</app-dt-cell>
-          <app-dt-cell>Defines the number of rows and their size in the grid. Example of three rows all equal size: "1fr 1fr 1fr". Example of 2 rows where the second one takes up exactly 200 pixels: "1fr 200px".</app-dt-cell>
+          <app-dt-cell>Defines the number of rows and their size in the grid. Example of three rows all equal size: "1fr 1fr 1fr". Example of 2 rows where the second one takes up exactly 200 pixels: "1fr 200px". Also accepts repeat(Num, Size) such as repeat(3, 1fr) for three equal cells.</app-dt-cell>
         </app-dt-row>
         <app-dt-row>
           <app-dt-cell>gap</app-dt-cell>
           <app-dt-cell>pixels</app-dt-cell>
           <app-dt-cell>Specifies the gap between the children of this element.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>justify-content</app-dt-cell>
+          <app-dt-cell>"start", "center", "end", "stretch"</app-dt-cell>
+          <app-dt-cell>Specifies the alignment of the children along the major axis.</app-dt-cell>
+        </app-dt-row>
+        <app-dt-row>
+          <app-dt-cell>align-items</app-dt-cell>
+          <app-dt-cell>"start", "center", "end", "stretch"</app-dt-cell>
+          <app-dt-cell>Specifies the alignment of the children along the cross axis.</app-dt-cell>
         </app-dt-row>
       </app-data-table>
     </app-card-body>
