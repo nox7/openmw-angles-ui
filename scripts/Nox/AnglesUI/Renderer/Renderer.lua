@@ -1115,6 +1115,63 @@ end
 
   local layoutPixelSize = self:ResolveLayoutPixelSize(layout, parentPixelSize)
 
+  -- calc() post-resolution for width, height, x, and y.
+  -- ApplyCommonWidgetProperties calls ParseNumericOrPercent which returns (nil,nil)
+  -- for calc() strings, so those axes are left unset on layout.props at build time.
+  -- Here we have parentPixelSize available, so we can evaluate them fully.
+  do
+    local function isCalc(v)
+      return type(v) == "string" and v:match("^%s*calc%s*%(") ~= nil
+    end
+
+    local widthAttr  = normalizedProperties["width"]
+    local heightAttr = normalizedProperties["height"]
+    local xAttr      = normalizedProperties["x"]
+    local yAttr      = normalizedProperties["y"]
+
+    local parentW = parentPixelSize and parentPixelSize.x or nil
+    local parentH = parentPixelSize and parentPixelSize.y or nil
+
+    if (isCalc(widthAttr) or isCalc(heightAttr)) then
+      local calcW = isCalc(widthAttr)  and self:ResolveToPixels(widthAttr,  parentW, "Width")  or nil
+      local calcH = isCalc(heightAttr) and self:ResolveToPixels(heightAttr, parentH, "Height") or nil
+      if (calcW ~= nil or calcH ~= nil) then
+        local cur = layout.props.size
+        local curW = cur and cur.x or 0
+        local curH = cur and cur.y or 0
+        local newW = calcW ~= nil and calcW or curW
+        local newH = calcH ~= nil and calcH or curH
+        layout.props.size = Util.vector2(newW, newH)
+        -- If only one axis was calc(), clear the relativeSize for that axis so the
+        -- two size props don't conflict.
+        if (calcW ~= nil and layout.props.relativeSize ~= nil) then
+          local rs = layout.props.relativeSize
+          layout.props.relativeSize = rs.y ~= 0 and Util.vector2(0, rs.y) or nil
+        end
+        if (calcH ~= nil and layout.props.relativeSize ~= nil) then
+          local rs = layout.props.relativeSize
+          layout.props.relativeSize = rs.x ~= 0 and Util.vector2(rs.x, 0) or nil
+        end
+        layoutPixelSize = self:ResolveLayoutPixelSize(layout, parentPixelSize)
+      end
+    end
+
+    if (isCalc(xAttr) or isCalc(yAttr)) then
+      local calcX = isCalc(xAttr) and self:ResolveToPixels(xAttr, parentW, "X") or nil
+      local calcY = isCalc(yAttr) and self:ResolveToPixels(yAttr, parentH, "Y") or nil
+      if (calcX ~= nil or calcY ~= nil) then
+        local cur = layout.props.position
+        local curX = cur and cur.x or 0
+        local curY = cur and cur.y or 0
+        layout.props.position = Util.vector2(
+          calcX ~= nil and calcX or curX,
+          calcY ~= nil and calcY or curY
+        )
+        layout.props.relativePosition = nil
+      end
+    end
+  end
+
   -- Aspect-ratio post-resolution: when aspect-ratio was paired with a relative
   -- dimension in ApplyCommonWidgetProperties the constraint was deferred until the
   -- parent pixel size became known here.  Now that we have resolved pixel extents,
@@ -1161,21 +1218,11 @@ end
   if (not self._userPositionOverridden) then do
     local parentW = parentPixelSize and parentPixelSize.x or nil
     local parentH = parentPixelSize and parentPixelSize.y or nil
-    local leftPx,   leftRel   = self:ParseNumericOrPercent(normalizedProperties["left"],   "Left")
-    local topPx,    topRel    = self:ParseNumericOrPercent(normalizedProperties["top"],    "Top")
-    local rightPx,  rightRel  = self:ParseNumericOrPercent(normalizedProperties["right"],  "Right")
-    local bottomPx, bottomRel = self:ParseNumericOrPercent(normalizedProperties["bottom"], "Bottom")
 
-    local function resolveAxis(px, rel, parentSize)
-      if px ~= nil then return px end
-      if rel ~= nil and parentSize ~= nil then return rel * parentSize end
-      return nil
-    end
-
-    local resolvedLeft   = resolveAxis(leftPx,   leftRel,   parentW)
-    local resolvedTop    = resolveAxis(topPx,    topRel,    parentH)
-    local resolvedRight  = resolveAxis(rightPx,  rightRel,  parentW)
-    local resolvedBottom = resolveAxis(bottomPx, bottomRel, parentH)
+    local resolvedLeft   = self:ResolveToPixels(normalizedProperties["left"],   parentW, "Left")
+    local resolvedTop    = self:ResolveToPixels(normalizedProperties["top"],    parentH, "Top")
+    local resolvedRight  = self:ResolveToPixels(normalizedProperties["right"],  parentW, "Right")
+    local resolvedBottom = self:ResolveToPixels(normalizedProperties["bottom"], parentH, "Bottom")
 
     -- left takes precedence over right; top takes precedence over bottom.
     local posX = nil
@@ -2484,9 +2531,163 @@ function Renderer:ParsePadding(paddingString)
   }
 end
 
+---@param innerExpr string The content inside calc( ... ) — may itself contain nested calc() calls.
+---@param parentAxisSize number|nil Resolved pixel size of the parent along this axis; required for "%" tokens.
+---@param propertyName string Used in error messages on parse failure.
+---@return number|nil Resolved pixel value, or nil when a percentage token could not be resolved.
+function Renderer:EvalCalc(innerExpr, parentAxisSize, propertyName)
+  local s   = tostring(innerExpr)
+  local pos = 1
+
+  local function skipWS()
+    while pos <= #s and s:sub(pos, pos):match("%s") do pos = pos + 1 end
+  end
+
+  local parseExpr  -- forward declaration
+
+  local function parseAtom()
+    skipWS()
+    -- Nested calc(...)
+    if s:sub(pos, pos + 4) == "calc(" then
+      pos = pos + 5
+      local val = parseExpr()
+      skipWS()
+      if s:sub(pos, pos) ~= ")" then
+        error("[" .. (propertyName or "?") .. "] calc(): expected ')' in nested calc()")
+      end
+      pos = pos + 1
+      return val
+    end
+    -- Parenthesised sub-expression
+    if s:sub(pos, pos) == "(" then
+      pos = pos + 1
+      local val = parseExpr()
+      skipWS()
+      if s:sub(pos, pos) ~= ")" then
+        error("[" .. (propertyName or "?") .. "] calc(): expected ')'")
+      end
+      pos = pos + 1
+      return val
+    end
+    -- Numeric literal (optional sign, integer or decimal)
+    local numStr = s:match("^[%+%-]?%d+%.?%d*", pos)
+    if (numStr == nil) then
+      numStr = s:match("^[%+%-]?%.%d+", pos)
+    end
+    if (numStr ~= nil) then
+      local num = tonumber(numStr)
+      pos = pos + #numStr
+      skipWS()
+      -- Unit suffix
+      local unit2 = s:sub(pos, pos + 1)
+      local unit1 = s:sub(pos, pos)
+      if (unit2 == "px") then
+        pos = pos + 2
+        return num
+      elseif (unit1 == "%") then
+        pos = pos + 1
+        if (parentAxisSize ~= nil) then
+          return (num / 100) * parentAxisSize
+        end
+        return nil  -- unresolvable percentage
+      elseif (unit1:match("[a-zA-Z]")) then
+        -- Unknown/unsupported CSS unit — skip and treat as zero to avoid hard errors
+        while pos <= #s and s:sub(pos, pos):match("[a-zA-Z]") do pos = pos + 1 end
+        return 0
+      else
+        -- Bare number → pixels
+        return num
+      end
+    end
+    error("[" .. (propertyName or "?") .. "] calc(): unexpected token at position " .. pos .. " in: " .. s)
+  end
+
+  local function parseTerm()
+    local left = parseAtom()
+    skipWS()
+    while pos <= #s do
+      local op = s:sub(pos, pos)
+      if (op == "*" or op == "/") then
+        pos = pos + 1
+        local right = parseAtom()
+        if (left ~= nil and right ~= nil) then
+          if (op == "*") then
+            left = left * right
+          elseif (right ~= 0) then
+            left = left / right
+          else
+            error("[" .. (propertyName or "?") .. "] calc(): division by zero")
+          end
+        else
+          left = nil
+        end
+        skipWS()
+      else
+        break
+      end
+    end
+    return left
+  end
+
+  parseExpr = function()
+    local left = parseTerm()
+    skipWS()
+    while pos <= #s do
+      local op = s:sub(pos, pos)
+      if (op == "+" or op == "-") then
+        pos = pos + 1
+        -- CSS spec: + and - must be surrounded by whitespace to distinguish from
+        -- a signed number token.  We've already consumed leading whitespace above;
+        -- consume trailing whitespace before the right operand.
+        skipWS()
+        local right = parseTerm()
+        if (left ~= nil and right ~= nil) then
+          left = op == "+" and (left + right) or (left - right)
+        else
+          left = nil
+        end
+        skipWS()
+      else
+        break
+      end
+    end
+    return left
+  end
+
+  local ok, result = pcall(parseExpr)
+  if (not ok) then
+    error("[" .. (propertyName or "?") .. "] Invalid calc() expression '" .. tostring(innerExpr) .. "': " .. tostring(result))
+  end
+  return result
+end
+
+---@param value any A number, "200", "50%", "200px", or a "calc(...)" expression string.
+---@param parentAxisSize number|nil Resolved parent pixel size for this axis; required for "%" and calc() with "%".
+---@param propertyName string Used in error messages.
+---@return number|nil Resolved pixel value, or nil when the value is nil or a percentage without a known parent size.
+function Renderer:ResolveToPixels(value, parentAxisSize, propertyName)
+  if (value == nil) then return nil end
+
+  -- Detect top-level calc(...)
+  if (type(value) == "string") then
+    local inner = value:match("^%s*calc%s*%((.*)%)%s*$")
+    if (inner ~= nil) then
+      return self:EvalCalc(inner, parentAxisSize, propertyName)
+    end
+  end
+
+  local px, rel = self:ParseNumericOrPercent(value, propertyName)
+  if (px ~= nil) then return px end
+  if (rel ~= nil) then
+    if (parentAxisSize ~= nil) then return rel * parentAxisSize end
+    return nil
+  end
+  return nil
+end
+
 ---@param value any A number or a string such as "200" or "50%".
 ---@param propertyName string Used in error messages on parse failure.
----@return number|nil pixelValue, number|nil relativeValue Exactly one of the two return values will be non-nil.
+---@return number|nil pixelValue, number|nil relativeValue Exactly one of the two return values will be non-nil. Both nil when value is a calc() expression (handled by ResolveToPixels / post-processing in BuildLayoutTree).
 function Renderer:ParseNumericOrPercent(value, propertyName)
   if (value == nil) then
     return nil, nil
@@ -2498,6 +2699,14 @@ function Renderer:ParseNumericOrPercent(value, propertyName)
 
   if (type(value) == "string") then
     local trimmed = value:match("^%s*(.-)%s*$")
+
+    -- calc() expressions require parentAxisSize to resolve; return (nil,nil) so
+    -- callers that lack the parent size simply skip those axes, and BuildLayoutTree
+    -- post-processing will apply them once parentPixelSize is available.
+    if (trimmed:match("^calc%s*%(") ~= nil) then
+      return nil, nil
+    end
+
     local percent = string.match(trimmed, "^([%+%-]?%d+%.?%d*)%%$")
     if (percent ~= nil) then
       return nil, tonumber(percent) / 100
