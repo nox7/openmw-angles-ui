@@ -29,24 +29,29 @@ export function GetCommonCSSProperties(
       Description: 'The height of the element.' 
     },
     { 
+      Property: 'position', 
+      DataType: '"absolute" or "relative"', 
+      Description: 'Specifies the positioning method for the element. "absolute" positions the element relative to its nearest positioned ancestor, while "relative" positions it relative to its normal position.' 
+    },
+    { 
       Property: 'left', 
       DataType: 'pixels or percentage', 
-      Description: 'The distance the left side of the element is from the left side of its relative position parent, or the screen.' 
+      Description: 'The distance the left side of the element is from the left side of its relative position parent, or the screen. Does not apply unless the element is absolutely positioned.' 
     },
     { 
       Property: 'right', 
       DataType: 'pixels or percentage', 
-      Description: 'The distance the right side of the element is from the right side of its relative position parent, or the screen.' 
+      Description: 'The distance the right side of the element is from the right side of its relative position parent, or the screen. Does not apply unless the element is absolutely positioned.' 
     },
     { 
       Property: 'top', 
       DataType: 'pixels or percentage', 
-      Description: 'The distance the top side of the element is from the top side of its relative position parent, or the screen.' 
+      Description: 'The distance the top side of the element is from the top side of its relative position parent, or the screen. Does not apply unless the element is absolutely positioned.' 
     },
     { 
       Property: 'bottom', 
       DataType: 'pixels or percentage', 
-      Description: 'The distance the bottom side of the element is from the bottom side of its relative position parent, or the screen.' 
+      Description: 'The distance the bottom side of the element is from the bottom side of its relative position parent, or the screen. Does not apply unless the element is absolutely positioned.' 
     },
     {
       Property: "padding",
