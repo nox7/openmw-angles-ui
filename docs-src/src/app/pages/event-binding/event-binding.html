@@ -22,6 +22,12 @@
       <p>
         All event callbacks will pass two parameters to the callback function: the first is the event object, and the second is the OpenMW UI element that triggered the event. The data type of the first event object is defined in OpenMW's UI docs for that particular event.
       </p>
+      <p>
+        Use <code>$event1</code> and <code>$event2</code> to access these parameters in your registered callable for events. You can put them in any order you want (in case you need to pass your own custom arguments).
+      </p>
+      <app-alert>
+        Only callables you registered in your rendering context can be used for event bindings. Additionally, the syntax dictates that you write it as a function call and not just the function name.
+      </app-alert>
       <h2>What Are the Events?</h2>
       <p>
         We are 1-to-1 with the OpenMW event implementations. You can find them on the UI section of OpenMW's docs. Check each individual element to see which events they support. <a target="_blank" href="https://openmw.readthedocs.io/en/stable/reference/lua-scripting/widgets/widget.html">Here is a link</a> to docs on the Widget UI element, which is the base of all UI elements.
