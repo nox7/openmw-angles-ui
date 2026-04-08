@@ -9,4 +9,5 @@ return {
   "mw-hr";
   "mw-widget";
   "mw-scroll-canvas";
+  "mw-host";
 };

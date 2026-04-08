@@ -484,6 +484,16 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
       end
     end
 
+    -- Estimate the main-axis contribution of auto-sized text elements so that
+    -- subsequent flex children are not placed at the same offset (overlap).
+    -- We use the element's textSize prop (or 16 as a sensible default) as an
+    -- approximation; the actual rendered height is computed by OpenMW at
+    -- update() time and may differ slightly.
+    if (mainSize == nil and (not isRow) and child.type == UI.TYPE.Text and child.props.autoSize == true) then
+      mainSize = child.props.textSize or 16
+      totalFixedMainSize = totalFixedMainSize + mainSize
+    end
+
     local grow = child.__anglesFlexGrow or 0
     if (grow > 0) then
       totalGrow = totalGrow + grow
@@ -546,6 +556,12 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
     local majorSize = 0
     if (size ~= nil) then
       majorSize = isRow and (size.x or 0) or (size.y or 0)
+    end
+
+    -- Mirror the first-loop estimate so currentMainOffset advances by the
+    -- expected text height even though props.size is nil for autoSize text.
+    if (majorSize == 0 and (not isRow) and child.type == UI.TYPE.Text and child.props.autoSize == true) then
+      majorSize = child.props.textSize or 16
     end
 
     local grow = child.__anglesFlexGrow or 0
@@ -620,7 +636,7 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
 
     -- After grow is resolved, rebuild any nested custom layouts (grid, flex, or scroll canvas)
     -- using the child's now-resolved pixel dimensions.
-    local needsRebuild = (child.__anglesCustomGrid ~= nil or child.__anglesNestedFlexes ~= nil or child.__anglesNestedScrollCanvases ~= nil or child.__anglesCustomScrollCanvas ~= nil)
+    local needsRebuild = (child.__anglesCustomGrid ~= nil or child.__anglesNestedFlexes ~= nil or child.__anglesNestedGrids ~= nil or child.__anglesNestedScrollCanvases ~= nil or child.__anglesCustomScrollCanvas ~= nil)
     if (needsRebuild) then
       local childSize = child.props.size
       local childRelSize = child.props.relativeSize
@@ -655,6 +671,15 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
           if (nestedFlex.__anglesCustomFlex ~= nil) then
             local nestedInnerSize = self:ResolvePaddedPixelSize(childPixelSize, nestedFlex.__anglesCustomFlex.meta.padding)
             self:RebuildCustomFlexLayout(nestedFlex, nestedInnerSize)
+          end
+        end
+      end
+
+      if (child.__anglesNestedGrids ~= nil) then
+        for _, nestedGrid in ipairs(child.__anglesNestedGrids) do
+          if (nestedGrid.__anglesCustomGrid ~= nil) then
+            local nestedInnerSize = self:ResolvePaddedPixelSize(childPixelSize, nestedGrid.__anglesCustomGrid.meta.padding)
+            self:RebuildCustomGridLayout(nestedGrid, nestedInnerSize)
           end
         end
       end
@@ -1479,6 +1504,21 @@ end
         end
         table.insert(layout.__anglesNestedFlexes, childLayout)
       end
+      -- Bubble grid tracking up so an ancestor flex can rebuild after grow resolution.
+      if (childLayout.__anglesCustomGrid ~= nil) then
+        if (layout.__anglesNestedGrids == nil) then
+          layout.__anglesNestedGrids = {}
+        end
+        table.insert(layout.__anglesNestedGrids, childLayout)
+      end
+      if (childLayout.__anglesNestedGrids ~= nil) then
+        if (layout.__anglesNestedGrids == nil) then
+          layout.__anglesNestedGrids = {}
+        end
+        for _, entry in ipairs(childLayout.__anglesNestedGrids) do
+          table.insert(layout.__anglesNestedGrids, entry)
+        end
+      end
       -- Bubble scroll canvas tracking up so an ancestor flex can rebuild after grow resolution.
       if (childLayout.__anglesCustomScrollCanvas ~= nil) then
         if (layout.__anglesNestedScrollCanvases == nil) then
@@ -1949,15 +1989,43 @@ function Renderer:BuildEventTable(systemFuncs, userFuncs)
   for eventName in pairs(allNames) do
     local sf = (systemFuncs or {})[eventName]
     local uf = (userFuncs or {})[eventName]
-    if (sf ~= nil and uf ~= nil) then
-      local s, u = sf, uf
-      events[eventName] = async:callback(function(e, l) s(e, l); u(e, l) return true end)
+
+    -- uf is either a plain function (system handlers) or a { func, args } descriptor
+    -- produced by Evaluator:ResolveEventBinding.  Build a unified caller for uf.
+    local callUf = nil
+    if uf ~= nil then
+      if type(uf) == "table" and uf.func ~= nil then
+        -- Descriptor path: assemble call arguments from the args list.
+        local desc = uf
+        callUf = function(e, l)
+          local callArgs = {}
+          for _, arg in ipairs(desc.args) do
+            if arg.type == "event1" then
+              table.insert(callArgs, e)
+            elseif arg.type == "event2" then
+              table.insert(callArgs, l)
+            else
+              table.insert(callArgs, arg.value)
+            end
+          end
+          desc.func(table.unpack(callArgs))
+        end
+      else
+        -- Plain function (system handlers use this path).
+        local u = uf
+        callUf = function(e, l) u(e, l) end
+      end
+    end
+
+    if (sf ~= nil and callUf ~= nil) then
+      local s, cu = sf, callUf
+      events[eventName] = async:callback(function(e, l) s(e, l); cu(e, l) return true end)
     elseif (sf ~= nil) then
       local s = sf
       events[eventName] = async:callback(function(e, l) s(e, l) return true end)
     else
-      local u = uf
-      events[eventName] = async:callback(function(e, l) u(e, l) return true end)
+      local cu = callUf
+      events[eventName] = async:callback(function(e, l) cu(e, l) return true end)
     end
   end
 
@@ -2273,9 +2341,16 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
   elseif (tagName == "mw-hr") then
     local consumed = {}
     self:MarkConsumed(consumed, { "name", "dragger" })
+    -- Provide explicit default sizing so the layout system (ArrangeFlexChildren /
+    -- ArrangeGridChildren) can account for the element's footprint even though
+    -- the visual appearance comes from the MWUI template.  Full width, 4 px tall.
     return {
       name = name,
       template = MWUI.templates.horizontalLine,
+      props = {
+        relativeSize = Util.vector2(1, 0),
+        size = Util.vector2(0, 2),
+      },
       userData = self:BuildUserData(allProperties, consumed),
     }, nil
   elseif (tagName == "mw-scroll-canvas") then
@@ -2399,6 +2474,31 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       scrollStep    = scrollStep,
       scrollId      = scrollId,
     }
+  elseif (tagName == "mw-host") then
+    -- Transparent wrapper produced by the Evaluator for <mw-host> elements.
+    -- Behaves identically to mw-widget but defaults to relativeSize={1,1} so that
+    -- it fills its parent unless the author overrides sizing via CSS.
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true }, tagName)
+    local parsedPadding = allProperties["parsedpadding"]
+
+    self:MarkConsumed(consumed, { "name", "padding", "parsedpadding" })
+
+    if (parsedPadding ~= nil) then
+      return {
+        name = name,
+        props = props,
+        userData = self:BuildUserData(allProperties, consumed),
+      }, {
+        type = "padding-container",
+        padding = parsedPadding,
+      }
+    end
+
+    return {
+      name = name,
+      props = props,
+      userData = self:BuildUserData(allProperties, consumed),
+    }, nil
   elseif (tagName == "mw-widget") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
     local parsedPadding = allProperties["parsedpadding"]
@@ -2493,7 +2593,7 @@ function Renderer:ParseAcceptedProperties(node, ancestors, containerContext)
     end
   end
 
-  if (node.tagName == "mw-flex" or node.tagName == "mw-widget" or node.tagName == "mw-grid" or node.tagName == "mw-scroll-canvas" or node.tagName == "mw-window") then
+  if (node.tagName == "mw-flex" or node.tagName == "mw-widget" or node.tagName == "mw-host" or node.tagName == "mw-grid" or node.tagName == "mw-scroll-canvas" or node.tagName == "mw-window") then
     local padding = properties["padding"]
     if (padding ~= nil) then
       properties["parsedpadding"] = self:ParsePadding(padding)

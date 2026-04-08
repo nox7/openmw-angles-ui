@@ -18,6 +18,10 @@ Node.TYPE_IF_DIRECTIVE = "IfDirective"
 Node.TYPE_FOR_DIRECTIVE = "ForDirective"
 ---@type string Constant identifying an `{{ expr }}` output binding node.
 Node.TYPE_OUTPUT = "Output"
+---@type string Constant identifying an `<mw-content>` content projection slot.
+Node.TYPE_CONTENT_PROJECTION = "ContentProjection"
+---@type string Constant identifying an `<mw-host>` event-binding host marker.
+Node.TYPE_HOST_ELEMENT = "HostElement"
 
 ---@param nodeType string One of the Node.TYPE_* string constants.
 ---@return Node

@@ -6,6 +6,8 @@ local UserComponentNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.UserComponen
 local IfDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.IfDirectiveNode")
 local ForDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.ForDirectiveNode")
 local OutputDirectiveNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.OutputDirectiveNode")
+local ContentProjectionNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.ContentProjectionNode")
+local HostElementNode = require("scripts.Nox.AnglesUI.Lexer.Nodes.HostElementNode")
 
 ---@class Lexer Tokenises an Angular-style HTML template string into an AST of Node objects.
 ---@field source string The raw template source string being parsed.
@@ -512,7 +514,18 @@ function Lexer:parseComponent()
   -- Create the appropriate node type based on the tag name
   local node
   local isMwPrefix = string.sub(tagName, 1, 3) == "mw-"
-  if isMwPrefix then
+  if tagName == "mw-content" then
+    node = ContentProjectionNode.new(attributes["select"])
+    -- Do NOT force selfClosing here. When the author writes <mw-content></mw-content>
+    -- the normal closing-tag consumption path must run, otherwise </mw-content> is left
+    -- in the stream and mis-interpreted as the closing tag for every ancestor element,
+    -- stopping all subsequent siblings from parsing.  If the author writes <mw-content/>
+    -- then selfClosing is already true from the attribute-parsing loop above.
+  elseif tagName == "mw-host" then
+    node = HostElementNode.new()
+    -- Same reasoning as mw-content: do not force selfClosing so that the closing
+    -- </mw-host> tag is consumed correctly when the author writes the explicit form.
+  elseif isMwPrefix then
     node = EngineComponentNode.new(tagName, attributes, selfClosing or isVoid)
   else
     local userComponent = self.userComponents[tagName]
