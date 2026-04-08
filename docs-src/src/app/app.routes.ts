@@ -48,6 +48,11 @@ export const routes: Routes = [
     title: "Event Bindings in AnglesUI"
   },
   {
+    path: "content-projection",
+    loadComponent: () => import("./pages/content-projection/content-projection").then(m => m.ContentProjection),
+    title: "Content Projection | AnglesUI"
+  },
+  {
     path: "bugs-and-support",
     loadComponent: () => import("./pages/bugs-and-support/bugs-and-support").then(m => m.BugsAndSupport),
     title: "Bugs and Support | AnglesUI"
@@ -104,6 +109,16 @@ export const routes: Routes = [
         path: "scroll-canvas",
         loadComponent: () => import("./pages/elements/scroll-canvas/scroll-canvas").then(m => m.ScrollCanvas),
         title: "Scroll Canvas Element | AnglesUI Elements"
+      },
+    ]
+  },
+  {
+    path: "examples",
+    children: [
+      {
+        path: "custom-components",
+        loadComponent: () => import("./pages/examples/custom-components/custom-components").then(m => m.CustomComponents),
+        title: "Custom Components | AnglesUI Examples"
       },
     ]
   },

@@ -1,0 +1,49 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>Making Custom Components</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        While there are a handful of existing UI components, you can also create your own custom components to better organize your UI and reuse design code.
+      </p>
+      <app-alert>
+        For those familiar with Angular, individual components have their own scopes. In AnglesUI, all components in a single render share the same scope. Custom components are simply transposed into the root component - not matter how deeply they are nested.
+      </app-alert>
+      <h2>What is a Custom Component?</h2>
+      <p>
+        It's just a regular component, but without mw-root. Additionally, it's in its own file and the CSS can be in its own file as well. As mentioned before, the component is transposed. Your actual HTML tag you use to identify your custom component is replaced with the contents of your component file. The CSS is also transposed <strong>above</strong> the root CSS.
+      </p>
+      <h2>Registering a Custom Component</h2>
+      <p>
+        You register a custom component by providing an key/value to the renderer before rendering. For example:
+      </p>
+      <app-code-highlighter [Code]="RegisterLuaCode()" Language="lua"></app-code-highlighter>
+      <p>
+        We have now registered a custom component with the HTML tag selector <code>nox-product-grid</code>. When we use this in any of our HTML files, it will have the contents at <code>scripts/Nox/UI/MainGrid.html</code> transposed in - as well as any CSS file in the same directory with the same base name. Such as <code>scripts/Nox/UI/MainGrid.css</code>.
+      </p>
+      <h2>Example of Usage</h2>
+      <p>
+        Let's use the above and make a primary (root) component and then use our custom component. The code sample is below for reference.
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "LogisticsRoot.html", Code: MainUIHTML(), Language: "angular-html" },
+        { TabLabel: "LogisticsRoot.css", Code: MainUICSS(), Language: "css" },
+        { TabLabel: "MainGrid.html", Code: GridHTML(), Language: "angular-html" },
+        { TabLabel: "MainGrid.css", Code: GridCSS(), Language: "css" },
+      ]'></app-code-highlighter>
+      <p>
+        With this code, you'll get a UI like below:
+      </p>
+      <app-content-image Src="/images/examples/custom-components-1.png" Alt="Rendered custom component UI"></app-content-image>
+      <h2>Content Projection</h2>
+      <p>
+        When you need to pass content from a parent component to a child component, you use content projection. Specifically, your child component will utilize <code>&lt;mw-content&gt;</code> elements to indicate where your project content should go. You can read more on this element here: <a routerLink="/content-projection">Content Projection</a>.
+      </p>
+      <h2>Event Binding</h2>
+      <p>
+        Custom component event bindings require an extra step compared to regular engine element event bindings. Read the custom component section on <a href="/event-bindings">event bindings</a>.
+      </p>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>

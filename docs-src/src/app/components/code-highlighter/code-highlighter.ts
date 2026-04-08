@@ -2,6 +2,12 @@ import { Component, inject, input, OnInit, signal, ViewEncapsulation } from '@an
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { createHighlighter } from 'shiki';
 
+export interface CodeHighlightDefinition {
+  TabLabel: string;
+  Code: string;
+  Language: string;
+}
+
 @Component({
   selector: 'app-code-highlighter',
   imports: [],
@@ -16,18 +22,41 @@ export class CodeHighlighter implements OnInit {
   });
 
   private readonly DomSanitizer = inject(DomSanitizer);
-  public Code = input.required<string>();
-  public Language = input.required<string>();
+  public Code = input<string>();
+  public Language = input<string>();
+  public CodeTabs = input<CodeHighlightDefinition[] | undefined>(undefined);
   public Content = signal<SafeHtml>("");
+  public TabContents = signal<SafeHtml[]>([]);
+  public ActiveTab = signal<number>(0);
 
   public async ngOnInit(): Promise<void> {
-    this.Content.set(this.DomSanitizer.bypassSecurityTrustHtml(
-      (await CodeHighlighter.Highlighter).codeToHtml(
-        this.Code().trim(), { 
-          lang: this.Language(),
-          theme: "vitesse-dark",
-        }
-      )
-    ));
+    const highlighter = await CodeHighlighter.Highlighter;
+    const tabs = this.CodeTabs();
+
+    if (tabs && tabs.length > 0) {
+      this.TabContents.set(tabs.map(tab =>
+        this.DomSanitizer.bypassSecurityTrustHtml(
+          highlighter.codeToHtml(tab.Code.trim(), { lang: tab.Language, theme: "vitesse-dark" })
+        )
+      ));
+    } else {
+      const code = this.Code();
+      const language = this.Language();
+      if (code === undefined || language === undefined) {
+        throw "Must provide code and language inputs, or code tabs input.";
+      }
+      this.Content.set(this.DomSanitizer.bypassSecurityTrustHtml(
+        highlighter.codeToHtml(
+          code.trim(), { 
+            lang: language,
+            theme: "vitesse-dark",
+          }
+        )
+      ));
+    }
+  }
+
+  public SelectTab(index: number): void {
+    this.ActiveTab.set(index);
   }
 }

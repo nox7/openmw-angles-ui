@@ -26,6 +26,20 @@
       <p>
         We are 1-to-1 with the OpenMW event implementations. You can find them on the UI section of OpenMW's docs. Check each individual element to see which events they support. <a target="_blank" href="https://openmw.readthedocs.io/en/stable/reference/lua-scripting/widgets/widget.html">Here is a link</a> to docs on the Widget UI element, which is the base of all UI elements.
       </p>
+      <h2>Event Bindings on Custom Components</h2>
+      <p>
+        For <a routerLink="/examples/custom-components">custom components</a>, event binding is slightly more complicated. Because custom components are transposed into the root element, there is no actual element to bind the event to. In Angular, all components get generated with a host element. In AnglesUI, this isn't the case; <strong>but</strong> you can opt-in to host elements by placing one yourself.
+      </p>
+      <app-alert>
+        Event binding on custom components will not work without the host element.
+      </app-alert>
+      <p>
+        Simply, you place a host element in your custom component with <code>&lt;mw-host&gt;</code>. For example, a parent and child component with event binding is displayed below.
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "Parent.html", Code: CustomComponentEventBinding1(), Language: "angular-html"},
+        { TabLabel: "Child.html", Code: CustomComponentEventBinding2(), Language: "angular-html"}
+      ]'></app-code-highlighter>
     </app-card-body>
   </app-card>
 </app-content-width-container>

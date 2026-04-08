@@ -1,0 +1,37 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>Content Projection</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        When you utilize <a routerLink="/examples/custom-components">custom components</a>, you will often find yourself needing to pass content into your recycled component. This is where content projection comes in. Content projection allows you to pass content from a parent component to a child component. Specifically, your child component will utilize <code>&lt;mw-content&gt;</code> elements to indicate where your project content should go. 
+      </p>
+      <h2>Basic Usage</h2>
+      <p>
+        Let's say we have a basic parent component and child component - a button. We want to pass the text of the button in from the parent's HTML (naturally, so we can make use of our button multiple times with different text).
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "Parent.html", Code: ParentComponent(), Language: "angular-html" },
+        { TabLabel: "Button.css", Code: ButtonComponent(), Language: "angular-html" },
+      ]'></app-code-highlighter>
+      <app-alert>
+        Using <code>&lt;mw-content&gt;</code> without a <code>select</code> attribute will project all content into that element.
+      </app-alert>
+      <h2>Using the Select Attribute on <code>&lt;mw-content&gt;</code></h2>
+      <p>
+        If you have multiple <code>&lt;mw-content&gt;</code> elements in your child component, you can use the <code>select</code> attribute to specify which content goes where. The value of the select attribute is a CSS selector.
+      </p>
+      <p>
+        Let's expand our button example by projecting not only text, but an image element to serve as our icon. We'll use the select attribute with a basic tag name CSS selector (so no special characters in our selector other than the tag name to project).
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "Parent.html", Code: ParentComponent2(), Language: "angular-html" },
+        { TabLabel: "Button.css", Code: ButtonComponent2(), Language: "angular-html" },
+      ]'></app-code-highlighter>
+      <p>
+        Now, our button can accept more outside content and we can control where it gets placed (projected) in our custom button component.
+      </p>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>

@@ -1,1 +1,18 @@
-<div class="code-container" [innerHTML]="Content()"></div>
+@if (CodeTabs() && CodeTabs()!.length > 0) {
+  <div class="code-container code-container--tabbed">
+    <div class="code-tabs">
+      @for (tab of CodeTabs()!; track $index) {
+        <button class="code-tab" [class.code-tab--active]="ActiveTab() === $index" (click)="SelectTab($index)">
+          {{ tab.TabLabel }}
+        </button>
+      }
+    </div>
+    @for (content of TabContents(); track $index) {
+      @if (ActiveTab() === $index) {
+        <div [innerHTML]="content"></div>
+      }
+    }
+  </div>
+} @else {
+  <div class="code-container" [innerHTML]="Content()"></div>
+}
