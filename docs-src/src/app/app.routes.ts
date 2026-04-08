@@ -120,6 +120,11 @@ export const routes: Routes = [
         loadComponent: () => import("./pages/examples/custom-components/custom-components").then(m => m.CustomComponents),
         title: "Custom Components | AnglesUI Examples"
       },
+      {
+        path: "making-a-button",
+        loadComponent: () => import("./pages/examples/making-a-button/making-a-button").then(m => m.MakingAButton),
+        title: "Making a Button | AnglesUI Examples"
+      },
     ]
   },
 ];

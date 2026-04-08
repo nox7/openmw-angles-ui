@@ -1,0 +1,116 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>Making a Button Component</h1>
+    </app-card-header>
+    <app-card-body>
+      <p>
+        You may find it odd that AnglesUI doesn't include a default button component. This is because buttons are often one of the most customized elements in a UI. Instead of providing a default button component, we will show you how to make your own custom button component that you can reuse throughout your UI. Including event bindings for your button.
+      </p>
+      <p>
+        This example will start from the beginning - from making a root element to registering your custom button component to be rendered. While buttons are inherently simple, this guide will be <strong>detailed</strong> and serve as a step-by-step. You can deviate should you want different designs or feel you get the hang of things.
+      </p>
+      <h2>Our Basic Window</h2>
+      <p>
+        First, let's get a basic window element. Make a new HTML file <code>MainWindow.html</code> and a CSS file <code>MainWindow.css</code> somewhere. Preferably, in a directory for all your UIs.
+      </p>
+      <p>
+        This will be their code (HTML/CSS)
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "MainWindow.html", Code: ParentHTMLCode1(), Language: "angular-html" },
+        { TabLabel: "MainWindow.css", Code: ParentCSSCode1(), Language: "css" },
+      ]'></app-code-highlighter>
+      <p>
+        We use the calc() in the CSS so we can center the element on the screen for our example.
+      </p>
+      <p>
+        Now, we register that window and render it. This <strong>must be done</strong> in a script you registered in your mod's omwscripts file as either a <strong>Player</strong> or <strong>Menu</strong> script. 
+      </p>
+      <app-code-highlighter [CodeTabs]='[{ TabLabel: "UIManager.lua", Code: LuaCode1(), Language: "lua"}]'></app-code-highlighter>
+      <p>
+        This will give us the following rendered window:
+      </p>
+      <app-content-image Alt="Rendered main window for our custom button component setup" Src="/images/examples/main-window-1.png"></app-content-image>
+      <h2>Making the Button Component</h2>
+      <p>
+        Now, add a new HTML file in your UI directory. Call it <code>Button.html</code> and a CSS file <code>Button.css</code>.
+      </p>
+      <p>
+        Then, we will register it in our renderer as <code>nox-button</code> so that we can use <code>&lt;nox-button&gt;&lt;/nox-button&gt;</code> in our HTML to render it. Register it in your Lua code like below (this modifies the existing rendering code from above):
+      </p>
+      <app-code-highlighter [CodeTabs]='[{ TabLabel: "UIManager.lua", Code: LuaCode2(), Language: "lua"}]'></app-code-highlighter>
+      <p>
+        Let's add the HTML and CSS for our button. Following the guidelines from <a routerLink="/content-projection">Content Projection</a> and <a routerLink="/event-bindings">Event Bindings</a>, we will make sure our component starts with <code>mw-host</code> and has <code>mw-content</code> so we can bind events and project content.
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "Button.html", Code: ChildHTMLCode1(), Language: "angular-html" },
+        { TabLabel: "Button.css", Code: ChildCSSCode1(), Language: "css" }
+        ]'></app-code-highlighter>
+      <p>
+        Next, we'll go back and modify our <code>MainWindow.html</code> to use the new button component.
+      </p>
+      <app-code-highlighter [CodeTabs]='[{ TabLabel: "MainWindow.html", Code: ParentHTMLCode2(), Language: "angular-html"}]'></app-code-highlighter>
+      <p>
+        You can use the <code>reloadlua</code> command in the OpenMW console (pressing "~" in game) to reload your Lua scripts and re-render the UI. However...
+      </p>
+      <app-alert>
+        When creating new files while the game is still running, OpenMW does not recognize them at runtime. Because we created a new button file, you will need to reload your game to get them registered in the game's virtual file system.
+      </app-alert>
+      <p>
+        Now, with the button registered and in our HTML, our UI will look like this:
+      </p>
+      <app-content-image Alt="Rendered main window for our custom button component setup" Src="/images/examples/main-window-2.png"></app-content-image>
+      <h2>Adding Content</h2>
+      <p>
+        This is a boring button, let's project some content into it by modifying our parent element, <code>MainWindow.html</code> where we use our custom element tag and provide some text.
+      </p>
+      <app-code-highlighter [CodeTabs]='[{ TabLabel: "MainWindow.html", Code: ParentHTMLCode3(), Language: "angular-html"}]'></app-code-highlighter>
+      <p>
+        Which results in:
+      </p>
+      <app-content-image Alt="Rendered main window for our custom button component setup with content projected into the button" Src="/images/examples/main-window-3.png"></app-content-image>
+      <p>
+        We can simplify our <code>MainWindow.html</code> by moving the <code>mw-text</code> inside the button and adjusting the <code>mw-content</code> location. See both files now below:
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "MainWindow.html", Code: ParentHTMLCode4(), Language: "angular-html" },
+        { TabLabel: "Button.html", Code: ChildHTMLCode2(), Language: "angular-html" }
+        ]'></app-code-highlighter>
+      <p>
+        Let's, now, center our text by modifying <code>Button.css</code>. There are two ways to do this. One, you can use <code>mw-flex</code> and align-items and justify-content to center the <code>mw-text</code>. This works because, by default, <code>mw-text</code> is auto-sized. For this example, we will disable auto sizing and set the mw-text to be full width and height of its container. The new Button.html and Button.css are below:
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "Button.html", Code: ChildHTMLCode3(), Language: "angular-html" },
+        { TabLabel: "Button.css", Code: ChildCSSCode2(), Language: "css" }
+        ]'></app-code-highlighter>
+      <app-content-image Alt="Rendered main window for our custom button component setup with content projected into the button" Src="/images/examples/main-window-4.png"></app-content-image>
+      <app-alert>
+        You may notice the alignment is ever-so-slightly off. This is because, at the time of writing, OpenMW does not provide a way to calculate the bounds of text. So, we have to make an approximation. Literally, by manually trying to guess how wide and tall each letter might be at that font size.
+      </app-alert>
+      <h2>Event Bindings for Click</h2>
+      <p>
+        Finally, let's dive into hooking a click event on your button. We can't currently implement a hover effect in AnglesUI because OpenMW does not provide a mouseEnter or mouseLeave event. Any other implementation (such as tracking the mouse movement) would simply be bad performance.
+      </p>
+      <p>
+        Let's register a context variable that is a function callback in our UIManager.lua to use as a click function.
+      </p>
+      <app-code-highlighter [CodeTabs]='[{ TabLabel: "UIManager.lua", Code: LuaCode3(), Language: "lua"}]'></app-code-highlighter>
+      <p>
+        Given the earlier statement about no AnglesUI hover, you are of course welcome to use the callback parameters to try and register your own hover events on the Lua side.
+      </p>
+      <p>
+        Next, update your MainWindow.html to hook the event to the button.
+      </p>
+      <app-code-highlighter [CodeTabs]='[{ TabLabel: "MainWindow.html", Code: ParentHTMLCode5(), Language: "angular-html"}]'></app-code-highlighter>
+      <p>
+        That's everything. Now, click the button in-game and you'll see your text printed. You can see the Lua output by pressing F10 and opening the Log Viewer.
+      </p>
+      <app-content-image Alt="OpenMW Lua console viewer" Src="/images/examples/making-button-console-1.png"></app-content-image>
+      <p>
+        Utilizing more of AnglesUI features and elements, you can quickly (within seconds to minutes) turn static layouts into responsive grids. Read about our <a routerLink="/examples/responsive-ui">responsive UI design</a>.
+      </p>
+      <app-content-image Alt="Responsive grid of buttons" Src="/images/examples/responsive-ui.gif"></app-content-image>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>
