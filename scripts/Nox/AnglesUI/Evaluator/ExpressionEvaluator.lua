@@ -219,7 +219,15 @@ function ExpressionEvaluator:evaluate(expression, context)
   if dotPos then
     local rootName = string.sub(expression, 1, dotPos - 1)
     local remainder = string.sub(expression, dotPos + 1)
-    local value = context:get(rootName)
+    -- rootName may itself be a function call (e.g. "ItemsByCategory()" in
+    -- "ItemsByCategory().Armor"), so evaluate it recursively instead of
+    -- doing a raw context lookup which would fail for the "()" suffix.
+    local value
+    if string.sub(rootName, -2) == "()" then
+      value = self:evaluate(rootName, context)
+    else
+      value = context:get(rootName)
+    end
     -- Walk dot-separated path
     for segment in string.gmatch(remainder, "[^%.]+") do
       if type(value) == "table" then
