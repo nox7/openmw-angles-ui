@@ -440,7 +440,7 @@ function Renderer:ResolveRootParentPixelSize()
 end
 
 ---@param childLayouts table[] Layout tables to arrange; props are mutated in-place.
----@param direction string|nil "row" or "column" (default "column").
+---@param direction string|nil "row" or "column" (default "row").
 ---@param gap number|nil Pixel gap between adjacent children (default 0).
 ---@param containerPixelSize {x: number|nil, y: number|nil}|nil Available container space for flex-grow distribution.
 ---@param options {alignItems: string|nil, justifyContent: string|nil}|nil Alignment options. alignItems: "start"|"center"|"end"|"stretch". justifyContent: "start"|"center"|"end"|"stretch".
@@ -451,7 +451,7 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
     return childLayouts
   end
 
-  local resolvedDirection = direction or "column"
+  local resolvedDirection = direction or "row"
   local resolvedGap = gap or 0
   local isRow = resolvedDirection == "row"
 
@@ -1613,8 +1613,20 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
   local hasExplicitHeight = (height ~= nil or relativeHeight ~= nil)
 
   if (defaultRelativeSize and width == nil and height == nil and relativeWidth == nil and relativeHeight == nil) then
-    relativeWidth = 1
-    relativeHeight = 1
+    if (aspectRatio ~= nil) then
+      -- When aspect-ratio is set, only default the width axis so that the
+      -- height can be derived from the ratio.  Defaulting both would cause
+      -- hasExplicitWidth == hasExplicitHeight == true and make the ratio
+      -- constraint a no-op (neither "one axis known" branch would fire).
+      relativeWidth = 1
+    else
+      relativeWidth = 1
+      relativeHeight = 1
+    end
+    -- Update the "explicit" flags to reflect the newly applied defaults so
+    -- the aspect-ratio block below sees the correct state.
+    hasExplicitWidth  = (width ~= nil or relativeWidth ~= nil)
+    hasExplicitHeight = (height ~= nil or relativeHeight ~= nil)
   end
 
   if (aspectRatio ~= nil) then
@@ -2139,7 +2151,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       userData = self:BuildUserData(allProperties, consumed),
     }, {
       type = "custom-flex",
-      direction = allProperties["direction"] or "column",
+      direction = allProperties["direction"] or "row",
       gap = self:ToNumber(allProperties["gap"], "Gap") or 0,
       padding = parsedPadding,
       alignItems = allProperties["alignitems"],
@@ -3271,8 +3283,31 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
 
   -- Phase 2: Build row tracks - add implicit 1fr rows until we cover all used rows
   local rowTracks = self:ParseGridTracks(meta.templateRows)
+  local numExplicitRows = #rowTracks
   while (#rowTracks < maxUsedRow) do
     table.insert(rowTracks, { kind = "fr", value = 1 })
+  end
+
+  -- When containerHeight is nil (e.g. inside a scroll canvas where the main axis is
+  -- unconstrained), implicit 1fr rows cannot distribute space and default to 0px, causing
+  -- all items to stack with only the gap separating them.  Instead auto-size each implicit
+  -- row to the maximum explicit content height of children placed in that row.
+  if (containerHeight == nil and numExplicitRows < #rowTracks) then
+    local maxHeightPerRow = {}
+    for i, child in ipairs(childLayouts) do
+      local p = placements[i]
+      if (p ~= nil) then
+        local childH = (child.props.size and child.props.size.y) or 0
+        for r = p.row, p.row + p.rowSpan - 1 do
+          maxHeightPerRow[r] = math.max(maxHeightPerRow[r] or 0, childH)
+        end
+      end
+    end
+    for r = numExplicitRows + 1, #rowTracks do
+      if (rowTracks[r].kind == "fr") then
+        rowTracks[r] = { kind = "px", value = maxHeightPerRow[r] or 0 }
+      end
+    end
   end
 
   -- Phase 3: Compute track sizes, accounting for gaps in fr distribution
@@ -3417,6 +3452,34 @@ function Renderer:RebuildCustomGridLayout(layout, innerPixelSize)
 
   local arrangedChildren = self:ArrangeGridChildren(state.childLayouts, state.meta, innerPixelSize)
 
+  -- After ArrangeGridChildren assigns each child its final pixel size, rebuild any
+  -- scroll canvases nested inside those children.  Each child's props.size now holds
+  -- the resolved cell pixel dimensions; subtract the padding already tracked in
+  -- __anglesNestedScrollCanvases entries to arrive at the correct canvas pixel size.
+  for _, child in ipairs(arrangedChildren) do
+    local childSz = child.props and child.props.size
+    if (childSz ~= nil) then
+      local childPixelSize = { x = childSz.x, y = childSz.y }
+
+      if (child.__anglesCustomScrollCanvas ~= nil) then
+        self:RebuildScrollCanvas(child, childPixelSize)
+      end
+
+      if (child.__anglesNestedScrollCanvases ~= nil) then
+        for _, entry in ipairs(child.__anglesNestedScrollCanvases) do
+          local scrollCanvas = entry.scrollCanvas
+          if (scrollCanvas ~= nil and scrollCanvas.__anglesCustomScrollCanvas ~= nil) then
+            local effectiveSize = {
+              x = childPixelSize.x ~= nil and math.max(0, childPixelSize.x - (entry.padX or 0)) or nil,
+              y = childPixelSize.y ~= nil and math.max(0, childPixelSize.y - (entry.padY or 0)) or nil,
+            }
+            self:RebuildScrollCanvas(scrollCanvas, effectiveSize)
+          end
+        end
+      end
+    end
+  end
+
   local padding = state.meta.padding
   local paddedContainer = {
     props = {
@@ -3522,6 +3585,39 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   -- the cross axis is bounded by the inner viewport dimension.
   local arrangeSize = isRow and { x = nil, y = innerH } or { x = innerW, y = nil }
   local arrangedChildren = self:ArrangeFlexChildren(childLayouts, direction, gap, arrangeSize)
+
+  -- Post-process grid children: ArrangeFlexChildren passes the unconstrained main-axis
+  -- dimension to the grid rebuild, which causes 1fr columns to resolve to 0 when the
+  -- scroll direction is "row" (main axis = x, so containerWidth = nil).  Rebuild each
+  -- grid child with innerW as the container width so column tracks always resolve.
+  -- Then replace the grid's relativeSize with an explicit pixel size derived from its
+  -- arranged children's bounds; this lets the content extent loop below account for the
+  -- grid's true footprint (including rows that overflow the viewport height).
+  for _, child in ipairs(arrangedChildren) do
+    if (child.__anglesCustomGrid ~= nil) then
+      local gridMeta = child.__anglesCustomGrid.meta
+      local gInner = self:ResolvePaddedPixelSize({ x = innerW, y = nil }, gridMeta.padding)
+      self:RebuildCustomGridLayout(child, gInner)
+
+      local gW = 0
+      local gH = 0
+      for _, gc in ipairs(child.__anglesCustomGrid.childLayouts) do
+        local gp = gc.props
+        if (gp ~= nil) then
+          local gpx = (gp.position and gp.position.x) or 0
+          local gpy = (gp.position and gp.position.y) or 0
+          local gsw = (gp.size and gp.size.x) or 0
+          local gsh = (gp.size and gp.size.y) or 0
+          gW = math.max(gW, gpx + gsw)
+          gH = math.max(gH, gpy + gsh)
+        end
+      end
+      gW = gW + gridMeta.padding.Left + gridMeta.padding.Right
+      gH = gH + gridMeta.padding.Top + gridMeta.padding.Bottom
+      child.props.size = Util.vector2(math.max(gW, 1), math.max(gH, 1))
+      child.props.relativeSize = nil
+    end
+  end
 
   -- Compute total content extent from the arranged children's pixel bounds.
   -- For text elements the estimated height from above is still in props.size.y,
