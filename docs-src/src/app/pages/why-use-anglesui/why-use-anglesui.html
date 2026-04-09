@@ -1,0 +1,43 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>Why Use AnglesUI and Not the Plain Lua API?</h1>
+    </app-card-header>
+    <app-card-body> 
+      <p>
+        Simply put, you should spend time making and fleshing out your mod. You shouldn't need to spend excessive time writing boilerplate code or a UI that doesn't respond to natural user-experience actions like scrolling, resizing, or moving.
+      </p>
+      <p>
+        Let's demonstrate this with an example. We want to make the following simple layout:
+      </p>
+      <app-content-image Alt="Simple 3 column box layout" Src="images/why-use/goal.png"></app-content-image>
+      <p>
+        This should take no more than 60 seconds and a few lines of design code. However, in the plain OpenMW Lua UI API, this is what it takes (and remember, this isn't even responsive yet):
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "UI.lua", Code: OpenMWLuaCodeForUI1(), Language: "lua"}
+      ]'></app-code-highlighter>
+      <p>
+        Now, let's see the same layout in AnglesUI:
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "AnglesUI.html", Code: LayoutInHTML1(), Language: "angular-html"},
+        { TabLabel: "AnglesUI.scss", Code: LayoutInCSS1(), Language: "css"}
+      ]'></app-code-highlighter>
+      <h2>Adding Resizing Functionality</h2>
+      <p>We'll start with the Lua-only version of the UI. We need to do a handful of calculations to determine a reasonable and fluid resize functionality on our UI. Additionally, we need edge-detection to determine if they're resizing from an edge or a corner - and which edge or corner.</p>
+      <p>TODO - write this section for Lua</p>
+      <p>
+        However, in AnglesUI - this is all done for you. You simply need to add <code>Resizable</code> to your <code>mw-root</code>
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "AnglesUI.html", Code: LayoutInHTML2(), Language: "angular-html"},
+      ]'></app-code-highlighter>
+      <h2>Making the UI Responsive to Resize and Container Size</h2>
+      <p>
+        This is where the real power of AnglesUI shines. With the plain Lua API, you would need to write a lot of code to handle resizing and responsiveness. You would need to listen for resize events, calculate the new sizes and positions of each element, and then apply those changes manually. This can quickly become complex and error-prone, especially as your UI grows in complexity.
+      </p>
+      <p>TODO finish writing this</p>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>

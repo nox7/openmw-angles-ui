@@ -41,6 +41,7 @@
   
   pre {
     padding: 12px 0;
+    max-height: 500px;
     overflow-x: auto;
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--dark), var(--light)) transparent;

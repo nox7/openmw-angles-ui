@@ -58,6 +58,11 @@ export const routes: Routes = [
     title: "Bugs and Support | AnglesUI"
   },
   {
+    path: "why-use-anglesui",
+    loadComponent: () => import("./pages/why-use-anglesui/why-use-anglesui").then(m => m.WhyUseAnglesui),
+    title: "Why Use AnglesUI | AnglesUI"
+  },
+  {
     path: "elements",
     children: [
       {
