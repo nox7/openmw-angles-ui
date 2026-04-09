@@ -1,0 +1,103 @@
+<app-content-width-container>
+  <app-card>
+    <app-card-header>
+      <h1>Responsive UI Design in AnglesUI</h1>
+    </app-card-header>
+    <app-card-body> 
+      <p>
+        Before reading, if you're not familiar with registering an HTML component, then read <a routerLink="/making-a-ui">making a UI</a> first. Further, read <a routerLink="/examples/custom-components">custom components</a> if you're not familiar with registering custom components into your UI.
+      </p>
+      <p>
+        By far the most powerful feature of AnglesUI is its responsive design system. It allows you to create interfaces that adapt to different screen (and container) sizes and orientations, providing an optimal user experience across a wide range of devices. Whether you're designing for desktop, tablet, or mobile, AnglesUI's responsive design features ensure that your UI looks great and functions well on any device.
+      </p>
+      <p>
+        Further, one of the most natural flows of UI in Morrowind while playing is being able to move and resize the UI (such as dialogue or barter windows). You can cleanly implement your UI to be compatible with however the user wants to resize the UI with this framework - with minimal effort.
+      </p>
+      <h2>Example: Making a Custom Store UI</h2>
+      <p>
+        Let's go all out with this example. We'll create a custom UI representing some store for a mod. This store UI will have a title at the top, horizontal rule (little bar separator), a left-hand sidebar (scrollable) with item categories, and finally a main window with icon buttons of items to purchase.
+      </p>
+      <p>
+        <strong>For good measures,</strong> we'll start a Windows stopwatch to time how long this UI takes us.
+      </p>
+      <p>
+        Here is what we will make in this guide (final result GIF at the bottom and source code)
+      </p>
+      <app-content-image Alt="Store UI" Src="/images/examples/responsive-ui/finished.png"></app-content-image>
+      <h2>Outer Layout</h2>
+      <p>
+        Given the description above, we'll write code to define the outer layout of our store UI.
+      </p>
+      <app-content-image Alt="Step 1: Outer layout of the UI" Src="/images/examples/responsive-ui/step-1.png"></app-content-image>
+      <p>
+        A good first draft, and so far on the clock we're at 1:57 - but it's basic and a bit too big. We'll shrink it, add some buttons in the left-sidebar and increase text size.
+      </p>
+      <app-content-image Alt="Step 2: Outer layout of the UI" Src="/images/examples/responsive-ui/step-2.png"></app-content-image>
+      <p>
+        We're now at 5:42 on the stopwatch. Here is the code for this at this point.
+      </p>
+      <app-code-highlighter
+        [CodeTabs]='[
+          { TabLabel: "Store.html", Code: UIHTML1(), Language: "angular-html" },
+          { TabLabel: "Store.css", Code: UICSS1(), Language: "css" },
+          { TabLabel: "Button.html", Code: ButtonHTML1(), Language: "angular-html" },
+          { TabLabel: "Button.css", Code: ButtonCSS1(), Language: "css" },
+        ]'
+        ></app-code-highlighter>
+      <h2>Button Events and Store Inventory Icons</h2>
+      <p>
+        Let's finish this design example up (before going to the responsive part) by adding some context to the Lua side of this UI (passing in an array of items to purchase). We haven't shown the Lua registration of this component yet in this example, so we'll show the full code now. Including the passed in loop and click event callback.
+      </p>
+      <app-code-highlighter
+        [CodeTabs]='[
+          { TabLabel: "UI.lua", Code: LuaCode1(), Language: "lua" },
+        ]'></app-code-highlighter>
+      <p>
+        This will give us our final example result (we won't be adding anymore functionality). The HTML/CSS source for this layout is below the image. In a more realistic and fleshed out example, we may add text or tooltips to the buttons for a better user experience. However, we need to get into the responsive design aspect.
+      </p>
+      <app-content-image Alt="Step 3: Final design of the UI" Src="/images/examples/responsive-ui/step-3.png"></app-content-image>
+      <p>
+        Source code:
+      </p>
+      <app-code-highlighter
+        [CodeTabs]='[
+          { TabLabel: "Store.html", Code: UIHTML2(), Language: "angular-html" },
+          { TabLabel: "Store.css", Code: UICSS2(), Language: "css" },
+        ]'
+        ></app-code-highlighter>
+      <h2>Making our Layour Responsive</h2>
+      <p>
+        Now for the real testament. This layout is resizable - and even if it wasn't we'd want it to fit on any screen size or any window size. All we need to do is make a few adjustments.
+      </p>
+      <p>
+        First, we use container properties in CSS to define a "container" target for any container queries. We use container queries to ask the renderer "What size is this element?" at any given time. We will use our most-outer <code>mw-window</code> as our container. So we'll add
+      </p>
+      <app-code-highlighter [Code]="CodeSnippetContainer1()" Language="css"></app-code-highlighter>
+      <p>
+        to our CSS and target the main window (the full CSS will be at the end of this section). With this, we can now write a container query that changes the styling based on the main window's width (or height, if that had been what we wanted).
+      </p>
+      <app-code-highlighter [Code]="CodeSnippetContainer2()" Language="css"></app-code-highlighter>
+      <p>
+        With something like this, any CSS rules we place inside there will only be applied if the main window's width is less than or equal to 600px. Here's a breakdown of what we want to happen:
+      </p>
+      <ul>
+        <li>Our two-column side-by-side grid collapses into a single column</li>
+        <li>Our store item buttons gradually (over a few container queries) collapse from 5 columns, to 3, then to 1</li>
+      </ul>
+      <p>
+        After just a few more lines of code for our media queries, this is what we end up with (source code at the bottom).
+      </p>
+      <app-content-image Alt="Finished UI with responsive design" Src="/images/examples/responsive-ui/step-4.gif"></app-content-image>
+      <app-code-highlighter 
+        [CodeTabs]='[
+          { TabLabel: "Store.html", Code: UIHTML3(), Language: "angular-html" },
+          { TabLabel: "Store.css", Code: UICSS3(), Language: "css" },
+        ]'
+        ></app-code-highlighter>
+        <p>
+          Total time: 19 minutes and 5 seconds.
+        </p>
+        <app-content-image Alt="Stopwatch result time. Reads 19 minutes and 05 seconds." Src="/images/examples/responsive-ui/stopwatch-result.png"></app-content-image>
+    </app-card-body>
+  </app-card>
+</app-content-width-container>

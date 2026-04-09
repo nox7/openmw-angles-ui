@@ -11,6 +11,9 @@
       <p>
         It can contain any type of child element - including windows and images, and even other scroll canvases.
       </p>
+      <p>
+        Scroll canvases are implicitly flex elements that <strong>default to column direction</strong>. Keep this in mind if you have odd width/height issues with children in the scroll canvas.
+      </p>
       <app-alert style="clear: both;">
         Because OpenMW does not support mouse wheel or scroll wheel events on UIs directly, you cannot currently use your mouse wheel to scroll the canvas. While we could implement this with the engine event for "onMouseWheel" - this would defeat the purpose of a self-contained library. We would have to ask users/developers to hook into it and pass the callback to the AnglesUI renderer.
       </app-alert>

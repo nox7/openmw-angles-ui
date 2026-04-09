@@ -130,6 +130,11 @@ export const routes: Routes = [
         loadComponent: () => import("./pages/examples/making-a-button/making-a-button").then(m => m.MakingAButton),
         title: "Making a Button | AnglesUI Examples"
       },
+      {
+        path: "responsive-ui-design",
+        loadComponent: () => import("./pages/responsive-ui-design/responsive-ui-design").then(m => m.ResponsiveUiDesign),
+        title: "Responsive UI Design | AnglesUI"
+      },
     ]
   },
 ];
