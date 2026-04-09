@@ -10,9 +10,9 @@
       <p>
         Let's demonstrate this with an example. We want to make the following simple layout:
       </p>
-      <app-content-image Alt="Simple 3 column box layout" Src="images/why-use/goal.png"></app-content-image>
+      <app-content-image Alt="Simple 3 column box layout" Src="/images/why-use/goal.png"></app-content-image>
       <p>
-        This should take no more than 60 seconds and a few lines of design code. However, in the plain OpenMW Lua UI API, this is what it takes (and remember, this isn't even responsive yet):
+        This should take no more than 60 seconds and a few lines of design code. However, in the plain OpenMW Lua UI API, this is what it takes (and remember, this <strong>isn't even responsive yet</strong> - it's just a static layout):
       </p>
       <app-code-highlighter [CodeTabs]='[
         { TabLabel: "UI.lua", Code: OpenMWLuaCodeForUI1(), Language: "lua"}

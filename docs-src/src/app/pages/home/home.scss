@@ -48,15 +48,21 @@
 }
 
 .hero-buttons {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  max-width: 350px;
+  margin: 0 auto;
+  grid-template-columns: repeat(2, 1fr);
   gap: 14px;
   justify-content: center;
+  .why-use {
+    grid-column: 1 / span 2;
+  }
 }
 
 .hero-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 12px 28px;
   border-radius: 6px;
   font-size: 1rem;
