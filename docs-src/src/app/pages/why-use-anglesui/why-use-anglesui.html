@@ -25,8 +25,11 @@
       </p>
       <app-code-highlighter [CodeTabs]='[
         { TabLabel: "AnglesUI.html", Code: LayoutInHTML1(), Language: "angular-html"},
-        { TabLabel: "AnglesUI.scss", Code: LayoutInCSS1(), Language: "css"}
+        { TabLabel: "AnglesUI.css", Code: LayoutInCSS1(), Language: "css"}
       ]'></app-code-highlighter>
+      <p>
+        This is not meant to be a jab or insult at the OpenMW Lua API - it provides all we need to make the UI we want; but we AnglesUI was created to respect mod development time and allow for stateful, reactive rendering with responsive rendering support.
+      </p>
       <h2>Adding Resizing Functionality</h2>
       <p>We'll start with the Lua-only version of the UI. We need to do a handful of calculations to determine a reasonable and fluid resize functionality on our UI. Additionally, we need edge-detection to determine if they're resizing from an edge or a corner - and which edge or corner.</p>
       <p>TODO - write this section for Lua</p>
