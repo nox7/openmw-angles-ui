@@ -1,4 +1,4 @@
-import{a as C}from"./chunk-FCHIL3KZ.js";import{a as f}from"./chunk-4G462PBM.js";import{a as g,b as w,c as v}from"./chunk-3UBWY4HP.js";import{f as u}from"./chunk-73NXMPKY.js";import"./chunk-X23CRHME.js";import{Aa as l,Lb as x,Pa as p,ab as d,ba as o,bb as n,cb as t,db as s,sb as e,xb as c,yb as h}from"./chunk-D3QXKHB2.js";import"./chunk-Q7L6LLAK.js";var y=i=>({TabLabel:"Parent.html",Code:i,Language:"angular-html"}),E=i=>({TabLabel:"Child.html",Code:i,Language:"angular-html"}),S=(i,m)=>[i,m],b=class i{LuaCode1=o(`
+import{a as C}from"./chunk-FCHIL3KZ.js";import{a as f}from"./chunk-4UVQU5FT.js";import{a as g,b as w,c as v}from"./chunk-OI63Y6K5.js";import{f as u}from"./chunk-73NXMPKY.js";import"./chunk-X23CRHME.js";import{Aa as l,Lb as x,Pa as p,ab as d,ba as o,bb as n,cb as t,db as s,sb as e,xb as c,yb as h}from"./chunk-D3QXKHB2.js";import"./chunk-Q7L6LLAK.js";var y=i=>({TabLabel:"Parent.html",Code:i,Language:"angular-html"}),E=i=>({TabLabel:"Child.html",Code:i,Language:"angular-html"}),S=(i,m)=>[i,m],b=class i{LuaCode1=o(`
 local Renderer = require("scripts.Nox.AnglesUI.Renderer.Renderer")
 local Signal = require("scripts.Nox.AnglesUI.Signals.Signal")
 

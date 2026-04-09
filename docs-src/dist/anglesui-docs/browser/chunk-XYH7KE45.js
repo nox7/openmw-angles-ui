@@ -1,4 +1,4 @@
-import{a as f}from"./chunk-FCHIL3KZ.js";import{a as S}from"./chunk-4G462PBM.js";import{a as u,b as c,c as y}from"./chunk-3UBWY4HP.js";import{f as h}from"./chunk-73NXMPKY.js";import"./chunk-X23CRHME.js";import{Aa as a,Lb as b,Pa as g,R as p,S as m,ab as o,ba as n,bb as i,cb as t,db as l,sb as e}from"./chunk-D3QXKHB2.js";import"./chunk-Q7L6LLAK.js";var C=class s{Code1=n(`
+import{a as f}from"./chunk-FCHIL3KZ.js";import{a as S}from"./chunk-4UVQU5FT.js";import{a as u,b as c,c as y}from"./chunk-OI63Y6K5.js";import{f as h}from"./chunk-73NXMPKY.js";import"./chunk-X23CRHME.js";import{Aa as a,Lb as b,Pa as g,R as p,S as m,ab as o,ba as n,bb as i,cb as t,db as l,sb as e}from"./chunk-D3QXKHB2.js";import"./chunk-Q7L6LLAK.js";var C=class s{Code1=n(`
 local Signal = require("scripts.Nox.AnglesUI.Signals.Signal")
 
 local titleSignal = Signal.New("Title of This UI")

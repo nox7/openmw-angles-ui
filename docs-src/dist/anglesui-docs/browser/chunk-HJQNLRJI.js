@@ -1,4 +1,4 @@
-import{a as S}from"./chunk-4G462PBM.js";import{a as w}from"./chunk-XQWTI7VS.js";import{a as g,b as f,c as h}from"./chunk-3UBWY4HP.js";import"./chunk-X23CRHME.js";import{Aa as n,Lb as u,Pa as c,R as m,S as p,ab as o,ba as a,bb as i,cb as t,db as r,sb as e}from"./chunk-D3QXKHB2.js";import"./chunk-Q7L6LLAK.js";var x=class s{LuaCode=a(`
+import{a as S}from"./chunk-4UVQU5FT.js";import{a as w}from"./chunk-XQWTI7VS.js";import{a as g,b as f,c as h}from"./chunk-OI63Y6K5.js";import"./chunk-X23CRHME.js";import{Aa as n,Lb as u,Pa as c,R as m,S as p,ab as o,ba as a,bb as i,cb as t,db as r,sb as e}from"./chunk-D3QXKHB2.js";import"./chunk-Q7L6LLAK.js";var x=class s{LuaCode=a(`
 local Renderer = require("scripts.Nox.AnglesUI.Renderer.Renderer")
 local Signal = require("scripts.Nox.AnglesUI.Signals.Signal")
 

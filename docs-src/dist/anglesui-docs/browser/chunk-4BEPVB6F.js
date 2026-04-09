@@ -1,4 +1,4 @@
-import{a as x}from"./chunk-4G462PBM.js";import{a as p,b as g,c as h}from"./chunk-3UBWY4HP.js";import{f as w}from"./chunk-73NXMPKY.js";import"./chunk-X23CRHME.js";import{Aa as a,Lb as u,Pa as s,ab as r,ba as o,bb as i,cb as t,db as l,sb as e}from"./chunk-D3QXKHB2.js";import"./chunk-Q7L6LLAK.js";var c=class d{Code1=o(`
+import{a as x}from"./chunk-4UVQU5FT.js";import{a as p,b as g,c as h}from"./chunk-OI63Y6K5.js";import{f as w}from"./chunk-73NXMPKY.js";import"./chunk-X23CRHME.js";import{Aa as a,Lb as u,Pa as s,ab as r,ba as o,bb as i,cb as t,db as l,sb as e}from"./chunk-D3QXKHB2.js";import"./chunk-Q7L6LLAK.js";var c=class d{Code1=o(`
 <mw-root Layer="Windows">
   <mw-window>
     <mw-text>Hello world!</mw-text>
