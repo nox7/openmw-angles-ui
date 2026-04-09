@@ -5,7 +5,7 @@
     </app-card-header>
     <app-card-body> 
       <p>
-        Simply put, you should spend time making and fleshing out your mod. You shouldn't need to spend excessive time writing boilerplate code or a UI that doesn't respond to natural user-experience actions like scrolling, resizing, or moving.
+        Simply put, you should spend time making and fleshing out your mod. You shouldn't need to spend excessive time writing boilerplate code or a UI that doesn't respond to natural user-experience actions like scrolling, resizing, or moving. Further, it isn't even feasible to make responsive grid layouts with the plain Lua API - you would need to write an excessive amount of code to handle all the edge cases and calculations for resizing and responsiveness. AnglesUI was created to solve these problems and allow modders to focus on making their mods and not writing boilerplate UI code.
       </p>
       <p>
         Let's demonstrate this with an example. We want to make the following simple layout:
@@ -30,11 +30,17 @@
       <p>
         This is not meant to be a jab or insult at the OpenMW Lua API - it provides all the necessary basic UI elements to create elements we want. However, AnglesUI was created to respect mod development time and allow for stateful, reactive rendering with responsive rendering support - things we've come to expect in UI development.
       </p>
-      <h2>Adding Resizing Functionality</h2>
-      <p>We'll start with the Lua-only version of the UI. We need to do a handful of calculations to determine a reasonable and fluid resize functionality on our UI. Additionally, we need edge-detection to determine if they're resizing from an edge or a corner - and which edge or corner.</p>
-      <p>TODO - write this section for Lua</p>
+      <h2>Adding Resizing and Dragging Functionality</h2>
       <p>
-        However, in AnglesUI - this is all done for you. You simply need to add <code>Resizable</code> to your <code>mw-root</code>
+        We'll start with the Lua-only version of the UI. We need to do a handful of calculations to determine a reasonable and fluid resize functionality on our UI. Additionally, we need edge-detection to determine if they're resizing from an edge or a corner - and which edge or corner.
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "UI.lua", Code: OpenMWLuaCodeForUI2(), Language: "lua"}
+      ]'></app-code-highlighter>
+      <app-content-image Alt="Resizing the UI" Src="/images/why-use/resizing.gif"></app-content-image>
+      <app-content-image Alt="Dragging the UI" Src="/images/why-use/dragging.gif"></app-content-image>
+      <p>
+        However, in AnglesUI - this is all done for you. No need to write any Lua code for any of the logic above. You simply need to add <code>Resizable</code> to your <code>mw-root</code>. You can add <code>Dragger</code> to any element to allow the root to be draggable. In our example below, we put it on the containing window.
       </p>
       <app-code-highlighter [CodeTabs]='[
         { TabLabel: "AnglesUI.html", Code: LayoutInHTML2(), Language: "angular-html"},
@@ -43,7 +49,16 @@
       <p>
         This is where the real power of AnglesUI shines. With the plain Lua API, you would need to write a lot of code to handle resizing and responsiveness. You would need to listen for resize events, calculate the new sizes and positions of each element, and then apply those changes manually. This can quickly become complex and error-prone, especially as your UI grows in complexity.
       </p>
-      <p>TODO finish writing this</p>
+      <p>
+        We won't attempt to write this for the Lua API - it would be too much code. We would need to adjust the entire layout of the original UI - each time we want to have a breakpoint that modifies the layout. Instead, we'll just demonstrate this in AnglesUI.
+      </p>
+      <p>
+        Assume you want the three column layout to gradually stack to a single column as the user resizes it. All you need to do is modify the CSS slightly to signify a UI container and use a container query to change the grid columns.
+      </p>
+      <app-code-highlighter [CodeTabs]='[
+        { TabLabel: "AnglesUI.css", Code: LayoutInCSS2(), Language: "css"},
+      ]'></app-code-highlighter>
+      <app-content-image Alt="Responsive grid UI" Src="/images/why-use/responsive-ui.gif"></app-content-image>
     </app-card-body>
   </app-card>
 </app-content-width-container>
