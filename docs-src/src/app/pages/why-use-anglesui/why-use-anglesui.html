@@ -18,7 +18,10 @@
         { TabLabel: "UI.lua", Code: OpenMWLuaCodeForUI1(), Language: "lua"}
       ]'></app-code-highlighter>
       <p>
-        Now, let's see the same layout in AnglesUI:
+        Note that the gapping between elements isn't uniform - this is because there isn't a real sense of padding or gap properties in the Lua API - if we wanted this to be pixel-accurate we would need a more complex solution.
+      </p>
+      <p>
+        Now, let's see the same layout in AnglesUI (which is a pixel-perfect rendering system):
       </p>
       <app-code-highlighter [CodeTabs]='[
         { TabLabel: "AnglesUI.html", Code: LayoutInHTML1(), Language: "angular-html"},
