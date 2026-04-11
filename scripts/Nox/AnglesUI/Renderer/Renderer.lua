@@ -26,109 +26,122 @@ local defaultTextSize = 16
 
 -- Mapping from CSS property names to our lowercased HTML attribute names
 local CSS_PROPERTY_TO_ATTRIBUTE = {
-  ["padding"]             = "padding",
-  ["color"]               = "textcolor",
-  ["font-size"]           = "textsize",
-  ["background"]          = "background",
+  ["padding"] = "padding",
+  ["color"] = "textcolor",
+  ["font-size"] = "textsize",
+  ["background"] = "background",
   ["grid-template-columns"] = "gridtemplatecolumns",
-  ["grid-template-rows"]  = "gridtemplaterows",
-  ["grid-column"]         = "gridcolumn",
-  ["grid-row"]            = "gridrow",
-  ["flex-grow"]           = "grow",
-  ["width"]               = "width",
-  ["height"]              = "height",
-  ["gap"]                 = "gap",
-  ["flex-direction"]      = "direction",
-  ["container-type"]      = "containertype",
-  ["container-name"]      = "containername",
-  ["scrollbar-width"]     = "scrollbarsize",
-  ["opacity"]             = "alpha",
-  ["visibility"]          = "visibility",
-  ["text-align"]          = "textalign",
-  ["vertical-align"]      = "verticalalign",
-  ["aspect-ratio"]        = "aspectratio",
-  ["align-items"]         = "alignitems",
-  ["justify-content"]     = "justifycontent",
-  ["left"]                = "left",
-  ["top"]                 = "top",
-  ["right"]               = "right",
-  ["bottom"]              = "bottom",
-  ["position"]            = "cssposition",
+  ["grid-template-rows"] = "gridtemplaterows",
+  ["grid-column"] = "gridcolumn",
+  ["grid-row"] = "gridrow",
+  ["flex-grow"] = "grow",
+  ["width"] = "width",
+  ["height"] = "height",
+  ["gap"] = "gap",
+  ["flex-direction"] = "direction",
+  ["container-type"] = "containertype",
+  ["container-name"] = "containername",
+  ["scrollbar-width"] = "scrollbarsize",
+  ["opacity"] = "alpha",
+  ["visibility"] = "visibility",
+  ["text-align"] = "textalign",
+  ["vertical-align"] = "verticalalign",
+  ["aspect-ratio"] = "aspectratio",
+  ["align-items"] = "alignitems",
+  ["justify-content"] = "justifycontent",
+  ["left"] = "left",
+  ["top"] = "top",
+  ["right"] = "right",
+  ["bottom"] = "bottom",
+  ["position"] = "cssposition"
 }
 
 -- Maps the lowercased JS-style property name from a [style.X] binding to the
 -- internal attribute key used throughout the renderer.  Camelcase is collapsed
 -- to lowercase before the lookup (e.g. "flexGrow" -> "flexgrow").
 local STYLE_BINDING_TO_ATTRIBUTE = {
-  ["height"]              = "height",
-  ["width"]               = "width",
-  ["padding"]             = "padding",
-  ["gap"]                 = "gap",
-  ["rowgap"]              = "rowgap",
-  ["columngap"]           = "columngap",
-  ["color"]               = "textcolor",
-  ["textcolor"]           = "textcolor",
-  ["fontsize"]            = "textsize",
-  ["textsize"]            = "textsize",
-  ["background"]          = "background",
-  ["flexgrow"]            = "grow",
-  ["grow"]                = "grow",
-  ["flexdirection"]       = "direction",
-  ["direction"]           = "direction",
+  ["height"] = "height",
+  ["width"] = "width",
+  ["padding"] = "padding",
+  ["gap"] = "gap",
+  ["rowgap"] = "rowgap",
+  ["columngap"] = "columngap",
+  ["color"] = "textcolor",
+  ["textcolor"] = "textcolor",
+  ["fontsize"] = "textsize",
+  ["textsize"] = "textsize",
+  ["background"] = "background",
+  ["flexgrow"] = "grow",
+  ["grow"] = "grow",
+  ["flexdirection"] = "direction",
+  ["direction"] = "direction",
   ["gridtemplatecolumns"] = "gridtemplatecolumns",
-  ["gridtemplaterows"]    = "gridtemplaterows",
-  ["gridcolumn"]          = "gridcolumn",
-  ["gridrow"]             = "gridrow",
-  ["gridcolumnspan"]      = "gridcolumnspan",
-  ["gridrowspan"]         = "gridrowspan",
-  ["containertype"]       = "containertype",
-  ["containername"]       = "containername",
-  ["visible"]             = "visible",
-  ["anchorx"]             = "anchorx",
-  ["anchory"]             = "anchory",
-  ["x"]                   = "x",
-  ["y"]                   = "y",
-  ["multiline"]           = "multiline",
-  ["wordwrap"]            = "wordwrap",
-  ["textshadow"]          = "textshadow",
-  ["tileh"]               = "tileh",
-  ["tilev"]               = "tilev",
-  ["scrollbarsize"]       = "scrollbarsize",
-  ["scrollstep"]          = "scrollstep",
-  ["opacity"]             = "alpha",
-  ["alpha"]               = "alpha",
-  ["visibility"]          = "visibility",
-  ["textalign"]           = "textalign",
-  ["verticalalign"]       = "verticalalign",
-  ["aspectratio"]         = "aspectratio",
-  ["alignitems"]          = "alignitems",
-  ["justifycontent"]      = "justifycontent",
-  ["left"]                = "left",
-  ["top"]                 = "top",
-  ["right"]               = "right",
-  ["bottom"]              = "bottom",
-  ["position"]            = "cssposition",
+  ["gridtemplaterows"] = "gridtemplaterows",
+  ["gridcolumn"] = "gridcolumn",
+  ["gridrow"] = "gridrow",
+  ["gridcolumnspan"] = "gridcolumnspan",
+  ["gridrowspan"] = "gridrowspan",
+  ["containertype"] = "containertype",
+  ["containername"] = "containername",
+  ["visible"] = "visible",
+  ["anchorx"] = "anchorx",
+  ["anchory"] = "anchory",
+  ["x"] = "x",
+  ["y"] = "y",
+  ["multiline"] = "multiline",
+  ["wordwrap"] = "wordwrap",
+  ["textshadow"] = "textshadow",
+  ["tileh"] = "tileh",
+  ["tilev"] = "tilev",
+  ["scrollbarsize"] = "scrollbarsize",
+  ["scrollstep"] = "scrollstep",
+  ["opacity"] = "alpha",
+  ["alpha"] = "alpha",
+  ["visibility"] = "visibility",
+  ["textalign"] = "textalign",
+  ["verticalalign"] = "verticalalign",
+  ["aspectratio"] = "aspectratio",
+  ["alignitems"] = "alignitems",
+  ["justifycontent"] = "justifycontent",
+  ["left"] = "left",
+  ["top"] = "top",
+  ["right"] = "right",
+  ["bottom"] = "bottom",
+  ["position"] = "cssposition"
 }
 
 -- HTML attributes that are structural, behavioral, or content-related and
 -- are therefore still accepted as plain HTML attributes (not [style.X]).
 local NON_STYLE_ATTRIBUTES = {
-  ["id"]        = true,
-  ["class"]     = true,
-  ["name"]      = true,
-  ["layer"]     = true,
+  ["id"] = true,
+  ["class"] = true,
+  ["name"] = true,
+  ["layer"] = true,
   ["resizable"] = true,
-  ["dragger"]   = true,
-  ["resource"]  = true,  -- mw-image texture path
-  ["src"]       = true,
-  ["path"]      = true,
-  ["text"]        = true,  -- mw-text-edit initial content
-  ["placeholder"] = true,  -- mw-text-edit placeholder text
-  ["autosize"]    = true,  -- mw-text / mw-text-edit autoSize toggle
-  ["scrollbarsize"] = true,  -- mw-scroll-canvas scrollbar strip width
-  ["scrollstep"]    = true,  -- mw-scroll-canvas pixels scrolled per arrow click
-  ["edgemargin"]    = true,  -- mw-root resize edge hit-test width in pixels
+  ["dragger"] = true,
+  ["resource"] = true, -- mw-image texture path
+  ["src"] = true,
+  ["path"] = true,
+  ["text"] = true, -- mw-text-edit initial content
+  ["placeholder"] = true, -- mw-text-edit placeholder text
+  ["autosize"] = true, -- mw-text / mw-text-edit autoSize toggle
+  ["scrollbarsize"] = true, -- mw-scroll-canvas scrollbar strip width
+  ["scrollstep"] = true, -- mw-scroll-canvas pixels scrolled per arrow click
+  ["edgemargin"] = true -- mw-root resize edge hit-test width in pixels
 }
+
+--- Get the screen size from the layer.
+--- @param layerName string
+--- @return number width, number height
+local function getScreenSize(layerName)
+  local layerIdx = UI.layers.indexOf(layerName)
+  if layerIdx then
+    local size = UI.layers[layerIdx].size
+    return size.x, size.y
+  end
+  -- Fallback
+  return 1024, 768
+end
 
 ---@class Renderer Compiles an HTML+CSS template into a live OpenMW UI element tree.
 -- Owns the full pipeline: CSS parsing, layout-tree building, flex/grid arrangement,
@@ -142,6 +155,7 @@ local NON_STYLE_ATTRIBUTES = {
 ---@field rootLayout table|nil The live OpenMW Layout table for mw-root (mutated in-place on re-renders).
 ---@field rootElement table|nil The OpenMW UI element from UI.create(); call :update() to push layout changes.
 ---@field evaluatedRootNode Node|nil The most recently evaluated root AST node used as the source for re-renders.
+---@field _layerName string|nil The layer name from the mw-root element, used for screen size queries.
 local Renderer = {}
 Renderer.__index = Renderer
 
@@ -281,11 +295,19 @@ end
 ---@param propertyName string Displayed in the error message on conversion failure.
 ---@return userdata|nil The UI.ALIGNMENT value, or nil when value is nil.
 function Renderer:ToTextAlignH(value, propertyName)
-  if (value == nil) then return nil end
+  if (value == nil) then
+    return nil
+  end
   local s = tostring(value)
-  if (s == "start") then return UI.ALIGNMENT.Start end
-  if (s == "center") then return UI.ALIGNMENT.Center end
-  if (s == "end") then return UI.ALIGNMENT.End end
+  if (s == "start") then
+    return UI.ALIGNMENT.Start
+  end
+  if (s == "center") then
+    return UI.ALIGNMENT.Center
+  end
+  if (s == "end") then
+    return UI.ALIGNMENT.End
+  end
   error("Invalid text-align value for property '" .. propertyName .. "': must be 'start', 'center', or 'end'.")
 end
 
@@ -293,11 +315,19 @@ end
 ---@param propertyName string Displayed in the error message on conversion failure.
 ---@return userdata|nil The UI.ALIGNMENT value, or nil when value is nil.
 function Renderer:ToTextAlignV(value, propertyName)
-  if (value == nil) then return nil end
+  if (value == nil) then
+    return nil
+  end
   local s = tostring(value)
-  if (s == "top") then return UI.ALIGNMENT.Start end
-  if (s == "middle") then return UI.ALIGNMENT.Center end
-  if (s == "bottom") then return UI.ALIGNMENT.End end
+  if (s == "top") then
+    return UI.ALIGNMENT.Start
+  end
+  if (s == "middle") then
+    return UI.ALIGNMENT.Center
+  end
+  if (s == "bottom") then
+    return UI.ALIGNMENT.End
+  end
   error("Invalid vertical-align value for property '" .. propertyName .. "': must be 'top', 'middle', or 'bottom'.")
 end
 
@@ -305,7 +335,9 @@ end
 ---@param propertyName string Used in error messages on parse failure.
 ---@return number|nil The aspect ratio (width ÷ height), or nil when value is nil.
 function Renderer:ParseAspectRatio(value, propertyName)
-  if (value == nil) then return nil end
+  if (value == nil) then
+    return nil
+  end
 
   if (type(value) == "number") then
     if (value <= 0) then
@@ -332,7 +364,8 @@ function Renderer:ParseAspectRatio(value, propertyName)
     end
   end
 
-  error("Invalid aspect-ratio value for property '" .. propertyName .. "': expected a positive number or 'W / H' expression, got '" .. tostring(value) .. "'.")
+  error("Invalid aspect-ratio value for property '" .. propertyName ..
+            "': expected a positive number or 'W / H' expression, got '" .. tostring(value) .. "'.")
 end
 
 ---@param layout table The OpenMW Layout table to receive children.
@@ -363,12 +396,12 @@ function Renderer:ApplyPaddingContainer(layout, childLayouts, parsedPadding)
     props = {
       relativeSize = Util.vector2(1, 1),
       size = Util.vector2(-(parsedPadding.Left + parsedPadding.Right), -(parsedPadding.Top + parsedPadding.Bottom)),
-      position = Util.vector2(parsedPadding.Left, parsedPadding.Top),
+      position = Util.vector2(parsedPadding.Left, parsedPadding.Top)
     },
     content = UI.content(childLayouts)
   }
 
-  self:AppendChildren(layout, { paddedContainer })
+  self:AppendChildren(layout, {paddedContainer})
 end
 
 ---@param absoluteSize number|nil Pixel size component (from `size.x` or `size.y`).
@@ -398,21 +431,15 @@ function Renderer:ResolveLayoutPixelSize(layout, parentPixelSize)
   local parentWidth = parentPixelSize and parentPixelSize.x or nil
   local parentHeight = parentPixelSize and parentPixelSize.y or nil
 
-  local resolvedWidth = self:ResolveAxisSize(
-    size and size.x or nil,
-    relativeSize and relativeSize.x or nil,
-    parentWidth
-  )
+  local resolvedWidth =
+      self:ResolveAxisSize(size and size.x or nil, relativeSize and relativeSize.x or nil, parentWidth)
 
-  local resolvedHeight = self:ResolveAxisSize(
-    size and size.y or nil,
-    relativeSize and relativeSize.y or nil,
-    parentHeight
-  )
+  local resolvedHeight = self:ResolveAxisSize(size and size.y or nil, relativeSize and relativeSize.y or nil,
+      parentHeight)
 
   return {
     x = resolvedWidth,
-    y = resolvedHeight,
+    y = resolvedHeight
   }
 end
 
@@ -426,16 +453,16 @@ function Renderer:ResolvePaddedPixelSize(parentPixelSize, padding)
 
   return {
     x = parentPixelSize.x ~= nil and (parentPixelSize.x - (padding.Left + padding.Right)) or nil,
-    y = parentPixelSize.y ~= nil and (parentPixelSize.y - (padding.Top + padding.Bottom)) or nil,
+    y = parentPixelSize.y ~= nil and (parentPixelSize.y - (padding.Top + padding.Bottom)) or nil
   }
 end
 
 ---@return {x: number, y: number} Current OpenMW screen dimensions in pixels.
 function Renderer:ResolveRootParentPixelSize()
-  local screenSize = UI.screenSize()
+  local w, h = getScreenSize(self._layerName)
   return {
-    x = screenSize.x,
-    y = screenSize.y,
+    x = w,
+    y = h
   }
 end
 
@@ -455,7 +482,7 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
   local resolvedGap = gap or 0
   local isRow = resolvedDirection == "row"
 
-  local alignItems    = options and options.alignItems    or nil
+  local alignItems = options and options.alignItems or nil
   local justifyContent = options and options.justifyContent or nil
 
   local containerMainSize = nil
@@ -599,7 +626,7 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
     local crossOffset = 0
     if (alignItems ~= nil and alignItems ~= "start" and alignItems ~= "stretch" and containerCrossSize ~= nil) then
       local childCrossSize = 0
-      local cs  = child.props.size
+      local cs = child.props.size
       local crs = child.props.relativeSize
       if (isRow) then
         if (cs ~= nil and (cs.y or 0) ~= 0) then
@@ -636,7 +663,9 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
 
     -- After grow is resolved, rebuild any nested custom layouts (grid, flex, or scroll canvas)
     -- using the child's now-resolved pixel dimensions.
-    local needsRebuild = (child.__anglesCustomGrid ~= nil or child.__anglesNestedFlexes ~= nil or child.__anglesNestedGrids ~= nil or child.__anglesNestedScrollCanvases ~= nil or child.__anglesCustomScrollCanvas ~= nil)
+    local needsRebuild = (child.__anglesCustomGrid ~= nil or child.__anglesNestedFlexes ~= nil or
+                             child.__anglesNestedGrids ~= nil or child.__anglesNestedScrollCanvases ~= nil or
+                             child.__anglesCustomScrollCanvas ~= nil)
     if (needsRebuild) then
       local childSize = child.props.size
       local childRelSize = child.props.relativeSize
@@ -659,7 +688,10 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
         end
       end
 
-      local childPixelSize = { x = effectiveWidth, y = effectiveHeight }
+      local childPixelSize = {
+        x = effectiveWidth,
+        y = effectiveHeight
+      }
 
       if (child.__anglesCustomGrid ~= nil) then
         local gridInnerPixelSize = self:ResolvePaddedPixelSize(childPixelSize, child.__anglesCustomGrid.meta.padding)
@@ -669,7 +701,8 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
       if (child.__anglesNestedFlexes ~= nil) then
         for _, nestedFlex in ipairs(child.__anglesNestedFlexes) do
           if (nestedFlex.__anglesCustomFlex ~= nil) then
-            local nestedInnerSize = self:ResolvePaddedPixelSize(childPixelSize, nestedFlex.__anglesCustomFlex.meta.padding)
+            local nestedInnerSize = self:ResolvePaddedPixelSize(childPixelSize,
+                nestedFlex.__anglesCustomFlex.meta.padding)
             self:RebuildCustomFlexLayout(nestedFlex, nestedInnerSize)
           end
         end
@@ -678,7 +711,8 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
       if (child.__anglesNestedGrids ~= nil) then
         for _, nestedGrid in ipairs(child.__anglesNestedGrids) do
           if (nestedGrid.__anglesCustomGrid ~= nil) then
-            local nestedInnerSize = self:ResolvePaddedPixelSize(childPixelSize, nestedGrid.__anglesCustomGrid.meta.padding)
+            local nestedInnerSize = self:ResolvePaddedPixelSize(childPixelSize,
+                nestedGrid.__anglesCustomGrid.meta.padding)
             self:RebuildCustomGridLayout(nestedGrid, nestedInnerSize)
           end
         end
@@ -699,7 +733,7 @@ function Renderer:ArrangeFlexChildren(childLayouts, direction, gap, containerPix
           if (scrollCanvas ~= nil and scrollCanvas.__anglesCustomScrollCanvas ~= nil) then
             local effectiveSize = {
               x = childPixelSize.x ~= nil and math.max(0, childPixelSize.x - (entry.padX or 0)) or nil,
-              y = childPixelSize.y ~= nil and math.max(0, childPixelSize.y - (entry.padY or 0)) or nil,
+              y = childPixelSize.y ~= nil and math.max(0, childPixelSize.y - (entry.padY or 0)) or nil
             }
             self:RebuildScrollCanvas(scrollCanvas, effectiveSize)
           end
@@ -724,37 +758,37 @@ function Renderer:ApplyCustomFlexContainer(layout, childLayouts, meta, innerPixe
   for i, child in ipairs(childLayouts) do
     child.props = child.props or {}
     originalChildProps[i] = {
-      size             = child.props.size,
-      relativeSize     = child.props.relativeSize,
-      position         = child.props.position,
+      size = child.props.size,
+      relativeSize = child.props.relativeSize,
+      position = child.props.position,
       relativePosition = child.props.relativePosition,
-      flexGrow         = child.__anglesFlexGrow,
+      flexGrow = child.__anglesFlexGrow
     }
   end
 
   local arrangedChildren = self:ArrangeFlexChildren(childLayouts, meta.direction, meta.gap, innerPixelSize, {
-    alignItems    = meta.alignItems,
-    justifyContent = meta.justifyContent,
+    alignItems = meta.alignItems,
+    justifyContent = meta.justifyContent
   })
 
   local paddedContainer = {
     props = {
       relativeSize = Util.vector2(1, 1),
       size = Util.vector2(-(meta.padding.Left + meta.padding.Right), -(meta.padding.Top + meta.padding.Bottom)),
-      position = Util.vector2(meta.padding.Left, meta.padding.Top),
+      position = Util.vector2(meta.padding.Left, meta.padding.Top)
     },
     content = UI.content(arrangedChildren)
   }
 
-  self:AppendChildren(layout, { paddedContainer })
+  self:AppendChildren(layout, {paddedContainer})
 
   -- Store rebuild state so an ancestor's ArrangeFlexChildren can re-run this flex's
   -- internal layout if the ancestor's grow changes this element's actual pixel size.
   layout.__anglesCustomFlex = {
-    meta               = meta,
-    childLayouts       = childLayouts,
+    meta = meta,
+    childLayouts = childLayouts,
     originalChildProps = originalChildProps,
-    paddedContainer    = paddedContainer,
+    paddedContainer = paddedContainer
   }
 end
 
@@ -763,10 +797,12 @@ end
 ---@return table[] Active CSS rules in cascade order (user-component rules, then main-stylesheet, then media-query overrides).
 function Renderer:ResolveActiveRules()
   local cssModel = self.cssModel
-  if (cssModel == nil) then return {} end
+  if (cssModel == nil) then
+    return {}
+  end
 
   local activeRules = {}
-  local screenWidth = UI.screenSize().x
+  local screenWidth, _ = getScreenSize(self._layerName)
 
   -- User component CSS rules come first (lower cascade order than the main stylesheet).
   -- This lets main-stylesheet rules override user component rules at equal specificity.
@@ -818,10 +854,12 @@ end
 ---@return table[] Active container query rules in cascade order.
 function Renderer:ResolveActiveContainerQueryRules()
   local cssModel = self.cssModel
-  if (cssModel == nil) then return {} end
+  if (cssModel == nil) then
+    return {}
+  end
 
   local activeRules = {}
-  local screenWidth = UI.screenSize().x
+  local screenWidth, _ = getScreenSize(self._layerName)
 
   -- User component container query rules come first.
   for _, userComponent in pairs(self.userComponents) do
@@ -888,12 +926,9 @@ function Renderer:GetCSSAttributesForNode(node, ancestors, containerContext)
     end
   end
 
-  if (containerContext ~= nil
-    and self.activeContainerQueryRules ~= nil
-    and #self.activeContainerQueryRules > 0) then
-    local cqDecls = CSSParser.ApplyContainerRulesToNode(
-      self.activeContainerQueryRules, node, ancestors, containerContext
-    )
+  if (containerContext ~= nil and self.activeContainerQueryRules ~= nil and #self.activeContainerQueryRules > 0) then
+    local cqDecls = CSSParser.ApplyContainerRulesToNode(self.activeContainerQueryRules, node, ancestors,
+        containerContext)
     for cssProperty, value in pairs(cqDecls) do
       local attrName = CSS_PROPERTY_TO_ATTRIBUTE[cssProperty]
       if (attrName ~= nil) then
@@ -914,7 +949,8 @@ function Renderer:Render(userContext)
   -- Enforce the contract: context values must be Signal instances or plain functions.
   for key, value in pairs(userContext or {}) do
     if (not Signal.IsSignal(value) and type(value) ~= "function") then
-      error("Renderer:Render() context values must be Signal instances or functions. '" .. tostring(key) .. "' is neither.")
+      error("Renderer:Render() context values must be Signal instances or functions. '" .. tostring(key) ..
+                "' is neither.")
     end
   end
 
@@ -923,8 +959,8 @@ function Renderer:Render(userContext)
 
   -- Subscribe to every context signal so that any Set() call triggers a full re-render.
   -- Plain functions in the context are passed through as-is and are not subscribed.
-  self._signalContext       = userContext or {}
-  self._signalsDirty        = false
+  self._signalContext = userContext or {}
+  self._signalsDirty = false
   self._signalUnsubscribers = {}
   for _, signal in pairs(self._signalContext) do
     if (Signal.IsSignal(signal)) then
@@ -937,16 +973,26 @@ function Renderer:Render(userContext)
   end
 
   local lexer = Lexer.new(self.source, self.userComponents)
-  local ast   = lexer:parse()
-  self._ast   = ast  -- stored so Rerender() can re-evaluate against fresh signal values
+  local ast = lexer:parse()
+  self._ast = ast -- stored so Rerender() can re-evaluate against fresh signal values
 
   local evaluator = Evaluator.new(self.userComponents)
-  local context   = Context.new(userContext)
-  local rootNode  = evaluator:evaluate(ast, context)
+  local context = Context.new(userContext)
+  local rootNode = evaluator:evaluate(ast, context)
 
-  self.activeRules              = self:ResolveActiveRules()
+  -- Extract the layer name from the mw-root element early so that
+  -- ResolveActiveRules and other helpers can query the correct screen size.
+  if (#rootNode.children > 0) then
+    local firstNode = rootNode.children[1]
+    if (firstNode.type == Node.TYPE_ENGINE_COMPONENT and firstNode.tagName == "mw-root") then
+      self._layerName = firstNode:getAttribute("layer")
+    end
+  end
+
+  self.activeRules = self:ResolveActiveRules()
   self.activeContainerQueryRules = self:ResolveActiveContainerQueryRules()
-  self._cachedScreenWidth        = UI.screenSize().x
+  local screenW, _ = getScreenSize(self._layerName)
+  self._cachedScreenWidth = screenW
 
   if (#rootNode.children > 0) then
     local firstNode = rootNode.children[1]
@@ -963,7 +1009,8 @@ function Renderer:Render(userContext)
         uiElement:update()
         return uiElement
       else
-        error("The first component of a rendered template must be a mw-root element. You provided a " .. firstNode.tagName);
+        error("The first component of a rendered template must be a mw-root element. You provided a " ..
+                  firstNode.tagName);
       end
     else
       error("The first component of a rendered template must be a mw-root element. You provided a " .. firstNode.type);
@@ -989,9 +1036,9 @@ function Renderer:Rerender()
   -- During resize/drag the signals are unchanged, so this block is skipped.
   if (self._ast ~= nil and self._signalsDirty) then
     self._signalsDirty = false
-    local evaluator  = Evaluator.new(self.userComponents)
-    local context    = Context.new(self._signalContext or {})
-    local freshRoot  = evaluator:evaluate(self._ast, context)
+    local evaluator = Evaluator.new(self.userComponents)
+    local context = Context.new(self._signalContext or {})
+    local freshRoot = evaluator:evaluate(self._ast, context)
     if (#freshRoot.children > 0) then
       local firstNode = freshRoot.children[1]
       if (firstNode.type == Node.TYPE_ENGINE_COMPONENT and firstNode.tagName == "mw-root") then
@@ -1003,15 +1050,15 @@ function Renderer:Rerender()
   -- Snapshot explicit size/position set on the root layout (e.g. by a resize drag).
   -- These are stored temporarily so BuildLayoutTree can apply them before resolving
   -- child pixel sizes, ensuring container queries fire against the real current size.
-  self._rootSizeOverride     = self.rootLayout.props and self.rootLayout.props.size     or nil
+  self._rootSizeOverride = self.rootLayout.props and self.rootLayout.props.size or nil
   self._rootPositionOverride = self.rootLayout.props and self.rootLayout.props.position or nil
 
   -- Active rules only change when the game screen is resized (media queries).
   -- Resizing the mw-root panel does not change the screen size, so skip the
   -- rebuild in the common case.
-  local currentScreenWidth = UI.screenSize().x
+  local currentScreenWidth, _ = getScreenSize(self._layerName)
   if (self._cachedScreenWidth ~= currentScreenWidth) then
-    self.activeRules              = self:ResolveActiveRules()
+    self.activeRules = self:ResolveActiveRules()
     self.activeContainerQueryRules = self:ResolveActiveContainerQueryRules()
     self._cachedScreenWidth = currentScreenWidth
   end
@@ -1020,16 +1067,14 @@ function Renderer:Rerender()
   self._scrollCanvasIdCounter = 0
   local newRootLayout = self:BuildLayoutTree(self.evaluatedRootNode, rootParentPixelSize)
 
-
-
-  self._rootSizeOverride     = nil
+  self._rootSizeOverride = nil
   self._rootPositionOverride = nil
 
   -- Patch the live root layout table in-place.
   -- UI.create() already holds a reference to self.rootLayout, so we mutate it
   -- rather than replace it so that OpenMW picks up the changes on update().
-  self.rootLayout.props    = newRootLayout.props
-  self.rootLayout.content  = newRootLayout.content
+  self.rootLayout.props = newRootLayout.props
+  self.rootLayout.content = newRootLayout.content
   self.rootLayout.userData = newRootLayout.userData
 
   self.rootElement:update()
@@ -1044,9 +1089,8 @@ function Renderer:SnapToScreen()
     return
   end
 
-  local screenSize = UI.screenSize()
-
-  -- Resolve current pixel position.
+  local screenW, screenH = getScreenSize(self._layerName)
+  local screenSize = { x = screenW, y = screenH }
   local curX = 0
   local curY = 0
   if (self.rootLayout.props.position ~= nil) then
@@ -1075,7 +1119,7 @@ function Renderer:SnapToScreen()
     return
   end
 
-  self.rootLayout.props.position         = Util.vector2(newX, newY)
+  self.rootLayout.props.position = Util.vector2(newX, newY)
   self.rootLayout.props.relativePosition = nil
 
   self.rootElement:update()
@@ -1098,23 +1142,23 @@ end
 ---@param containerContext {pixelSize: {x:number,y:number}|nil, named: table<string,{x:number,y:number}>}|nil Container query size context.
 ---@return table The OpenMW Layout table with props, content, and events fully populated.
 function Renderer:BuildLayoutTree(node, parentPixelSize, ancestors, containerContext, positionAncestors)
-ancestors = ancestors or {}
-positionAncestors = positionAncestors or {}
-local layout, meta = self:GetEngineUIElement(node, ancestors, containerContext)
-local normalizedProperties = self:ParseAcceptedProperties(node, ancestors, containerContext)
+  ancestors = ancestors or {}
+  positionAncestors = positionAncestors or {}
+  local layout, meta = self:GetEngineUIElement(node, ancestors, containerContext)
+  local normalizedProperties = self:ParseAcceptedProperties(node, ancestors, containerContext)
 
--- During Rerender(), restore the explicit size/position applied to the root
--- (e.g. from a resize drag) so child pixel sizes and container queries compute
--- against the actual current dimensions rather than the template defaults.
--- The root node is identified by being the first call (containerContext == nil).
-if (containerContext == nil and self._rootSizeOverride ~= nil) then
-  layout.props.size         = self._rootSizeOverride
-  layout.props.relativeSize = nil
-  if (self._rootPositionOverride ~= nil) then
-    layout.props.position         = self._rootPositionOverride
-    layout.props.relativePosition = nil
+  -- During Rerender(), restore the explicit size/position applied to the root
+  -- (e.g. from a resize drag) so child pixel sizes and container queries compute
+  -- against the actual current dimensions rather than the template defaults.
+  -- The root node is identified by being the first call (containerContext == nil).
+  if (containerContext == nil and self._rootSizeOverride ~= nil) then
+    layout.props.size = self._rootSizeOverride
+    layout.props.relativeSize = nil
+    if (self._rootPositionOverride ~= nil) then
+      layout.props.position = self._rootPositionOverride
+      layout.props.relativePosition = nil
+    end
   end
-end
 
   local growAttribute = normalizedProperties["grow"]
   if (growAttribute ~= nil) then
@@ -1152,16 +1196,16 @@ end
       return type(v) == "string" and v:match("^%s*calc%s*%(") ~= nil
     end
 
-    local widthAttr  = normalizedProperties["width"]
+    local widthAttr = normalizedProperties["width"]
     local heightAttr = normalizedProperties["height"]
-    local xAttr      = normalizedProperties["x"]
-    local yAttr      = normalizedProperties["y"]
+    local xAttr = normalizedProperties["x"]
+    local yAttr = normalizedProperties["y"]
 
     local parentW = parentPixelSize and parentPixelSize.x or nil
     local parentH = parentPixelSize and parentPixelSize.y or nil
 
     if (isCalc(widthAttr) or isCalc(heightAttr)) then
-      local calcW = isCalc(widthAttr)  and self:ResolveToPixels(widthAttr,  parentW, "Width")  or nil
+      local calcW = isCalc(widthAttr) and self:ResolveToPixels(widthAttr, parentW, "Width") or nil
       local calcH = isCalc(heightAttr) and self:ResolveToPixels(heightAttr, parentH, "Height") or nil
       if (calcW ~= nil or calcH ~= nil) then
         local cur = layout.props.size
@@ -1191,10 +1235,7 @@ end
         local cur = layout.props.position
         local curX = cur and cur.x or 0
         local curY = cur and cur.y or 0
-        layout.props.position = Util.vector2(
-          calcX ~= nil and calcX or curX,
-          calcY ~= nil and calcY or curY
-        )
+        layout.props.position = Util.vector2(calcX ~= nil and calcX or curX, calcY ~= nil and calcY or curY)
         layout.props.relativePosition = nil
       end
     end
@@ -1222,7 +1263,10 @@ end
       end
       layout.props.size = Util.vector2(rW, rH)
       layout.props.relativeSize = nil
-      layoutPixelSize = { x = rW, y = rH }
+      layoutPixelSize = {
+        x = rW,
+        y = rH
+      }
     elseif (hasH and not hasW) then
       rW = rH * ratio
       -- Contain: if the derived width would exceed the parent's available width,
@@ -1233,7 +1277,10 @@ end
       end
       layout.props.size = Util.vector2(rW, rH)
       layout.props.relativeSize = nil
-      layoutPixelSize = { x = rW, y = rH }
+      layoutPixelSize = {
+        x = rW,
+        y = rH
+      }
     end
   end
 
@@ -1244,70 +1291,72 @@ end
     table.insert(childPositionAncestors, entry)
   end
   table.insert(childPositionAncestors, {
-    pixelSize   = layoutPixelSize,
-    cssPosition = normalizedProperties["cssposition"],
+    pixelSize = layoutPixelSize,
+    cssPosition = normalizedProperties["cssposition"]
   })
 
   -- Resolve left/top/right/bottom CSS position properties.
   -- Only applies when this element has 'position: absolute'.
   -- The containing block is the nearest ancestor with 'position: relative' or 'position: absolute';
-  -- if none exists, UI.screenSize() is used as the containing block.
+  -- if none exists, getScreenSize() is used as the containing block.
   -- For mw-root specifically, skipped once the user has manually dragged or resized it
   -- (position is then owned by the drag/resize handlers and must not be clobbered).
   -- For all other elements the drag/resize override does not apply.
   local isRoot = (node.tagName == "mw-root")
-  if (not (isRoot and self._userPositionOverridden) and normalizedProperties["cssposition"] == "absolute") then do
-    -- Find the nearest ancestor with position: relative, scanning backwards.
-    local containingPixelSize = nil
-    for i = #positionAncestors, 1, -1 do
-      local entry = positionAncestors[i]
-      if (entry.cssPosition == "relative" or entry.cssPosition == "absolute") then
-        containingPixelSize = entry.pixelSize
-        break
+  if (not (isRoot and self._userPositionOverridden) and normalizedProperties["cssposition"] == "absolute") then
+    do
+      -- Find the nearest ancestor with position: relative, scanning backwards.
+      local containingPixelSize = nil
+      for i = #positionAncestors, 1, -1 do
+        local entry = positionAncestors[i]
+        if (entry.cssPosition == "relative" or entry.cssPosition == "absolute") then
+          containingPixelSize = entry.pixelSize
+          break
+        end
+      end
+      -- Fall back to screen size when no positioned ancestor exists.
+      if (containingPixelSize == nil) then
+        local sw, sh = getScreenSize(self._layerName)
+        containingPixelSize = {
+          x = sw,
+          y = sh
+        }
+      end
+
+      local parentW = containingPixelSize.x
+      local parentH = containingPixelSize.y
+
+      local resolvedLeft = self:ResolveToPixels(normalizedProperties["left"], parentW, "Left")
+      local resolvedTop = self:ResolveToPixels(normalizedProperties["top"], parentH, "Top")
+      local resolvedRight = self:ResolveToPixels(normalizedProperties["right"], parentW, "Right")
+      local resolvedBottom = self:ResolveToPixels(normalizedProperties["bottom"], parentH, "Bottom")
+
+      -- left takes precedence over right; top takes precedence over bottom.
+      local posX = nil
+      if resolvedLeft ~= nil then
+        posX = resolvedLeft
+      elseif resolvedRight ~= nil and parentW ~= nil then
+        local elemW = (layoutPixelSize and layoutPixelSize.x) or 0
+        posX = parentW - elemW - resolvedRight
+      end
+
+      local posY = nil
+      if resolvedTop ~= nil then
+        posY = resolvedTop
+      elseif resolvedBottom ~= nil and parentH ~= nil then
+        local elemH = (layoutPixelSize and layoutPixelSize.y) or 0
+        posY = parentH - elemH - resolvedBottom
+      end
+
+      if posX ~= nil or posY ~= nil then
+        local existingPos = layout.props.position
+        local existingX = existingPos and existingPos.x or 0
+        local existingY = existingPos and existingPos.y or 0
+        layout.props.position = Util.vector2(posX ~= nil and posX or existingX, posY ~= nil and posY or existingY)
+        layout.props.relativePosition = nil
       end
     end
-    -- Fall back to screen size when no positioned ancestor exists.
-    if (containingPixelSize == nil) then
-      local screen = UI.screenSize()
-      containingPixelSize = { x = screen.x, y = screen.y }
-    end
-
-    local parentW = containingPixelSize.x
-    local parentH = containingPixelSize.y
-
-    local resolvedLeft   = self:ResolveToPixels(normalizedProperties["left"],   parentW, "Left")
-    local resolvedTop    = self:ResolveToPixels(normalizedProperties["top"],    parentH, "Top")
-    local resolvedRight  = self:ResolveToPixels(normalizedProperties["right"],  parentW, "Right")
-    local resolvedBottom = self:ResolveToPixels(normalizedProperties["bottom"], parentH, "Bottom")
-
-    -- left takes precedence over right; top takes precedence over bottom.
-    local posX = nil
-    if resolvedLeft ~= nil then
-      posX = resolvedLeft
-    elseif resolvedRight ~= nil and parentW ~= nil then
-      local elemW = (layoutPixelSize and layoutPixelSize.x) or 0
-      posX = parentW - elemW - resolvedRight
-    end
-
-    local posY = nil
-    if resolvedTop ~= nil then
-      posY = resolvedTop
-    elseif resolvedBottom ~= nil and parentH ~= nil then
-      local elemH = (layoutPixelSize and layoutPixelSize.y) or 0
-      posY = parentH - elemH - resolvedBottom
-    end
-
-    if posX ~= nil or posY ~= nil then
-      local existingPos = layout.props.position
-      local existingX = existingPos and existingPos.x or 0
-      local existingY = existingPos and existingPos.y or 0
-      layout.props.position = Util.vector2(
-        posX ~= nil and posX or existingX,
-        posY ~= nil and posY or existingY
-      )
-      layout.props.relativePosition = nil
-    end
-  end end
+  end
 
   local childParentPixelSize = layoutPixelSize
   if (meta ~= nil and (meta.type == "custom-flex" or meta.type == "padding-container" or meta.type == "custom-grid")) then
@@ -1320,9 +1369,15 @@ end
     local innerH = vpH ~= nil and math.max(0, vpH - meta.padding.Top - meta.padding.Bottom) or nil
     -- Main axis is unconstrained so content can overflow; cross axis is bounded.
     if (meta.direction == "row") then
-      childParentPixelSize = { x = nil, y = innerH }
+      childParentPixelSize = {
+        x = nil,
+        y = innerH
+      }
     else
-      childParentPixelSize = { x = innerW, y = nil }
+      childParentPixelSize = {
+        x = innerW,
+        y = nil
+      }
     end
   end
 
@@ -1330,11 +1385,14 @@ end
   -- The root call has containerContext == nil; mw-root becomes the default unnamed container.
   -- container-type updates the nearest unnamed container pixel size.
   -- container-name registers this element under a name for targeted @container NAME queries.
-  local childContainerContext = containerContext or { pixelSize = nil, named = {} }
+  local childContainerContext = containerContext or {
+    pixelSize = nil,
+    named = {}
+  }
   if (containerContext == nil or normalizedProperties["containertype"] ~= nil) then
     childContainerContext = {
       pixelSize = layoutPixelSize,
-      named     = childContainerContext.named,
+      named = childContainerContext.named
     }
   end
 
@@ -1353,7 +1411,7 @@ end
     end
     childContainerContext = {
       pixelSize = childContainerContext.pixelSize,
-      named     = newNamed,
+      named = newNamed
     }
   end
 
@@ -1431,10 +1489,10 @@ end
         if (childNode.type == Node.TYPE_ENGINE_COMPONENT) then
           local childProps = self:ParseAcceptedProperties(childNode, childAncestors, childContainerContext)
           table.insert(preChildMetas, {
-            gridColumn     = self:ToNumber(childProps["gridcolumn"],     "GridColumn"),
-            gridRow        = self:ToNumber(childProps["gridrow"],        "GridRow"),
+            gridColumn = self:ToNumber(childProps["gridcolumn"], "GridColumn"),
+            gridRow = self:ToNumber(childProps["gridrow"], "GridRow"),
             gridColumnSpan = self:ToNumber(childProps["gridcolumnspan"], "GridColumnSpan"),
-            gridRowSpan    = self:ToNumber(childProps["gridrowspan"],    "GridRowSpan"),
+            gridRowSpan = self:ToNumber(childProps["gridrowspan"], "GridRowSpan")
           })
         end
       end
@@ -1454,7 +1512,8 @@ end
             effectiveParentPixelSize = cellSize
           end
         end
-        table.insert(childLayouts, self:BuildLayoutTree(childNode, effectiveParentPixelSize, childAncestors, childContainerContext, childPositionAncestors))
+        table.insert(childLayouts, self:BuildLayoutTree(childNode, effectiveParentPixelSize, childAncestors,
+            childContainerContext, childPositionAncestors))
       end
     end
   end
@@ -1477,7 +1536,11 @@ end
         if (layout.__anglesNestedScrollCanvases == nil) then
           layout.__anglesNestedScrollCanvases = {}
         end
-        table.insert(layout.__anglesNestedScrollCanvases, { scrollCanvas = childLayout, padX = padX, padY = padY })
+        table.insert(layout.__anglesNestedScrollCanvases, {
+          scrollCanvas = childLayout,
+          padX = padX,
+          padY = padY
+        })
       end
       if (childLayout.__anglesNestedScrollCanvases ~= nil) then
         if (layout.__anglesNestedScrollCanvases == nil) then
@@ -1486,8 +1549,8 @@ end
         for _, entry in ipairs(childLayout.__anglesNestedScrollCanvases) do
           table.insert(layout.__anglesNestedScrollCanvases, {
             scrollCanvas = entry.scrollCanvas,
-            padX         = entry.padX + padX,
-            padY         = entry.padY + padY,
+            padX = entry.padX + padX,
+            padY = entry.padY + padY
           })
         end
       end
@@ -1524,7 +1587,11 @@ end
         if (layout.__anglesNestedScrollCanvases == nil) then
           layout.__anglesNestedScrollCanvases = {}
         end
-        table.insert(layout.__anglesNestedScrollCanvases, { scrollCanvas = childLayout, padX = 0, padY = 0 })
+        table.insert(layout.__anglesNestedScrollCanvases, {
+          scrollCanvas = childLayout,
+          padX = 0,
+          padY = 0
+        })
       end
       if (childLayout.__anglesNestedScrollCanvases ~= nil) then
         if (layout.__anglesNestedScrollCanvases == nil) then
@@ -1548,7 +1615,8 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
   local props = {}
   local consumed = {}
 
-  self:MarkConsumed(consumed, { "name", "layer", "padding", "parsedpadding", "direction", "gap", "grow", "containertype", "containername", "dragger" })
+  self:MarkConsumed(consumed, {"name", "layer", "padding", "parsedpadding", "direction", "gap", "grow", "containertype",
+                               "containername", "dragger"})
 
   local width, widthRelativeFromWidth = self:ParseNumericOrPercent(allProperties["width"], "Width")
   local height, heightRelativeFromHeight = self:ParseNumericOrPercent(allProperties["height"], "Height")
@@ -1583,7 +1651,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
   local anchorX = self:ToNumber(allProperties["anchorx"], "AnchorX")
   local anchorY = self:ToNumber(allProperties["anchory"], "AnchorY")
   local visible = self:ToBoolean(allProperties["visible"], "Visible")
-  local alpha   = self:ToNumber(allProperties["alpha"], "Alpha")
+  local alpha = self:ToNumber(allProperties["alpha"], "Alpha")
   local aspectRatio = self:ParseAspectRatio(allProperties["aspectratio"], "AspectRatio")
 
   local visibilityRaw = allProperties["visibility"]
@@ -1594,22 +1662,24 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
     elseif (visibilityRaw == "hidden") then
       visibilityBool = false
     else
-      error("[" .. (tagName or "?") .. "] Invalid CSS visibility value '" .. tostring(visibilityRaw) .. "': must be 'visible' or 'hidden'.")
+      error("[" .. (tagName or "?") .. "] Invalid CSS visibility value '" .. tostring(visibilityRaw) ..
+                "': must be 'visible' or 'hidden'.")
     end
   end
 
-  self:MarkConsumed(consumed, {
-    "width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory", "visible", "alpha", "visibility", "aspectratio", "left", "top", "right", "bottom", "cssposition"
-  })
+  self:MarkConsumed(consumed,
+      {"width", "height", "relativewidth", "relativeheight", "x", "y", "relativex", "relativey", "anchorx", "anchory",
+       "visible", "alpha", "visibility", "aspectratio", "left", "top", "right", "bottom", "cssposition"})
 
   local requireSize = options ~= nil and options.requireSize == true
   local defaultRelativeSize = options ~= nil and options.defaultRelativeSize == true
 
   if (requireSize and (width == nil or height == nil) and (relativeWidth == nil or relativeHeight == nil)) then
-    error("[" .. (tagName or "?") .. "] Element must have either Width/Height or RelativeWidth/RelativeHeight attributes.")
+    error("[" .. (tagName or "?") ..
+              "] Element must have either Width/Height or RelativeWidth/RelativeHeight attributes.")
   end
 
-  local hasExplicitWidth  = (width ~= nil or relativeWidth ~= nil)
+  local hasExplicitWidth = (width ~= nil or relativeWidth ~= nil)
   local hasExplicitHeight = (height ~= nil or relativeHeight ~= nil)
 
   if (defaultRelativeSize and width == nil and height == nil and relativeWidth == nil and relativeHeight == nil) then
@@ -1625,7 +1695,7 @@ function Renderer:ApplyCommonWidgetProperties(allProperties, options, tagName)
     end
     -- Update the "explicit" flags to reflect the newly applied defaults so
     -- the aspect-ratio block below sees the correct state.
-    hasExplicitWidth  = (width ~= nil or relativeWidth ~= nil)
+    hasExplicitWidth = (width ~= nil or relativeWidth ~= nil)
     hasExplicitHeight = (height ~= nil or relativeHeight ~= nil)
   end
 
@@ -1687,14 +1757,14 @@ end
 ---@return {mousePress: fun(e:table,l:table), mouseMove: fun(e:table,l:table)} Plain handler functions for edge-drag resizing.
 function Renderer:BuildResizeFuncs(edgeMargin)
   local resizeState = {
-    isDragging   = false,
-    dragEdge     = nil,
-    lastMousePos = nil,
+    isDragging = false,
+    dragEdge = nil,
+    lastMousePos = nil
   }
 
   local rendererRef = self
-  local edgeMargin  = edgeMargin or 8
-  local minSize     = 50
+  local edgeMargin = edgeMargin or 8
+  local minSize = 50
 
   local function getElementBounds(l)
     local elemX = 0
@@ -1704,9 +1774,9 @@ function Renderer:BuildResizeFuncs(edgeMargin)
       elemX = l.props.position.x
       elemY = l.props.position.y
     elseif (l.props.relativePosition ~= nil) then
-      local screenSize = UI.screenSize()
-      elemX = l.props.relativePosition.x * screenSize.x
-      elemY = l.props.relativePosition.y * screenSize.y
+      local sw, sh = getScreenSize(rendererRef._layerName)
+      elemX = l.props.relativePosition.x * sw
+      elemY = l.props.relativePosition.y * sh
     end
 
     local elemW = 0
@@ -1716,9 +1786,9 @@ function Renderer:BuildResizeFuncs(edgeMargin)
       elemW = l.props.size.x
       elemH = l.props.size.y
     elseif (l.props.relativeSize ~= nil) then
-      local screenSize = UI.screenSize()
-      elemW = l.props.relativeSize.x * screenSize.x
-      elemH = l.props.relativeSize.y * screenSize.y
+      local sw, sh = getScreenSize(rendererRef._layerName)
+      elemW = l.props.relativeSize.x * sw
+      elemH = l.props.relativeSize.y * sh
     end
 
     return elemX, elemY, elemW, elemH
@@ -1726,15 +1796,17 @@ function Renderer:BuildResizeFuncs(edgeMargin)
 
   return {
     mousePress = function(e, l)
-      if (e.button ~= 1) then return end
+      if (e.button ~= 1) then
+        return
+      end
 
       local elemX, elemY, elemW, elemH = getElementBounds(l)
       local mx = e.position.x
       local my = e.position.y
 
-      local onLeft   = mx >= elemX and mx <= elemX + edgeMargin
-      local onRight  = mx >= elemX + elemW - edgeMargin and mx <= elemX + elemW
-      local onTop    = my >= elemY and my <= elemY + edgeMargin
+      local onLeft = mx >= elemX and mx <= elemX + edgeMargin
+      local onRight = mx >= elemX + elemW - edgeMargin and mx <= elemX + elemW
+      local onTop = my >= elemY and my <= elemY + edgeMargin
       local onBottom = my >= elemY + elemH - edgeMargin and my <= elemY + elemH
 
       local edge = nil
@@ -1757,35 +1829,40 @@ function Renderer:BuildResizeFuncs(edgeMargin)
       end
 
       if (edge ~= nil) then
-        resizeState.isDragging   = true
-        resizeState.dragEdge     = edge
+        resizeState.isDragging = true
+        resizeState.dragEdge = edge
         resizeState.lastMousePos = e.position
       else
-        resizeState.isDragging   = false
-        resizeState.dragEdge     = nil
+        resizeState.isDragging = false
+        resizeState.dragEdge = nil
         resizeState.lastMousePos = nil
       end
     end,
 
     mouseMove = function(e, l)
-      if (not resizeState.isDragging) then return end
+      if (not resizeState.isDragging) then
+        return
+      end
 
       -- Stop resizing if the left button is no longer held
       if (e.button ~= 1) then
-        resizeState.isDragging   = false
-        resizeState.dragEdge     = nil
+        resizeState.isDragging = false
+        resizeState.dragEdge = nil
         resizeState.lastMousePos = nil
         return
       end
 
       local last = resizeState.lastMousePos
-      if (last == nil) then return end
+      if (last == nil) then
+        return
+      end
 
       local dx = e.position.x - last.x
       local dy = e.position.y - last.y
       resizeState.lastMousePos = e.position
 
-      local screenSize = UI.screenSize()
+      local _sw, _sh = getScreenSize(rendererRef._layerName)
+      local screenSize = { x = _sw, y = _sh }
 
       -- Resolve current pixel position
       local curX = 0
@@ -1836,9 +1913,9 @@ function Renderer:BuildResizeFuncs(edgeMargin)
       end
 
       -- Switch element to absolute pixel size/position once resizing begins
-      l.props.size         = Util.vector2(newW, newH)
+      l.props.size = Util.vector2(newW, newH)
       l.props.relativeSize = nil
-      l.props.position     = Util.vector2(newX, newY)
+      l.props.position = Util.vector2(newX, newY)
       l.props.relativePosition = nil
 
       -- Suppress CSS left/top/right/bottom position overrides after the user
@@ -1848,7 +1925,7 @@ function Renderer:BuildResizeFuncs(edgeMargin)
       if (rendererRef.rootElement ~= nil) then
         rendererRef:Rerender()
       end
-    end,
+    end
   }
 end
 
@@ -1858,39 +1935,48 @@ end
 ---@return {mousePress: fun(e:table,l:table), mouseMove: fun(e:table,l:table)} Plain handler functions for drag-to-move.
 function Renderer:BuildDraggerFuncs()
   local dragState = {
-    isDragging   = false,
-    lastMousePos = nil,
+    isDragging = false,
+    lastMousePos = nil
   }
 
   local rendererRef = self
 
   return {
     mousePress = function(e, l)
-      if (e.button ~= 1) then return end
-      dragState.isDragging   = true
+      if (e.button ~= 1) then
+        return
+      end
+      dragState.isDragging = true
       dragState.lastMousePos = e.position
     end,
 
     mouseMove = function(e, l)
-      if (not dragState.isDragging) then return end
+      if (not dragState.isDragging) then
+        return
+      end
 
       if (e.button ~= 1) then
-        dragState.isDragging   = false
+        dragState.isDragging = false
         dragState.lastMousePos = nil
         return
       end
 
       local last = dragState.lastMousePos
-      if (last == nil) then return end
+      if (last == nil) then
+        return
+      end
 
       local dx = e.position.x - last.x
       local dy = e.position.y - last.y
       dragState.lastMousePos = e.position
 
       local rootLayout = rendererRef.rootLayout
-      if (rootLayout == nil or rootLayout.props == nil) then return end
+      if (rootLayout == nil or rootLayout.props == nil) then
+        return
+      end
 
-      local screenSize = UI.screenSize()
+      local _sw, _sh = getScreenSize(rendererRef._layerName)
+      local screenSize = { x = _sw, y = _sh }
 
       local curX = 0
       local curY = 0
@@ -1917,7 +2003,7 @@ function Renderer:BuildDraggerFuncs()
       local newX = math.max(0, math.min(curX + dx, screenSize.x - rootW))
       local newY = math.max(0, math.min(curY + dy, screenSize.y - rootH))
 
-      rootLayout.props.position         = Util.vector2(newX, newY)
+      rootLayout.props.position = Util.vector2(newX, newY)
       rootLayout.props.relativePosition = nil
 
       -- Suppress CSS left/top/right/bottom position overrides after the user
@@ -1927,7 +2013,7 @@ function Renderer:BuildDraggerFuncs()
       if (rendererRef.rootElement ~= nil) then
         rendererRef.rootElement:update()
       end
-    end,
+    end
   }
 end
 
@@ -1940,10 +2026,10 @@ end
 ---@return {focusGain: fun(e,l), focusLoss: fun(e,l), textInput: fun(e,l)} Plain handler functions for placeholder behaviour.
 function Renderer:BuildPlaceholderFuncs(placeholder, initialText)
   local state = {
-    placeholder          = placeholder,
-    userText             = initialText or "",
+    placeholder = placeholder,
+    userText = initialText or "",
     isShowingPlaceholder = (initialText == nil or initialText == ""),
-    isFocused            = false
+    isFocused = false
   }
 
   local rendererRef = self
@@ -1992,10 +2078,16 @@ end
 ---@return table<string, userdata>|nil Map of event name to async:callback-wrapped handler, or nil when no events are defined.
 function Renderer:BuildEventTable(systemFuncs, userFuncs)
   local allNames = {}
-  for k in pairs(systemFuncs or {}) do allNames[k] = true end
-  for k in pairs(userFuncs or {}) do allNames[k] = true end
+  for k in pairs(systemFuncs or {}) do
+    allNames[k] = true
+  end
+  for k in pairs(userFuncs or {}) do
+    allNames[k] = true
+  end
 
-  if (next(allNames) == nil) then return nil end
+  if (next(allNames) == nil) then
+    return nil
+  end
 
   local events = {}
   for eventName in pairs(allNames) do
@@ -2025,19 +2117,31 @@ function Renderer:BuildEventTable(systemFuncs, userFuncs)
       else
         -- Plain function (system handlers use this path).
         local u = uf
-        callUf = function(e, l) u(e, l) end
+        callUf = function(e, l)
+          u(e, l)
+        end
       end
     end
 
     if (sf ~= nil and callUf ~= nil) then
       local s, cu = sf, callUf
-      events[eventName] = async:callback(function(e, l) s(e, l); cu(e, l) return true end)
+      events[eventName] = async:callback(function(e, l)
+        s(e, l);
+        cu(e, l)
+        return true
+      end)
     elseif (sf ~= nil) then
       local s = sf
-      events[eventName] = async:callback(function(e, l) s(e, l) return true end)
+      events[eventName] = async:callback(function(e, l)
+        s(e, l)
+        return true
+      end)
     else
       local cu = callUf
-      events[eventName] = async:callback(function(e, l) cu(e, l) return true end)
+      events[eventName] = async:callback(function(e, l)
+        cu(e, l)
+        return true
+      end)
     end
   end
 
@@ -2050,16 +2154,16 @@ end
 ---@param containerContext table|nil Current container query context.
 ---@return table layout, table|nil meta The base OpenMW Layout table and an optional meta descriptor (custom-flex, custom-grid, custom-scroll-canvas, or padding-container).
 function Renderer:GetEngineUIElement(node, ancestors, containerContext)
-if (node.type ~= Node.TYPE_ENGINE_COMPONENT) then
-  error("Cannot render node of type " .. node.type)
-end
+  if (node.type ~= Node.TYPE_ENGINE_COMPONENT) then
+    error("Cannot render node of type " .. node.type)
+  end
 
-local tagName = node.tagName
-if (not Renderer.IsValidEngineTag(tagName)) then
-  error(tagName .. " is not a valid engine tag.")
-end
+  local tagName = node.tagName
+  if (not Renderer.IsValidEngineTag(tagName)) then
+    error(tagName .. " is not a valid engine tag.")
+  end
 
-local allProperties = self:ParseAcceptedProperties(node, ancestors, containerContext)
+  local allProperties = self:ParseAcceptedProperties(node, ancestors, containerContext)
   local name = allProperties["name"]
 
   if (tagName == "mw-root") then
@@ -2068,14 +2172,16 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       error("mw-root elements must have a 'Layer' attribute.")
     end
 
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { requireSize = true }, tagName)
-    local resizable     = self:ToBoolean(allProperties["resizable"], "Resizable")
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, {
+      requireSize = true
+    }, tagName)
+    local resizable = self:ToBoolean(allProperties["resizable"], "Resizable")
     local edgeMarginRaw = allProperties["edgemargin"]
     if (type(edgeMarginRaw) == "string") then
       edgeMarginRaw = string.gsub(edgeMarginRaw, "(%d+%.?%d*)px", "%1")
     end
     local edgeMargin = self:ToNumber(edgeMarginRaw, "EdgeMargin")
-    self:MarkConsumed(consumed, { "name", "layer", "resizable", "edgemargin" })
+    self:MarkConsumed(consumed, {"name", "layer", "resizable", "edgemargin"})
 
     local resizeFuncs = nil
     if (resizable == true) then
@@ -2087,11 +2193,13 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       name = name,
       props = props,
       __pendingSystemEvents = resizeFuncs,
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, nil
   elseif (tagName == "mw-window") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true }, tagName)
-    self:MarkConsumed(consumed, { "background", "padding", "parsedpadding" })
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, {
+      defaultRelativeSize = true
+    }, tagName)
+    self:MarkConsumed(consumed, {"background", "padding", "parsedpadding"})
 
     local background = allProperties["background"]
     -- alpha was already resolved by ApplyCommonWidgetProperties; nil means "no override".
@@ -2115,16 +2223,16 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       template = MWUI.templates.bordersThick,
       props = {
         relativeSize = Util.vector2(1, 1),
-        alpha = alpha or 1,
-      },
+        alpha = alpha or 1
+      }
     })
 
     local parsedPadding = allProperties["parsedpadding"]
     local meta = nil
     if (parsedPadding ~= nil) then
       meta = {
-        type    = "padding-container",
-        padding = parsedPadding,
+        type = "padding-container",
+        padding = parsedPadding
       }
     end
 
@@ -2132,48 +2240,52 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       name = name,
       props = props,
       content = UI.content(windowContent),
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, meta
   elseif (tagName == "mw-flex") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true }, tagName)
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, {
+      defaultRelativeSize = true
+    }, tagName)
     local parsedPadding = allProperties["parsedpadding"] or {
       Top = 0,
       Right = 0,
       Bottom = 0,
-      Left = 0,
+      Left = 0
     }
 
-    self:MarkConsumed(consumed, { "name", "padding", "parsedpadding", "direction", "gap", "alignitems", "justifycontent" })
+    self:MarkConsumed(consumed, {"name", "padding", "parsedpadding", "direction", "gap", "alignitems", "justifycontent"})
 
     return {
       name = name,
       props = props,
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, {
       type = "custom-flex",
       direction = allProperties["direction"] or "row",
       gap = self:ToNumber(allProperties["gap"], "Gap") or 0,
       padding = parsedPadding,
       alignItems = allProperties["alignitems"],
-      justifyContent = allProperties["justifycontent"],
+      justifyContent = allProperties["justifycontent"]
     }
   elseif (tagName == "mw-grid") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true }, tagName)
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, {
+      defaultRelativeSize = true
+    }, tagName)
     local parsedPadding = allProperties["parsedpadding"] or {
       Top = 0,
       Right = 0,
       Bottom = 0,
-      Left = 0,
+      Left = 0
     }
 
-    self:MarkConsumed(consumed, {
-      "name", "padding", "parsedpadding", "gap", "rowgap", "columngap", "gridtemplaterows", "gridtemplatecolumns", "alignitems", "justifycontent"
-    })
+    self:MarkConsumed(consumed,
+        {"name", "padding", "parsedpadding", "gap", "rowgap", "columngap", "gridtemplaterows", "gridtemplatecolumns",
+         "alignitems", "justifycontent"})
 
     return {
       name = name,
       props = props,
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, {
       type = "custom-grid",
       padding = parsedPadding,
@@ -2183,7 +2295,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       rowGap = allProperties["rowgap"],
       columnGap = allProperties["columngap"],
       alignItems = allProperties["alignitems"],
-      justifyContent = allProperties["justifycontent"],
+      justifyContent = allProperties["justifycontent"]
     }
   elseif (tagName == "mw-text") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
@@ -2246,21 +2358,23 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       props.autoSize = true
     end
 
-    self:MarkConsumed(consumed, { "name" })
+    self:MarkConsumed(consumed, {"name"})
 
     return {
       name = name,
       type = UI.TYPE.Text,
       template = MWUI.templates.textNormal,
       props = props,
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, nil
   elseif (tagName == "mw-image") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
 
     local resourcePath = allProperties["resource"] or allProperties["src"] or allProperties["path"]
     if (resourcePath ~= nil) then
-      props.resource = UI.texture({ path = tostring(resourcePath) })
+      props.resource = UI.texture({
+        path = tostring(resourcePath)
+      })
       consumed["resource"] = true
       consumed["src"] = true
       consumed["path"] = true
@@ -2276,13 +2390,13 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       consumed["tilev"] = true
     end
 
-    self:MarkConsumed(consumed, { "name" })
+    self:MarkConsumed(consumed, {"name"})
 
     return {
       name = name,
       type = UI.TYPE.Image,
       props = props,
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, nil
   elseif (tagName == "mw-text-edit") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
@@ -2335,7 +2449,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       consumed["autosize"] = true
     end
 
-    self:MarkConsumed(consumed, { "name" })
+    self:MarkConsumed(consumed, {"name"})
 
     local placeholderFuncs = nil
     if (placeholder ~= nil) then
@@ -2348,11 +2462,11 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       template = MWUI.templates.textEditBox,
       props = props,
       __pendingSystemEvents = placeholderFuncs,
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, nil
   elseif (tagName == "mw-hr") then
     local consumed = {}
-    self:MarkConsumed(consumed, { "name", "dragger" })
+    self:MarkConsumed(consumed, {"name", "dragger"})
     -- Provide explicit default sizing so the layout system (ArrangeFlexChildren /
     -- ArrangeGridChildren) can account for the element's footprint even though
     -- the visual appearance comes from the MWUI template.  Full width, 4 px tall.
@@ -2361,20 +2475,22 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       template = MWUI.templates.horizontalLine,
       props = {
         relativeSize = Util.vector2(1, 0),
-        size = Util.vector2(0, 2),
+        size = Util.vector2(0, 2)
       },
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, nil
   elseif (tagName == "mw-scroll-canvas") then
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { requireSize = true }, tagName)
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, {
+      requireSize = true
+    }, tagName)
     local parsedPadding = allProperties["parsedpadding"] or {
       Top = 0,
       Right = 0,
       Bottom = 0,
-      Left = 0,
+      Left = 0
     }
 
-    local sbSize    = self:ToNumber(allProperties["scrollbarsize"], "ScrollBarSize") or 16
+    local sbSize = self:ToNumber(allProperties["scrollbarsize"], "ScrollBarSize") or 16
     local scrollStep = self:ToNumber(allProperties["scrollstep"], "ScrollStep") or 30
 
     -- Assign a stable ID so scroll offsets survive Rerender() calls.
@@ -2387,7 +2503,10 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     end
     local state = self._scrollStates[scrollId]
     if (state == nil) then
-      state = { x = 0, y = 0 }
+      state = {
+        x = 0,
+        y = 0
+      }
       self._scrollStates[scrollId] = state
     end
 
@@ -2401,11 +2520,11 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
     if (state.updateScrollVisuals == nil) then
       local function updateScrollVisuals()
         if (state.contentLayout ~= nil) then
-          local pad = state.padding or { Left = 0, Top = 0 }
-          state.contentLayout.props.position = Util.vector2(
-            -state.x + pad.Left,
-            -state.y + pad.Top
-          )
+          local pad = state.padding or {
+            Left = 0,
+            Top = 0
+          }
+          state.contentLayout.props.position = Util.vector2(-state.x + pad.Left, -state.y + pad.Top)
         end
         if (state.vThumbLayout ~= nil and (state.maxY or 0) > 0) then
           local vRatio = state.y / state.maxY
@@ -2424,12 +2543,10 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
       state.updateScrollVisuals = updateScrollVisuals
     end
 
-    self:MarkConsumed(consumed, {
-      "name", "padding", "parsedpadding", "direction", "gap", "scrollbarsize", "scrollstep"
-    })
+    self:MarkConsumed(consumed, {"name", "padding", "parsedpadding", "direction", "gap", "scrollbarsize", "scrollstep"})
 
     return {
-      name  = name,
+      name = name,
       props = props,
       userData = self:BuildUserData(allProperties, consumed),
       -- Register drag-continuation and drag-release on the outer widget so the
@@ -2438,7 +2555,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
         mouseMove = function(e, l)
           if (state.vDragging and state.vLastMouse ~= nil) then
             if (e.button ~= 1) then
-              state.vDragging  = false
+              state.vDragging = false
               state.vLastMouse = nil
             else
               local dy = e.position.y - state.vLastMouse.y
@@ -2453,7 +2570,7 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
           end
           if (state.hDragging and state.hLastMouse ~= nil) then
             if (e.button ~= 1) then
-              state.hDragging  = false
+              state.hDragging = false
               state.hLastMouse = nil
             else
               local dx = e.position.x - state.hLastMouse.x
@@ -2469,69 +2586,71 @@ local allProperties = self:ParseAcceptedProperties(node, ancestors, containerCon
         end,
         mouseRelease = function(e, l)
           if (e.button == 1) then
-            state.vDragging  = false
-            state.hDragging  = false
+            state.vDragging = false
+            state.hDragging = false
             state.vLastMouse = nil
             state.hLastMouse = nil
           end
-        end,
-      },
+        end
+      }
     }, {
-      type          = "custom-scroll-canvas",
-      state         = state,
-      padding       = parsedPadding,
-      direction     = allProperties["direction"] or "column",
-      gap           = self:ToNumber(allProperties["gap"], "Gap") or 0,
+      type = "custom-scroll-canvas",
+      state = state,
+      padding = parsedPadding,
+      direction = allProperties["direction"] or "column",
+      gap = self:ToNumber(allProperties["gap"], "Gap") or 0,
       scrollBarSize = sbSize,
-      scrollStep    = scrollStep,
-      scrollId      = scrollId,
+      scrollStep = scrollStep,
+      scrollId = scrollId
     }
   elseif (tagName == "mw-host") then
     -- Transparent wrapper produced by the Evaluator for <mw-host> elements.
     -- Behaves identically to mw-widget but defaults to relativeSize={1,1} so that
     -- it fills its parent unless the author overrides sizing via CSS.
-    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, { defaultRelativeSize = true }, tagName)
+    local props, consumed = self:ApplyCommonWidgetProperties(allProperties, {
+      defaultRelativeSize = true
+    }, tagName)
     local parsedPadding = allProperties["parsedpadding"]
 
-    self:MarkConsumed(consumed, { "name", "padding", "parsedpadding" })
+    self:MarkConsumed(consumed, {"name", "padding", "parsedpadding"})
 
     if (parsedPadding ~= nil) then
       return {
         name = name,
         props = props,
-        userData = self:BuildUserData(allProperties, consumed),
+        userData = self:BuildUserData(allProperties, consumed)
       }, {
         type = "padding-container",
-        padding = parsedPadding,
+        padding = parsedPadding
       }
     end
 
     return {
       name = name,
       props = props,
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, nil
   elseif (tagName == "mw-widget") then
     local props, consumed = self:ApplyCommonWidgetProperties(allProperties, nil, tagName)
     local parsedPadding = allProperties["parsedpadding"]
 
-    self:MarkConsumed(consumed, { "name", "padding", "parsedpadding" })
+    self:MarkConsumed(consumed, {"name", "padding", "parsedpadding"})
 
     if (parsedPadding ~= nil) then
       return {
         name = name,
         props = props,
-        userData = self:BuildUserData(allProperties, consumed),
+        userData = self:BuildUserData(allProperties, consumed)
       }, {
         type = "padding-container",
-        padding = parsedPadding,
+        padding = parsedPadding
       }
     end
 
     return {
       name = name,
       props = props,
-      userData = self:BuildUserData(allProperties, consumed),
+      userData = self:BuildUserData(allProperties, consumed)
     }, nil
   end
 end
@@ -2575,10 +2694,7 @@ function Renderer:ParseAcceptedProperties(node, ancestors, containerContext)
   --   "1 / span 2"  → gridcolumn = 1,  gridcolumnspan = 2
   --   "1 / 3"       → gridcolumn = 1,  gridcolumnspan = 2  (endLine - startLine)
   --   "1"           → gridcolumn = 1   (span defaults to 1 in ArrangeGridChildren)
-  local gridLinePairs = {
-    { "gridcolumn", "gridcolumnspan" },
-    { "gridrow",    "gridrowspan"    },
-  }
+  local gridLinePairs = {{"gridcolumn", "gridcolumnspan"}, {"gridrow", "gridrowspan"}}
   for _, pair in ipairs(gridLinePairs) do
     local colKey, spanKey = pair[1], pair[2]
     local val = properties[colKey]
@@ -2605,7 +2721,8 @@ function Renderer:ParseAcceptedProperties(node, ancestors, containerContext)
     end
   end
 
-  if (node.tagName == "mw-flex" or node.tagName == "mw-widget" or node.tagName == "mw-host" or node.tagName == "mw-grid" or node.tagName == "mw-scroll-canvas" or node.tagName == "mw-window") then
+  if (node.tagName == "mw-flex" or node.tagName == "mw-widget" or node.tagName == "mw-host" or node.tagName == "mw-grid" or
+      node.tagName == "mw-scroll-canvas" or node.tagName == "mw-window") then
     local padding = properties["padding"]
     if (padding ~= nil) then
       properties["parsedpadding"] = self:ParsePadding(padding)
@@ -2670,7 +2787,7 @@ function Renderer:ParsePadding(paddingString)
     Top = top,
     Right = right,
     Bottom = bottom,
-    Left = left,
+    Left = left
   }
 end
 
@@ -2679,14 +2796,16 @@ end
 ---@param propertyName string Used in error messages on parse failure.
 ---@return number|nil Resolved pixel value, or nil when a percentage token could not be resolved.
 function Renderer:EvalCalc(innerExpr, parentAxisSize, propertyName)
-  local s   = tostring(innerExpr)
+  local s = tostring(innerExpr)
   local pos = 1
 
   local function skipWS()
-    while pos <= #s and s:sub(pos, pos):match("%s") do pos = pos + 1 end
+    while pos <= #s and s:sub(pos, pos):match("%s") do
+      pos = pos + 1
+    end
   end
 
-  local parseExpr  -- forward declaration
+  local parseExpr -- forward declaration
 
   local function parseAtom()
     skipWS()
@@ -2732,10 +2851,12 @@ function Renderer:EvalCalc(innerExpr, parentAxisSize, propertyName)
         if (parentAxisSize ~= nil) then
           return (num / 100) * parentAxisSize
         end
-        return nil  -- unresolvable percentage
+        return nil -- unresolvable percentage
       elseif (unit1:match("[a-zA-Z]")) then
         -- Unknown/unsupported CSS unit — skip and treat as zero to avoid hard errors
-        while pos <= #s and s:sub(pos, pos):match("[a-zA-Z]") do pos = pos + 1 end
+        while pos <= #s and s:sub(pos, pos):match("[a-zA-Z]") do
+          pos = pos + 1
+        end
         return 0
       else
         -- Bare number → pixels
@@ -2799,7 +2920,8 @@ function Renderer:EvalCalc(innerExpr, parentAxisSize, propertyName)
 
   local ok, result = pcall(parseExpr)
   if (not ok) then
-    error("[" .. (propertyName or "?") .. "] Invalid calc() expression '" .. tostring(innerExpr) .. "': " .. tostring(result))
+    error("[" .. (propertyName or "?") .. "] Invalid calc() expression '" .. tostring(innerExpr) .. "': " ..
+              tostring(result))
   end
   return result
 end
@@ -2809,7 +2931,9 @@ end
 ---@param propertyName string Used in error messages.
 ---@return number|nil Resolved pixel value, or nil when the value is nil or a percentage without a known parent size.
 function Renderer:ResolveToPixels(value, parentAxisSize, propertyName)
-  if (value == nil) then return nil end
+  if (value == nil) then
+    return nil
+  end
 
   -- Detect top-level calc(...)
   if (type(value) == "string") then
@@ -2820,9 +2944,13 @@ function Renderer:ResolveToPixels(value, parentAxisSize, propertyName)
   end
 
   local px, rel = self:ParseNumericOrPercent(value, propertyName)
-  if (px ~= nil) then return px end
+  if (px ~= nil) then
+    return px
+  end
   if (rel ~= nil) then
-    if (parentAxisSize ~= nil) then return rel * parentAxisSize end
+    if (parentAxisSize ~= nil) then
+      return rel * parentAxisSize
+    end
     return nil
   end
   return nil
@@ -2954,15 +3082,27 @@ function Renderer:ParseGridTracks(trackDefinition)
     local pct = string.match(trimmed, "^([%+%-]?%d+%.?%d*)%%$")
 
     if (fr ~= nil) then
-      table.insert(tracks, { kind = "fr", value = tonumber(fr) })
+      table.insert(tracks, {
+        kind = "fr",
+        value = tonumber(fr)
+      })
     elseif (pct ~= nil) then
-      table.insert(tracks, { kind = "percent", value = tonumber(pct) / 100 })
+      table.insert(tracks, {
+        kind = "percent",
+        value = tonumber(pct) / 100
+      })
     else
       local px = tonumber(trimmed)
       if (px ~= nil) then
-        table.insert(tracks, { kind = "px", value = px })
+        table.insert(tracks, {
+          kind = "px",
+          value = px
+        })
       elseif (trimmed == "auto") then
-        table.insert(tracks, { kind = "auto", value = 0 })
+        table.insert(tracks, {
+          kind = "auto",
+          value = 0
+        })
       end
     end
   end
@@ -3098,26 +3238,31 @@ function Renderer:PrecomputeGridCellSizes(preChildMetas, meta, innerPixelSize)
 
   local columnTracks = self:ParseGridTracks(meta.templateColumns)
   if (#columnTracks == 0) then
-    columnTracks = { { kind = "fr", value = 1 } }
+    columnTracks = {{
+      kind = "fr",
+      value = 1
+    }}
   end
   local numColumns = #columnTracks
 
-  local containerWidth  = innerPixelSize and innerPixelSize.x or nil
+  local containerWidth = innerPixelSize and innerPixelSize.x or nil
   local containerHeight = innerPixelSize and innerPixelSize.y or nil
 
   -- Phase 1: placement (mirrors ArrangeGridChildren)
   local placements = {}
-  local occupancy  = {}
-  local autoRow    = 1
+  local occupancy = {}
+  local autoRow = 1
   local autoColumn = 1
   local maxUsedRow = 0
 
   for i, childMeta in ipairs(preChildMetas) do
     local columnSpan = math.max(1, childMeta.gridColumnSpan or 1)
-    local rowSpan    = math.max(1, childMeta.gridRowSpan    or 1)
-    if (columnSpan > numColumns) then columnSpan = numColumns end
+    local rowSpan = math.max(1, childMeta.gridRowSpan or 1)
+    if (columnSpan > numColumns) then
+      columnSpan = numColumns
+    end
 
-    local placedRow    = childMeta.gridRow
+    local placedRow = childMeta.gridRow
     local placedColumn = childMeta.gridColumn
 
     if (placedRow ~= nil and placedColumn ~= nil) then
@@ -3128,47 +3273,54 @@ function Renderer:PrecomputeGridCellSizes(preChildMetas, meta, innerPixelSize)
         local colStart = (r == autoRow) and autoColumn or 1
         for c = colStart, numColumns do
           if (c + columnSpan - 1 <= numColumns and self:IsGridAreaFree(occupancy, r, c, rowSpan, columnSpan)) then
-            placedRow    = r
+            placedRow = r
             placedColumn = c
-            autoRow      = r
-            autoColumn   = c + columnSpan
+            autoRow = r
+            autoColumn = c + columnSpan
             if (autoColumn > numColumns) then
               autoColumn = 1
-              autoRow    = autoRow + 1
+              autoRow = autoRow + 1
             end
             found = true
             break
           end
         end
-        if (found) then break end
+        if (found) then
+          break
+        end
       end
       if (not found) then
-        placedRow    = autoRow
+        placedRow = autoRow
         placedColumn = 1
       end
       self:MarkGridArea(occupancy, placedRow, placedColumn, rowSpan, columnSpan)
     end
 
     local bottomRow = (placedRow or 1) + rowSpan - 1
-    if (bottomRow > maxUsedRow) then maxUsedRow = bottomRow end
+    if (bottomRow > maxUsedRow) then
+      maxUsedRow = bottomRow
+    end
 
     placements[i] = {
-      row        = placedRow or 1,
-      column     = placedColumn or 1,
-      rowSpan    = rowSpan,
-      columnSpan = columnSpan,
+      row = placedRow or 1,
+      column = placedColumn or 1,
+      rowSpan = rowSpan,
+      columnSpan = columnSpan
     }
   end
 
   -- Phase 2: build implicit row tracks
   local rowTracks = self:ParseGridTracks(meta.templateRows)
   while (#rowTracks < maxUsedRow) do
-    table.insert(rowTracks, { kind = "fr", value = 1 })
+    table.insert(rowTracks, {
+      kind = "fr",
+      value = 1
+    })
   end
 
   -- Phase 3: resolve track pixel sizes
-  local columnSizes = self:ResolveGridTrackSizes(columnTracks, containerWidth,  columnGap)
-  local rowSizes    = self:ResolveGridTrackSizes(rowTracks,    containerHeight, rowGap)
+  local columnSizes = self:ResolveGridTrackSizes(columnTracks, containerWidth, columnGap)
+  local rowSizes = self:ResolveGridTrackSizes(rowTracks, containerHeight, rowGap)
 
   -- Phase 4: sum cell pixel sizes per child
   local cellSizes = {}
@@ -3176,14 +3328,21 @@ function Renderer:PrecomputeGridCellSizes(preChildMetas, meta, innerPixelSize)
     local w = 0
     for c = p.column, p.column + p.columnSpan - 1 do
       w = w + (columnSizes[c] or 0)
-      if (c < p.column + p.columnSpan - 1) then w = w + columnGap end
+      if (c < p.column + p.columnSpan - 1) then
+        w = w + columnGap
+      end
     end
     local h = 0
     for r = p.row, p.row + p.rowSpan - 1 do
       h = h + (rowSizes[r] or 0)
-      if (r < p.row + p.rowSpan - 1) then h = h + rowGap end
+      if (r < p.row + p.rowSpan - 1) then
+        h = h + rowGap
+      end
     end
-    cellSizes[i] = { x = w, y = h }
+    cellSizes[i] = {
+      x = w,
+      y = h
+    }
   end
 
   return cellSizes
@@ -3204,7 +3363,10 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
 
   local columnTracks = self:ParseGridTracks(meta.templateColumns)
   if (#columnTracks == 0) then
-    columnTracks = { { kind = "fr", value = 1 } }
+    columnTracks = {{
+      kind = "fr",
+      value = 1
+    }}
   end
   local numColumns = #columnTracks
 
@@ -3277,7 +3439,7 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
       row = placedRow or 1,
       column = placedColumn or 1,
       rowSpan = rowSpan,
-      columnSpan = columnSpan,
+      columnSpan = columnSpan
     }
   end
 
@@ -3285,7 +3447,10 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
   local rowTracks = self:ParseGridTracks(meta.templateRows)
   local numExplicitRows = #rowTracks
   while (#rowTracks < maxUsedRow) do
-    table.insert(rowTracks, { kind = "fr", value = 1 })
+    table.insert(rowTracks, {
+      kind = "fr",
+      value = 1
+    })
   end
 
   -- When containerHeight is nil (e.g. inside a scroll canvas where the main axis is
@@ -3305,7 +3470,10 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
     end
     for r = numExplicitRows + 1, #rowTracks do
       if (rowTracks[r].kind == "fr") then
-        rowTracks[r] = { kind = "px", value = maxHeightPerRow[r] or 0 }
+        rowTracks[r] = {
+          kind = "px",
+          value = maxHeightPerRow[r] or 0
+        }
       end
     end
   end
@@ -3324,7 +3492,7 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
   --                  stretch forces each child's height to fill its cell height.
   -- Children keep their own size otherwise; relativeSize is resolved against the cell.
   local justifyContent = meta.justifyContent or "start"
-  local alignItems     = meta.alignItems     or "start"
+  local alignItems = meta.alignItems or "start"
 
   -- Compute the column-group horizontal offset for justify-content (not used for stretch).
   local justifyContentOffsetX = 0
@@ -3385,7 +3553,7 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
       local baseH = childAbsSize and (childAbsSize.y or 0) or 0
       childW = (childRelSize.x or 0) * cellW + baseW
       childH = (childRelSize.y or 0) * cellH + baseH
-      child.props.size     = Util.vector2(childW, childH)
+      child.props.size = Util.vector2(childW, childH)
       child.props.relativeSize = nil
     elseif (childAbsSize ~= nil) then
       childW = childAbsSize.x or 0
@@ -3400,7 +3568,7 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
       childH = cellH
     end
     if (justifyContent == "stretch" or alignItems == "stretch") then
-      child.props.size     = Util.vector2(childW, childH)
+      child.props.size = Util.vector2(childW, childH)
       child.props.relativeSize = nil
     end
 
@@ -3415,13 +3583,13 @@ function Renderer:ArrangeGridChildren(childLayouts, meta, innerPixelSize)
       end
     end
 
-    child.props.position         = Util.vector2(cellX, cellY + offsetY)
+    child.props.position = Util.vector2(cellX, cellY + offsetY)
     child.props.relativePosition = nil
 
-    child.__anglesGridColumn     = nil
-    child.__anglesGridRow        = nil
+    child.__anglesGridColumn = nil
+    child.__anglesGridRow = nil
     child.__anglesGridColumnSpan = nil
-    child.__anglesGridRowSpan    = nil
+    child.__anglesGridRowSpan = nil
   end
 
   return childLayouts
@@ -3438,15 +3606,15 @@ function Renderer:RebuildCustomGridLayout(layout, innerPixelSize)
   -- Restore original placement metadata before each arrangement so spans are re-read
   for i, child in ipairs(state.childLayouts) do
     local original = state.originalChildMeta[i]
-    child.__anglesGridColumn     = original.gridColumn
-    child.__anglesGridRow        = original.gridRow
+    child.__anglesGridColumn = original.gridColumn
+    child.__anglesGridRow = original.gridRow
     child.__anglesGridColumnSpan = original.gridColumnSpan
-    child.__anglesGridRowSpan    = original.gridRowSpan
+    child.__anglesGridRowSpan = original.gridRowSpan
     -- Restore size/relativeSize so ArrangeGridChildren re-resolves from scratch.
-    child.props              = child.props or {}
-    child.props.size         = original.size
+    child.props = child.props or {}
+    child.props.size = original.size
     child.props.relativeSize = original.relativeSize
-    child.props.position     = original.position
+    child.props.position = original.position
     child.props.relativePosition = original.relativePosition
   end
 
@@ -3459,7 +3627,10 @@ function Renderer:RebuildCustomGridLayout(layout, innerPixelSize)
   for _, child in ipairs(arrangedChildren) do
     local childSz = child.props and child.props.size
     if (childSz ~= nil) then
-      local childPixelSize = { x = childSz.x, y = childSz.y }
+      local childPixelSize = {
+        x = childSz.x,
+        y = childSz.y
+      }
 
       if (child.__anglesCustomScrollCanvas ~= nil) then
         self:RebuildScrollCanvas(child, childPixelSize)
@@ -3471,7 +3642,7 @@ function Renderer:RebuildCustomGridLayout(layout, innerPixelSize)
           if (scrollCanvas ~= nil and scrollCanvas.__anglesCustomScrollCanvas ~= nil) then
             local effectiveSize = {
               x = childPixelSize.x ~= nil and math.max(0, childPixelSize.x - (entry.padX or 0)) or nil,
-              y = childPixelSize.y ~= nil and math.max(0, childPixelSize.y - (entry.padY or 0)) or nil,
+              y = childPixelSize.y ~= nil and math.max(0, childPixelSize.y - (entry.padY or 0)) or nil
             }
             self:RebuildScrollCanvas(scrollCanvas, effectiveSize)
           end
@@ -3485,12 +3656,12 @@ function Renderer:RebuildCustomGridLayout(layout, innerPixelSize)
     props = {
       relativeSize = Util.vector2(1, 1),
       size = Util.vector2(-(padding.Left + padding.Right), -(padding.Top + padding.Bottom)),
-      position = Util.vector2(padding.Left, padding.Top),
+      position = Util.vector2(padding.Left, padding.Top)
     },
     content = UI.content(arrangedChildren)
   }
 
-  layout.content = UI.content({ paddedContainer })
+  layout.content = UI.content({paddedContainer})
 end
 
 -- Re-runs ArrangeFlexChildren for a flex layout using a new inner pixel size.
@@ -3500,26 +3671,29 @@ end
 ---@param innerPixelSize {x: number|nil, y: number|nil}|nil New inner pixel size for the flex container.
 function Renderer:RebuildCustomFlexLayout(layout, innerPixelSize)
   local state = layout.__anglesCustomFlex
-  if (state == nil) then return end
+  if (state == nil) then
+    return
+  end
 
   -- Restore each child's original pre-arrangement props so ArrangeFlexChildren
   -- gets a clean slate (correct sizes, nil positions, grow values intact).
   for i, child in ipairs(state.childLayouts) do
     local original = state.originalChildProps[i]
     if (original ~= nil) then
-      child.props              = child.props or {}
-      child.props.size         = original.size
+      child.props = child.props or {}
+      child.props.size = original.size
       child.props.relativeSize = original.relativeSize
-      child.props.position     = original.position
+      child.props.position = original.position
       child.props.relativePosition = original.relativePosition
-      child.__anglesFlexGrow   = original.flexGrow
+      child.__anglesFlexGrow = original.flexGrow
     end
   end
 
-  local arrangedChildren = self:ArrangeFlexChildren(
-    state.childLayouts, state.meta.direction, state.meta.gap, innerPixelSize,
-    { alignItems = state.meta.alignItems, justifyContent = state.meta.justifyContent }
-  )
+  local arrangedChildren = self:ArrangeFlexChildren(state.childLayouts, state.meta.direction, state.meta.gap,
+      innerPixelSize, {
+        alignItems = state.meta.alignItems,
+        justifyContent = state.meta.justifyContent
+      })
 
   state.paddedContainer.content = UI.content(arrangedChildren)
 end
@@ -3529,12 +3703,12 @@ end
 ---@param meta {type: string, state: table, padding: table, direction: string, gap: number, scrollBarSize: number, scrollStep: number, scrollId: string} Scroll canvas metadata.
 ---@param canvasPixelSize {x: number|nil, y: number|nil}|nil Resolved pixel size of the scroll canvas widget.
 function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, canvasPixelSize)
-  local state     = meta.state
-  local padding   = meta.padding
-  local sbSize    = meta.scrollBarSize
-  local gap       = meta.gap
+  local state = meta.state
+  local padding = meta.padding
+  local sbSize = meta.scrollBarSize
+  local gap = meta.gap
   local direction = meta.direction
-  local isRow     = direction == "row"
+  local isRow = direction == "row"
 
   local canvasW = canvasPixelSize and canvasPixelSize.x or 0
   local canvasH = canvasPixelSize and canvasPixelSize.y or 0
@@ -3553,11 +3727,11 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   for i, child in ipairs(childLayouts) do
     child.props = child.props or {}
     originalChildProps[i] = {
-      size             = child.props.size,
-      relativeSize     = child.props.relativeSize,
-      position         = child.props.position,
+      size = child.props.size,
+      relativeSize = child.props.relativeSize,
+      position = child.props.position,
       relativePosition = child.props.relativePosition,
-      flexGrow         = child.__anglesFlexGrow,
+      flexGrow = child.__anglesFlexGrow
     }
   end
 
@@ -3570,11 +3744,10 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
     if (child.type == UI.TYPE.Text) then
       local sz = child.props.size
       local rz = child.props.relativeSize
-      local hasExplicitHeight = (sz ~= nil and sz.y ~= nil and sz.y > 0)
-        or (rz ~= nil and rz.y ~= nil and rz.y > 0)
+      local hasExplicitHeight = (sz ~= nil and sz.y ~= nil and sz.y > 0) or (rz ~= nil and rz.y ~= nil and rz.y > 0)
       if (not hasExplicitHeight) then
         local estimatedH = (child.props.textSize or defaultTextSize)
-        local existingW  = sz and sz.x or 0
+        local existingW = sz and sz.x or 0
         child.props.size = Util.vector2(existingW, estimatedH)
       end
     end
@@ -3583,7 +3756,13 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   -- Arrange children along the scroll direction.
   -- Main axis is unconstrained (nil) so content can extend beyond the viewport;
   -- the cross axis is bounded by the inner viewport dimension.
-  local arrangeSize = isRow and { x = nil, y = innerH } or { x = innerW, y = nil }
+  local arrangeSize = isRow and {
+    x = nil,
+    y = innerH
+  } or {
+    x = innerW,
+    y = nil
+  }
   local arrangedChildren = self:ArrangeFlexChildren(childLayouts, direction, gap, arrangeSize)
 
   -- Post-process grid children: ArrangeFlexChildren passes the unconstrained main-axis
@@ -3596,7 +3775,10 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   for _, child in ipairs(arrangedChildren) do
     if (child.__anglesCustomGrid ~= nil) then
       local gridMeta = child.__anglesCustomGrid.meta
-      local gInner = self:ResolvePaddedPixelSize({ x = innerW, y = nil }, gridMeta.padding)
+      local gInner = self:ResolvePaddedPixelSize({
+        x = innerW,
+        y = nil
+      }, gridMeta.padding)
       self:RebuildCustomGridLayout(child, gInner)
 
       local gW = 0
@@ -3648,23 +3830,23 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   -- Update persistent scroll state with the current layout dimensions.
   local maxScrollX = math.max(0, contentW - innerW)
   local maxScrollY = math.max(0, contentH - innerH)
-  state.x       = math.min(state.x, maxScrollX)
-  state.y       = math.min(state.y, maxScrollY)
-  state.maxX    = maxScrollX
-  state.maxY    = maxScrollY
+  state.x = math.min(state.x, maxScrollX)
+  state.y = math.min(state.y, maxScrollY)
+  state.maxX = maxScrollX
+  state.maxY = maxScrollY
   state.padding = padding
 
   -- Track geometry: arrow buttons occupy sbSize at each end of the track, with a
   -- 2-pixel gap on each side separating each arrow from the thumb track.
   local arrowGap = 2
-  local vTrackH  = math.max(0, viewportH - 2 * sbSize - 2 * arrowGap)
-  local hTrackW  = math.max(0, viewportW - 2 * sbSize - 2 * arrowGap)
+  local vTrackH = math.max(0, viewportH - 2 * sbSize - 2 * arrowGap)
+  local hTrackW = math.max(0, viewportW - 2 * sbSize - 2 * arrowGap)
   local minThumb = math.max(sbSize, 16)
-  local vThumbH  = maxScrollY > 0 and math.max(minThumb, (innerH / contentH) * vTrackH) or vTrackH
-  local hThumbW  = maxScrollX > 0 and math.max(minThumb, (innerW / contentW) * hTrackW) or hTrackW
+  local vThumbH = maxScrollY > 0 and math.max(minThumb, (innerH / contentH) * vTrackH) or vTrackH
+  local hThumbW = maxScrollX > 0 and math.max(minThumb, (innerW / contentW) * hTrackW) or hTrackW
 
-  state.trackH  = vTrackH
-  state.trackW  = hTrackW
+  state.trackH = vTrackH
+  state.trackW = hTrackW
   state.vThumbH = vThumbH
   state.hThumbW = hThumbW
 
@@ -3679,14 +3861,19 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
     local scrollStep = meta.scrollStep
     state.cachedCallbacks = {
       vThumbPress = async:callback(function(e, l)
-        if (e.button ~= 1) then return true end
-        state.vDragging  = true
+        if (e.button ~= 1) then
+          return true
+        end
+        state.vDragging = true
         state.vLastMouse = e.position
         return true
       end),
-      vThumbClick = async:callback(function(e, l) end),
+      vThumbClick = async:callback(function(e, l)
+      end),
       vTrackClick = async:callback(function(e, l)
-        if (state.maxY <= 0) then return true end
+        if (state.maxY <= 0) then
+          return true
+        end
         local trackSize = state.trackH > 0 and state.trackH or 1
         local ratio = math.max(0, math.min(1, e.offset.y / trackSize))
         state.y = ratio * state.maxY
@@ -3704,14 +3891,19 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
         return true
       end),
       hThumbPress = async:callback(function(e, l)
-        if (e.button ~= 1) then return true end
-        state.hDragging  = true
+        if (e.button ~= 1) then
+          return true
+        end
+        state.hDragging = true
         state.hLastMouse = e.position
         return true
       end),
-      hThumbClick = async:callback(function(e, l) end),
+      hThumbClick = async:callback(function(e, l)
+      end),
       hTrackClick = async:callback(function(e, l)
-        if (state.maxX <= 0) then return true end
+        if (state.maxX <= 0) then
+          return true
+        end
         local trackSize = state.trackW > 0 and state.trackW or 1
         local ratio = math.max(0, math.min(1, e.offset.x / trackSize))
         state.x = ratio * state.maxX
@@ -3727,7 +3919,7 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
         state.x = math.min(state.maxX, state.x + scrollStep)
         state.updateScrollVisuals()
         return true
-      end),
+      end)
     }
   end
   local cb = state.cachedCallbacks
@@ -3736,19 +3928,19 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
 
   local contentLayout = {
     props = {
-      size     = Util.vector2(contentW, contentH),
-      position = Util.vector2(-state.x + padding.Left, -state.y + padding.Top),
+      size = Util.vector2(contentW, contentH),
+      position = Util.vector2(-state.x + padding.Left, -state.y + padding.Top)
     },
-    content = UI.content(arrangedChildren),
+    content = UI.content(arrangedChildren)
   }
   state.contentLayout = contentLayout
 
   local viewportLayout = {
     props = {
-      size     = Util.vector2(viewportW, viewportH),
-      position = Util.vector2(0, 0),
+      size = Util.vector2(viewportW, viewportH),
+      position = Util.vector2(0, 0)
     },
-    content = UI.content({ contentLayout }),
+    content = UI.content({contentLayout})
   }
 
   -- ── Vertical scrollbar (right edge) ────────────────────────────────────────
@@ -3756,76 +3948,78 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   local vThumbLayout = {
     type = UI.TYPE.Image,
     props = {
-      resource = UI.texture({ path = "textures/omw_menu_scroll_center_v.dds" }),
-      tileV    = true,
-      size     = Util.vector2(sbSize, vThumbH),
-      position = Util.vector2(0, vThumbY),
+      resource = UI.texture({
+        path = "textures/omw_menu_scroll_center_v.dds"
+      }),
+      tileV = true,
+      size = Util.vector2(sbSize, vThumbH),
+      position = Util.vector2(0, vThumbY)
     },
     events = {
       mousePress = cb.vThumbPress,
-      mouseClick = cb.vThumbClick,
-    },
+      mouseClick = cb.vThumbClick
+    }
   }
   state.vThumbLayout = vThumbLayout
 
   local vTrackLayout = {
     template = MWUI.templates.borders,
     props = {
-      size     = Util.vector2(sbSize, vTrackH),
-      position = Util.vector2(0, sbSize + arrowGap),
+      size = Util.vector2(sbSize, vTrackH),
+      position = Util.vector2(0, sbSize + arrowGap)
     },
     events = {
-      mouseClick = cb.vTrackClick,
+      mouseClick = cb.vTrackClick
     },
-    content = UI.content({ vThumbLayout }),
+    content = UI.content({vThumbLayout})
   }
 
   local vUpArrow = {
     template = MWUI.templates.borders,
     props = {
-      size     = Util.vector2(sbSize, sbSize),
-      position = Util.vector2(0, 0),
+      size = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(0, 0)
     },
-    content = UI.content({
-      {
-        type  = UI.TYPE.Image,
-        props = {
-          resource     = UI.texture({ path = "textures/omw_menu_scroll_up.dds" }),
-          relativeSize = Util.vector2(1, 1),
-        },
-      },
-    }),
+    content = UI.content({{
+      type = UI.TYPE.Image,
+      props = {
+        resource = UI.texture({
+          path = "textures/omw_menu_scroll_up.dds"
+        }),
+        relativeSize = Util.vector2(1, 1)
+      }
+    }}),
     events = {
-      mouseClick = cb.vUpClick,
-    },
+      mouseClick = cb.vUpClick
+    }
   }
 
   local vDownArrow = {
     template = MWUI.templates.borders,
     props = {
-      size     = Util.vector2(sbSize, sbSize),
-      position = Util.vector2(0, sbSize + arrowGap + vTrackH + arrowGap),
+      size = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(0, sbSize + arrowGap + vTrackH + arrowGap)
     },
-    content = UI.content({
-      {
-        type  = UI.TYPE.Image,
-        props = {
-          resource     = UI.texture({ path = "textures/omw_menu_scroll_down.dds" }),
-          relativeSize = Util.vector2(1, 1),
-        },
-      },
-    }),
+    content = UI.content({{
+      type = UI.TYPE.Image,
+      props = {
+        resource = UI.texture({
+          path = "textures/omw_menu_scroll_down.dds"
+        }),
+        relativeSize = Util.vector2(1, 1)
+      }
+    }}),
     events = {
-      mouseClick = cb.vDownClick,
-    },
+      mouseClick = cb.vDownClick
+    }
   }
 
   local vScrollbar = {
     props = {
-      size     = Util.vector2(sbSize, viewportH),
-      position = Util.vector2(viewportW, 0),
+      size = Util.vector2(sbSize, viewportH),
+      position = Util.vector2(viewportW, 0)
     },
-    content = UI.content({ vUpArrow, vTrackLayout, vDownArrow }),
+    content = UI.content({vUpArrow, vTrackLayout, vDownArrow})
   }
 
   -- ── Horizontal scrollbar (bottom edge) ─────────────────────────────────────
@@ -3833,95 +4027,97 @@ function Renderer:ApplyScrollCanvasContainer(outerLayout, childLayouts, meta, ca
   local hThumbLayout = {
     type = UI.TYPE.Image,
     props = {
-      resource = UI.texture({ path = "textures/omw_menu_scroll_center_v.dds" }),
-      tileH    = true,
-      size     = Util.vector2(hThumbW, sbSize),
-      position = Util.vector2(hThumbX, 0),
+      resource = UI.texture({
+        path = "textures/omw_menu_scroll_center_v.dds"
+      }),
+      tileH = true,
+      size = Util.vector2(hThumbW, sbSize),
+      position = Util.vector2(hThumbX, 0)
     },
     events = {
       mousePress = cb.hThumbPress,
-      mouseClick = cb.hThumbClick,
-    },
+      mouseClick = cb.hThumbClick
+    }
   }
   state.hThumbLayout = hThumbLayout
 
   local hTrackLayout = {
     template = MWUI.templates.borders,
     props = {
-      size     = Util.vector2(hTrackW, sbSize),
-      position = Util.vector2(sbSize + arrowGap, 0),
+      size = Util.vector2(hTrackW, sbSize),
+      position = Util.vector2(sbSize + arrowGap, 0)
     },
     events = {
-      mouseClick = cb.hTrackClick,
+      mouseClick = cb.hTrackClick
     },
-    content = UI.content({ hThumbLayout }),
+    content = UI.content({hThumbLayout})
   }
 
   local hLeftArrow = {
     template = MWUI.templates.borders,
     props = {
-      size     = Util.vector2(sbSize, sbSize),
-      position = Util.vector2(0, 0),
+      size = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(0, 0)
     },
-    content = UI.content({
-      {
-        type  = UI.TYPE.Image,
-        props = {
-          resource     = UI.texture({ path = "textures/omw_menu_scroll_left.dds" }),
-          relativeSize = Util.vector2(1, 1),
-        },
-      },
-    }),
+    content = UI.content({{
+      type = UI.TYPE.Image,
+      props = {
+        resource = UI.texture({
+          path = "textures/omw_menu_scroll_left.dds"
+        }),
+        relativeSize = Util.vector2(1, 1)
+      }
+    }}),
     events = {
-      mouseClick = cb.hLeftClick,
-    },
+      mouseClick = cb.hLeftClick
+    }
   }
 
   local hRightArrow = {
     template = MWUI.templates.borders,
     props = {
-      size     = Util.vector2(sbSize, sbSize),
-      position = Util.vector2(sbSize + arrowGap + hTrackW + arrowGap, 0),
+      size = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(sbSize + arrowGap + hTrackW + arrowGap, 0)
     },
-    content = UI.content({
-      {
-        type  = UI.TYPE.Image,
-        props = {
-          resource     = UI.texture({ path = "textures/omw_menu_scroll_right.dds" }),
-          relativeSize = Util.vector2(1, 1),
-        },
-      },
-    }),
+    content = UI.content({{
+      type = UI.TYPE.Image,
+      props = {
+        resource = UI.texture({
+          path = "textures/omw_menu_scroll_right.dds"
+        }),
+        relativeSize = Util.vector2(1, 1)
+      }
+    }}),
     events = {
-      mouseClick = cb.hRightClick,
-    },
+      mouseClick = cb.hRightClick
+    }
   }
 
   local hScrollbar = {
     props = {
-      size     = Util.vector2(viewportW, sbSize),
-      position = Util.vector2(0, viewportH),
+      size = Util.vector2(viewportW, sbSize),
+      position = Util.vector2(0, viewportH)
     },
-    content = UI.content({ hLeftArrow, hTrackLayout, hRightArrow }),
+    content = UI.content({hLeftArrow, hTrackLayout, hRightArrow})
   }
 
   -- Small corner filler where the two scrollbar strips overlap.
   local corner = {
     props = {
-      size     = Util.vector2(sbSize, sbSize),
-      position = Util.vector2(viewportW, viewportH),
-    },
+      size = Util.vector2(sbSize, sbSize),
+      position = Util.vector2(viewportW, viewportH)
+    }
   }
 
   -- Store rebuild state so an ancestor flex can call RebuildScrollCanvas after grow
   -- resolution gives this element its true pixel dimensions.
   outerLayout.__anglesCustomScrollCanvas = {
-    meta               = meta,
-    childLayouts       = childLayouts,
-    originalChildProps = originalChildProps,
+    meta = meta,
+    childLayouts = childLayouts,
+    originalChildProps = originalChildProps
   }
 
-  outerLayout.content = UI.content({ viewportLayout, vScrollbar, hScrollbar, corner })
+  outerLayout.content = UI.content({viewportLayout, vScrollbar, hScrollbar, corner})
 end
 
 -- Re-runs ApplyScrollCanvasContainer for a scroll canvas layout using a new canvas pixel size.
@@ -3930,19 +4126,21 @@ end
 ---@param canvasPixelSize {x: number|nil, y: number|nil}|nil New resolved pixel size for the scroll canvas.
 function Renderer:RebuildScrollCanvas(layout, canvasPixelSize)
   local state = layout.__anglesCustomScrollCanvas
-  if (state == nil) then return end
+  if (state == nil) then
+    return
+  end
 
   -- Restore each child's original pre-arrangement props so ApplyScrollCanvasContainer
   -- gets a clean slate (correct sizes, nil positions, grow values intact).
   for i, child in ipairs(state.childLayouts) do
     local original = state.originalChildProps[i]
     if (original ~= nil) then
-      child.props              = child.props or {}
-      child.props.size         = original.size
+      child.props = child.props or {}
+      child.props.size = original.size
       child.props.relativeSize = original.relativeSize
-      child.props.position     = original.position
+      child.props.position = original.position
       child.props.relativePosition = original.relativePosition
-      child.__anglesFlexGrow   = original.flexGrow
+      child.__anglesFlexGrow = original.flexGrow
     end
   end
 
@@ -3962,21 +4160,21 @@ function Renderer:ApplyCustomGridContainer(layout, childLayouts, meta, innerPixe
   for i, child in ipairs(childLayouts) do
     child.props = child.props or {}
     originalChildMeta[i] = {
-      gridColumn     = child.__anglesGridColumn,
-      gridRow        = child.__anglesGridRow,
+      gridColumn = child.__anglesGridColumn,
+      gridRow = child.__anglesGridRow,
       gridColumnSpan = child.__anglesGridColumnSpan,
-      gridRowSpan    = child.__anglesGridRowSpan,
-      size           = child.props.size,
-      relativeSize   = child.props.relativeSize,
-      position       = child.props.position,
-      relativePosition = child.props.relativePosition,
+      gridRowSpan = child.__anglesGridRowSpan,
+      size = child.props.size,
+      relativeSize = child.props.relativeSize,
+      position = child.props.position,
+      relativePosition = child.props.relativePosition
     }
   end
 
   layout.__anglesCustomGrid = {
     meta = meta,
     childLayouts = childLayouts,
-    originalChildMeta = originalChildMeta,
+    originalChildMeta = originalChildMeta
   }
 
   self:RebuildCustomGridLayout(layout, innerPixelSize)
