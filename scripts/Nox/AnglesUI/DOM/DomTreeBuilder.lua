@@ -18,6 +18,11 @@ local DomTreeBuilder = {}
 -- Build
 ---------------------------------------------------------------------------
 
+--- Map from htmlNode table → DomNode, used to resolve _logicalHostNode references.
+--- Populated during Build(), reset each call.
+--- @type table<any, AnglesUI.DomNode>
+local htmlNodeToDomNode = {}
+
 --- Forward declaration for mutual recursion.
 --- @type fun(htmlChildren: AnglesUI.BaseNode[], parentDom: AnglesUI.DomNode)
 local buildChildren
@@ -33,6 +38,15 @@ local function buildNode(htmlNode, parentDom, depth)
     if htmlNode.type == NodeType.Element then
         --- @cast htmlNode AnglesUI.ElementNode
         domNode = DomNode.FromElement(htmlNode, parentDom, depth)
+        -- Register in lookup map so _logicalHostNode can be resolved
+        htmlNodeToDomNode[htmlNode] = domNode
+        -- Set logicalParent if this node was annotated as projected content
+        if htmlNode._logicalHostNode then
+            local hostDom = htmlNodeToDomNode[htmlNode._logicalHostNode]
+            if hostDom then
+                domNode.logicalParent = hostDom
+            end
+        end
         buildChildren(htmlNode.children, domNode)
 
     elseif htmlNode.type == NodeType.Text then
@@ -92,6 +106,9 @@ end
 --- @return AnglesUI.DomNode root The root DomNode (a virtual document node wrapping everything)
 ---@nodiscard
 function DomTreeBuilder.Build(htmlAst)
+    -- Reset the htmlNode→DomNode lookup for this build pass
+    htmlNodeToDomNode = {}
+
     -- Create a virtual document root node
     local rootHtml = HtmlNodes.CreateElement("__document__", 0, 0)
     local root = DomNode.FromElement(rootHtml, nil, 0)

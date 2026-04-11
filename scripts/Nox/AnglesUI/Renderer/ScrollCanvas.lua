@@ -91,93 +91,91 @@ function ScrollCanvas.Layout(node, availableWidth, availableHeight)
     )
     if sbWidth <= 0 then sbWidth = 13 end
 
-    -- First pass: lay out children with unlimited space to find content bounds
-    local LARGE = 100000
-    for _, child in ipairs(node.children) do
-        if child.kind == "Element" then
-            boxModelLayout(child, LARGE, LARGE)
+    --- Layout all element children at the given viewport dimensions, flow-position
+    --- them vertically, and measure the resulting content bounds.
+    --- Doing layout, positioning, and measurement in a single pass ensures that
+    --- children with percentage widths (e.g. width:100%) resolve against the real
+    --- viewport — not an artificially large constant — and that stacked children
+    --- have their correct accumulated y offsets before measuring maxBottom.
+    --- @param vW number Available width for children
+    --- @param vH number Available height for children
+    --- @return number maxRight, number maxBottom
+    local function layoutFlowAndMeasure(vW, vH)
+        -- Layout each element child
+        for _, child in ipairs(node.children) do
+            if child.kind == "Element" then
+                boxModelLayout(child, vW, vH)
+            end
         end
-    end
-
-    -- Measure total content bounds
-    local maxRight = 0
-    local maxBottom = 0
-    for _, child in ipairs(node.children) do
-        local cld = child.layoutData
-        if cld and not cld.isAbsolute then
-            local r = (cld.x or 0) + (cld.width or 0) + (cld.marginRight or 0)
-            local b = (cld.y or 0) + (cld.height or 0) + (cld.marginBottom or 0)
-            if r > maxRight then maxRight = r end
-            if b > maxBottom then maxBottom = b end
+        -- Flow-position children vertically (block/stacking layout)
+        local curY = 0
+        for _, child in ipairs(node.children) do
+            if child.kind == "Element" then
+                local cld = child.layoutData
+                if cld and not cld.isAbsolute then
+                    cld.x = cld.marginLeft or 0
+                    cld.y = curY + (cld.marginTop or 0)
+                    curY = cld.y + (cld.height or 0) + (cld.marginBottom or 0)
+                end
+            end
         end
-    end
-
-    -- Determine if scrollbars are needed
-    local needsV = maxBottom > availableHeight
-    local needsH = maxRight > availableWidth
-
-    -- Adjust viewport for scrollbar sizes
-    local viewW = availableWidth  - (needsV and sbWidth or 0)
-    local viewH = availableHeight - (needsH and sbWidth or 0)
-
-    -- Re-check after adjustment
-    if not needsV and maxBottom > viewH then
-        needsV = true
-        viewW = availableWidth - sbWidth
-    end
-    if not needsH and maxRight > viewW then
-        needsH = true
-        viewH = availableHeight - sbWidth
-    end
-
-    viewW = math.max(0, viewW)
-    viewH = math.max(0, viewH)
-
-    -- Re-layout children with viewport dimensions for percentage-based sizes
-    for _, child in ipairs(node.children) do
-        if child.kind == "Element" then
-            boxModelLayout(child, viewW, viewH)
-        end
-    end
-
-    -- Re-measure content bounds after proper layout
-    maxRight = 0
-    maxBottom = 0
-    for _, child in ipairs(node.children) do
-        local cld = child.layoutData
-        if cld and not cld.isAbsolute then
-            local r = (cld.x or 0) + (cld.width or 0) + (cld.marginRight or 0)
-            local b = (cld.y or 0) + (cld.height or 0) + (cld.marginBottom or 0)
-            if r > maxRight then maxRight = r end
-            if b > maxBottom then maxBottom = b end
-        end
-    end
-
-    -- Flow-position children vertically within the viewport
-    local offsetY = 0
-    for _, child in ipairs(node.children) do
-        if child.kind == "Element" then
+        -- Measure total content bounds now that y values are set correctly
+        local maxR, maxB = 0, 0
+        for _, child in ipairs(node.children) do
             local cld = child.layoutData
             if cld and not cld.isAbsolute then
-                cld.x = cld.marginLeft or 0
-                cld.y = offsetY + (cld.marginTop or 0)
-                offsetY = cld.y + (cld.height or 0) + (cld.marginBottom or 0)
+                local r = (cld.x or 0) + (cld.width or 0) + (cld.marginRight or 0)
+                local b = (cld.y or 0) + (cld.height or 0) + (cld.marginBottom or 0)
+                if r > maxR then maxR = r end
+                if b > maxB then maxB = b end
+            end
+        end
+        return maxR, maxB
+    end
+
+    -- Pass 1: full available dimensions — no scrollbars reserved yet.
+    local viewW = availableWidth
+    local viewH = availableHeight
+    local maxRight, maxBottom = layoutFlowAndMeasure(viewW, viewH)
+
+    -- Determine which scrollbars are needed after seeing the real content size.
+    local needsV = maxBottom > viewH
+    local needsH = maxRight > viewW
+
+    -- Reserve space for scrollbars and re-check the cross-axis.
+    -- Adding a vertical scrollbar narrows the viewport → may trigger horizontal overflow.
+    -- Adding a horizontal scrollbar shortens the viewport → may trigger vertical overflow.
+    if needsV then
+        viewW = math.max(0, viewW - sbWidth)
+        maxRight, maxBottom = layoutFlowAndMeasure(viewW, viewH)
+        needsH = needsH or (maxRight > viewW)
+    end
+    if needsH then
+        viewH = math.max(0, viewH - sbWidth)
+        if not needsV then
+            maxRight, maxBottom = layoutFlowAndMeasure(viewW, viewH)
+            needsV = maxBottom > viewH
+            if needsV then
+                viewW = math.max(0, viewW - sbWidth)
             end
         end
     end
 
-    -- Store scroll state on the node's layoutData for the transpiler
+    -- Final layout+position pass at the confirmed viewport dimensions.
+    maxRight, maxBottom = layoutFlowAndMeasure(viewW, viewH)
+
+    -- Store scroll state on the node's layoutData for the transpiler.
     local scrollState = ScrollCanvas.NewScrollState()
     scrollState.contentWidth  = math.max(maxRight, viewW)
     scrollState.contentHeight = math.max(maxBottom, viewH)
-    scrollState.viewportWidth = viewW
+    scrollState.viewportWidth  = viewW
     scrollState.viewportHeight = viewH
     scrollState.scrollbarWidth = sbWidth
-    scrollState.needsHScroll = needsH
-    scrollState.needsVScroll = needsV
+    scrollState.needsHScroll   = needsH
+    scrollState.needsVScroll   = needsV
 
-    ld.scrollState = scrollState
-    ld.contentWidth = viewW
+    ld.scrollState   = scrollState
+    ld.contentWidth  = viewW
     ld.contentHeight = viewH
 end
 

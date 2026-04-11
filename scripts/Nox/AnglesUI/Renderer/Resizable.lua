@@ -5,6 +5,10 @@
 ---
 --- Detects 8 resize zones: top, bottom, left, right, and 4 corners.
 --- Each zone triggers a different resize behaviour (horizontal, vertical, or both).
+---
+--- Uses a full-screen transparent drag-capture overlay created on mousePress and
+--- destroyed on mouseRelease so that mouseMove events continue to fire even when
+--- the cursor leaves the root element boundary during a resize.
 
 ---------------------------------------------------------------------------
 -- Module
@@ -63,12 +67,23 @@ end
 ---------------------------------------------------------------------------
 
 --- Build event callbacks that implement resizing on the root element.
+---
+--- A full-screen transparent drag-capture overlay is created on mousePress
+--- (when a resize zone is hit) and destroyed on mouseRelease.  This ensures
+--- mouseMove events keep firing even when the cursor leaves the root element
+--- boundary during the drag.
+---
 --- @param rootNode AnglesUI.DomNode The mw-root DomNode
 --- @param edgeMargin number Edge margin in pixels for resize detection
---- @param rootElement table|nil Reference to the OpenMW UI element (set after creation)
+--- @param rootElement table Shared reference table; .element is set to the live OpenMW UI element after UI.create()
 --- @param util table The OpenMW util library
+--- @param ui table The OpenMW ui library (for creating the drag-capture overlay)
+--- @param async table The OpenMW async library (for wrapping overlay event callbacks)
+--- @param layerName string The layer the root element lives on (used for the overlay)
+--- @param onUpdate fun(x:number,y:number,w:number,h:number)|nil Called on every resize move (persists override dimensions)
+--- @param onComplete fun()|nil Called when the resize drag ends (triggers re-layout)
 --- @return table<string, fun(event1: any, layout: any)> callbacks
-function Resizable.BuildCallbacks(rootNode, edgeMargin, rootElement, util)
+function Resizable.BuildCallbacks(rootNode, edgeMargin, rootElement, util, ui, async, layerName, onUpdate, onComplete)
     --- @type AnglesUI.ResizeState
     local resizeState = {
         isResizing = false,
@@ -81,31 +96,14 @@ function Resizable.BuildCallbacks(rootNode, edgeMargin, rootElement, util)
         startY = 0,
     }
 
-    local callbacks = {}
+    --- Full-screen overlay element active during a drag; nil otherwise.
+    local captureOverlay = nil
 
-    callbacks.mousePress = function(mouseEvent, layout)
-        if not mouseEvent or mouseEvent.button ~= 1 then return end
+    ---------------------------------------------------------------------------
+    -- Shared move/release logic (used by both root events and overlay events)
+    ---------------------------------------------------------------------------
 
-        local ld = rootNode.layoutData
-        local zone = detectZone(
-            mouseEvent.offset.x, mouseEvent.offset.y,
-            ld.width or 0, ld.height or 0,
-            edgeMargin
-        )
-
-        if zone ~= "none" then
-            resizeState.isResizing = true
-            resizeState.zone = zone
-            resizeState.startMouseX = mouseEvent.position.x
-            resizeState.startMouseY = mouseEvent.position.y
-            resizeState.startWidth = ld.width or 0
-            resizeState.startHeight = ld.height or 0
-            resizeState.startX = ld.x or 0
-            resizeState.startY = ld.y or 0
-        end
-    end
-
-    callbacks.mouseMove = function(mouseEvent, layout)
+    local function applyResize(mouseEvent)
         if not resizeState.isResizing then return end
         if not mouseEvent then return end
 
@@ -145,17 +143,88 @@ function Resizable.BuildCallbacks(rootNode, edgeMargin, rootElement, util)
         ld.width = newW
         ld.height = newH
 
-        -- Update the OpenMW element
-        if rootElement and rootElement.layout then
-            rootElement.layout.props.position = util.vector2(newX, newY)
-            rootElement.layout.props.size = util.vector2(newW, newH)
-            rootElement:update()
+        -- Persist override so subsequent re-renders use the correct dimensions
+        if onUpdate then
+            onUpdate(newX, newY, newW, newH)
+        end
+
+        local el = rootElement.element
+        if el then
+            el.layout.props.position = util.vector2(newX, newY)
+            el.layout.props.size = util.vector2(newW, newH)
+            el:update()
         end
     end
 
-    callbacks.mouseRelease = function(mouseEvent, layout)
+    local function endResize()
         resizeState.isResizing = false
         resizeState.zone = "none"
+        if captureOverlay then
+            captureOverlay:destroy()
+            captureOverlay = nil
+        end
+        -- Trigger a full re-layout so children adapt to the new root dimensions
+        if onComplete then
+            onComplete()
+        end
+    end
+
+    ---------------------------------------------------------------------------
+    -- Callbacks registered on the root element
+    ---------------------------------------------------------------------------
+
+    local callbacks = {}
+
+    callbacks.mousePress = function(mouseEvent, layout)
+        if not mouseEvent or mouseEvent.button ~= 1 then return end
+
+        local ld = rootNode.layoutData
+        -- Use absolute mouse position minus root element's absolute position for
+        -- reliable zone detection. mouseEvent.offset is relative to whichever child
+        -- widget the click originated on (events propagate up), so it cannot be
+        -- used directly for zone detection on the root.
+        local relX = mouseEvent.position.x - (ld.x or 0)
+        local relY = mouseEvent.position.y - (ld.y or 0)
+        local zone = detectZone(relX, relY, ld.width or 0, ld.height or 0, edgeMargin)
+
+        if zone ~= "none" then
+            resizeState.isResizing = true
+            resizeState.zone = zone
+            resizeState.startMouseX = mouseEvent.position.x
+            resizeState.startMouseY = mouseEvent.position.y
+            resizeState.startWidth = ld.width or 0
+            resizeState.startHeight = ld.height or 0
+            resizeState.startX = ld.x or 0
+            resizeState.startY = ld.y or 0
+
+            -- Create a full-screen transparent overlay to capture mouse events
+            -- during the drag even when the cursor leaves the root element bounds.
+            if ui and async and layerName then
+                captureOverlay = ui.create({
+                    layer = layerName,
+                    props = {
+                        position = util.vector2(0, 0),
+                        -- Large enough to cover any screen resolution.
+                        size = util.vector2(9999, 9999),
+                        alpha = 0,
+                    },
+                    events = {
+                        mouseMove    = async:callback(function(e, _) applyResize(e) end),
+                        mouseRelease = async:callback(function(_, _) endResize() end),
+                    },
+                })
+            end
+        end
+    end
+
+    -- These fire when the cursor stays within the root element boundary.
+    -- The overlay handles the out-of-bounds case.
+    callbacks.mouseMove = function(mouseEvent, layout)
+        applyResize(mouseEvent)
+    end
+
+    callbacks.mouseRelease = function(mouseEvent, layout)
+        endResize()
     end
 
     return callbacks
@@ -185,3 +254,4 @@ function Resizable.GetEdgeMargin(node)
 end
 
 return Resizable
+

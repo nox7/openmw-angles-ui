@@ -229,4 +229,100 @@ function HtmlNodes.CreateAttribute(attrType, name, value, property)
     }
 end
 
+---------------------------------------------------------------------------
+-- Deep copy
+---------------------------------------------------------------------------
+
+--- Deep-copy a single HTML AST node, producing a fully independent tree.
+--- Required to prevent template mutation when a cached template is reused
+--- across multiple component expansions via ContentProjection.
+--- @param node AnglesUI.BaseNode
+--- @return AnglesUI.BaseNode
+---@nodiscard
+function HtmlNodes.DeepCopyNode(node)
+    if node.type == NodeType.Element then
+        --- @cast node AnglesUI.ElementNode
+        local copy = HtmlNodes.CreateElement(node.tag, node.line, node.column)
+        copy.selfClosing = node.selfClosing
+        copy.isEngine = node.isEngine
+        copy.isUserComponent = node.isUserComponent
+        -- Shallow-copy attributes (Attribute tables are value-like; never mutated in place)
+        copy.attributes = {}
+        for _, attr in ipairs(node.attributes) do
+            copy.attributes[#copy.attributes + 1] = attr
+        end
+        -- Recursively deep-copy children
+        for _, child in ipairs(node.children) do
+            local childCopy = HtmlNodes.DeepCopyNode(child)
+            childCopy.parent = copy
+            copy.children[#copy.children + 1] = childCopy
+        end
+        return copy
+
+    elseif node.type == NodeType.Text then
+        --- @cast node AnglesUI.TextNode
+        return HtmlNodes.CreateText(node.content, node.line, node.column)
+
+    elseif node.type == NodeType.Output then
+        --- @cast node AnglesUI.OutputDirectiveNode
+        return HtmlNodes.CreateOutput(node.expression, node.line, node.column)
+
+    elseif node.type == NodeType.IfDirective then
+        --- @cast node AnglesUI.IfDirectiveNode
+        local copy = HtmlNodes.CreateIfDirective(node.condition, node.line, node.column)
+        for _, child in ipairs(node.children) do
+            local childCopy = HtmlNodes.DeepCopyNode(child)
+            childCopy.parent = copy
+            copy.children[#copy.children + 1] = childCopy
+        end
+        copy.elseIfBranches = {}
+        for _, branch in ipairs(node.elseIfBranches or {}) do
+            local branchCopy = HtmlNodes.CreateElseIfDirective(branch.condition, branch.line, branch.column)
+            for _, child in ipairs(branch.children or {}) do
+                local childCopy = HtmlNodes.DeepCopyNode(child)
+                childCopy.parent = branchCopy
+                branchCopy.children[#branchCopy.children + 1] = childCopy
+            end
+            copy.elseIfBranches[#copy.elseIfBranches + 1] = branchCopy
+        end
+        if node.elseBranch then
+            local elseCopy = HtmlNodes.CreateElseDirective(node.elseBranch.line, node.elseBranch.column)
+            for _, child in ipairs(node.elseBranch.children or {}) do
+                local childCopy = HtmlNodes.DeepCopyNode(child)
+                childCopy.parent = elseCopy
+                elseCopy.children[#elseCopy.children + 1] = childCopy
+            end
+            copy.elseBranch = elseCopy
+        end
+        return copy
+
+    elseif node.type == NodeType.ForDirective then
+        --- @cast node AnglesUI.ForDirectiveNode
+        local copy = HtmlNodes.CreateForDirective(node.iteratorName, node.iterableExpression, node.line, node.column)
+        for _, child in ipairs(node.children) do
+            local childCopy = HtmlNodes.DeepCopyNode(child)
+            childCopy.parent = copy
+            copy.children[#copy.children + 1] = childCopy
+        end
+        return copy
+
+    else
+        -- ElseIf/Else directives at top-level (unusual) — copy generically
+        --- @cast node AnglesUI.ElseDirectiveNode
+        return HtmlNodes.CreateElseDirective(node.line, node.column)
+    end
+end
+
+--- Deep-copy a list of HTML AST nodes.
+--- @param nodes AnglesUI.BaseNode[]
+--- @return AnglesUI.BaseNode[]
+---@nodiscard
+function HtmlNodes.DeepCopyAst(nodes)
+    local result = {}
+    for _, node in ipairs(nodes) do
+        result[#result + 1] = HtmlNodes.DeepCopyNode(node)
+    end
+    return result
+end
+
 return HtmlNodes

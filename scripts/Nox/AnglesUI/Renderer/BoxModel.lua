@@ -101,6 +101,13 @@ end
 -- Intrinsic / content sizing helpers
 ---------------------------------------------------------------------------
 
+--- Check if a string is whitespace-only (spaces, tabs, newlines).
+--- @param s string
+--- @return boolean
+local function isWhitespaceOnly(s)
+    return s:match("^%s*$") ~= nil
+end
+
 --- Estimate the intrinsic size of a text node based on parent styles.
 --- @param node AnglesUI.DomNode
 --- @param parentStyles table<string, string>
@@ -284,6 +291,11 @@ function BoxModel._LayoutBlockChildren(node, availableWidth, availableHeight)
                 offsetY = cld.y + cld.height + cld.marginBottom
             end
         elseif child.kind == "Text" or child.kind == "Output" then
+            -- Skip whitespace-only text nodes in block flow (matches browser behaviour)
+            local rawText = (child.htmlNode and child.htmlNode.content) or ""
+            if child.kind == "Text" and isWhitespaceOnly(rawText) then
+                -- do nothing — whitespace between block elements is collapsed
+            else
             -- Text/output nodes in generic containers — measure them
             child.layoutData = child.layoutData or {}
             initLayoutData(child)
@@ -296,6 +308,7 @@ function BoxModel._LayoutBlockChildren(node, availableWidth, availableHeight)
             child.layoutData.x = 0
             child.layoutData.y = offsetY
             offsetY = offsetY + th
+            end -- end of non-whitespace branch
         end
     end
 end

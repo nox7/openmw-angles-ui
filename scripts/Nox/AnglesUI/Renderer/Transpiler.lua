@@ -37,6 +37,29 @@ local Util
 --- @type table OpenMW Async library
 local Async
 
+--- Shared reference to the live OpenMW element; set per Transpile call so that
+--- scroll-canvas event callbacks (created during transpilation) can call
+--- element:update() even though the element doesn't exist yet at that point.
+--- @type { element: table }|nil
+local currentElementRef
+
+--- The layer name of the current mw-root, stored per Transpile call so that
+--- scroll-canvas thumb-drag capture overlays can be created on the correct layer.
+--- @type string
+local currentLayerName = "Windows"
+
+--- Shared reference to the Renderer's _scrollOffsets table so that applyScroll()
+--- closures can persist the current scroll position across re-renders.
+--- Keyed by scroll canvas node id (string) → { x: number, y: number }.
+--- @type table<string, { x: number, y: number }>
+local currentScrollOffsets = {}
+
+--- Callback provided by the Renderer so that scroll updates can trigger a
+--- lightweight re-render, replacing el.layout and calling el:update().
+--- Needed because el:update() alone does not cascade into nested UI.content() trees.
+--- @type (fun(): nil)|nil
+local currentRerenderFn = nil
+
 --- Inject OpenMW library references. Called once during renderer init.
 --- @param ui table require("openmw.ui")
 --- @param util table require("openmw.util")
@@ -340,70 +363,222 @@ end
 -- Scroll canvas rendering
 ---------------------------------------------------------------------------
 
---- Build scrollbar widget layouts for a scroll canvas node.
+--- Build scrollbar widget layouts for a scroll canvas node, wiring all
+--- interactive events (arrow click-to-scroll, thumb drag).
+---
+--- offsetX/offsetY are the border+padding insets of the scroll canvas element;
+--- all scrollbar widgets must be offset by these so they align with the viewport.
+--- scrollContentProps is the mutable props table of the scroll-content widget so
+--- that scroll events can update its position and call element:update().
+---
 --- @param node AnglesUI.DomNode
 --- @param scrollState AnglesUI.ScrollState
 --- @param context table
+--- @param offsetX number Border+padding left inset of the scroll canvas
+--- @param offsetY number Border+padding top inset of the scroll canvas
+--- @param scrollContentProps table Mutable props of the scroll-content widget
 --- @return table[] layouts
-local function buildScrollbarLayouts(node, scrollState, context)
+local function buildScrollbarLayouts(node, scrollState, context, offsetX, offsetY, scrollContentProps)
+    offsetX = offsetX or 0
+    offsetY = offsetY or 0
+
     local descriptors = ScrollCanvas.BuildScrollbarDescriptors(
         scrollState,
         node.layoutData.width or 0,
         node.layoutData.height or 0
     )
     local layouts = {}
+    local INCREMENT = ScrollCanvas.SCROLL_INCREMENT
 
     for _, desc in ipairs(descriptors) do
         local isVertical = desc.orientation == "vertical"
-        local arrowSize = desc.arrowSize
+        local arrowSize  = desc.arrowSize
+        local trackLen   = (isVertical and desc.trackHeight or desc.trackWidth) - 2 * arrowSize
+
+        -- Helpers for axis-independent access to scrollState fields.
+        local function getScrollOff()
+            return isVertical and scrollState.scrollY or scrollState.scrollX
+        end
+        local function setScrollOff(v)
+            if isVertical then scrollState.scrollY = v else scrollState.scrollX = v end
+        end
+        local function getViewSize()
+            return isVertical and scrollState.viewportHeight or scrollState.viewportWidth
+        end
+        local function getContentSize()
+            return isVertical and scrollState.contentHeight or scrollState.contentWidth
+        end
+
+        -- Build the mutable props for this thumb.
+        local initThumbSize, initThumbPos = ScrollCanvas.CalculateThumb(
+            getViewSize(), getContentSize(), getScrollOff(), trackLen
+        )
+        local thumbX, thumbY, thumbW, thumbH
+        if isVertical then
+            thumbX = offsetX + desc.trackX
+            thumbY = offsetY + desc.trackY + arrowSize + initThumbPos
+            thumbW = desc.scrollbarWidth
+            thumbH = initThumbSize
+        else
+            thumbX = offsetX + desc.trackX + arrowSize + initThumbPos
+            thumbY = offsetY + desc.trackY
+            thumbW = initThumbSize
+            thumbH = desc.scrollbarWidth
+        end
+        local thumbProps = {
+            position = Util.vector2(thumbX, thumbY),
+            size     = Util.vector2(thumbW, thumbH),
+            resource = UI.texture({ path = desc.thumbTexture }),
+            tileH    = not isVertical,
+            tileV    = isVertical,
+        }
+
+        --- Apply the current scrollState to all mutable layout tables and refresh the UI.
+        local function applyScroll()
+            -- Clamp first
+            setScrollOff(ScrollCanvas.ClampScroll(getScrollOff(), getViewSize(), getContentSize()))
+            -- Update scroll-content position
+            if scrollContentProps then
+                scrollContentProps.position = Util.vector2(-scrollState.scrollX, -scrollState.scrollY)
+            end
+            -- Recalculate and update this thumb
+            local tSize, tPos = ScrollCanvas.CalculateThumb(
+                getViewSize(), getContentSize(), getScrollOff(), trackLen
+            )
+            if isVertical then
+                thumbProps.position = Util.vector2(offsetX + desc.trackX, offsetY + desc.trackY + arrowSize + tPos)
+                thumbProps.size     = Util.vector2(desc.scrollbarWidth, tSize)
+            else
+                thumbProps.position = Util.vector2(offsetX + desc.trackX + arrowSize + tPos, offsetY + desc.trackY)
+                thumbProps.size     = Util.vector2(tSize, desc.scrollbarWidth)
+            end
+            -- Persist scroll position so re-renders don't reset it
+            if node.id and node.id ~= "" then
+                if not currentScrollOffsets[node.id] then
+                    currentScrollOffsets[node.id] = { x = 0, y = 0 }
+                end
+                currentScrollOffsets[node.id].x = scrollState.scrollX
+                currentScrollOffsets[node.id].y = scrollState.scrollY
+            end
+            -- Re-render to pick up nested widget prop changes (el:update() alone
+            -- does not cascade into UI.content() subtrees for scroll content).
+            if currentRerenderFn then
+                currentRerenderFn()
+            else
+                local el = currentElementRef and currentElementRef.element
+                if el then el:update() end
+            end
+        end
+
+        -- Drag state for the thumb.
+        -- isDragging, dragStartMouse, dragStartScroll, capScrollRange, capThumbRange
+        -- are shared between the thumb's own events and the capture overlay so that
+        -- whichever widget receives the mouseMove (OpenMW delivers them to the widget
+        -- that received mousePress — implicit capture) handles the drag correctly.
+        local captureOverlay  = nil
+        local isDragging      = false
+        local dragStartMouse  = 0
+        local dragStartScroll = 0
+        local capScrollRange  = 0
+        local capThumbRange   = 0
+
+        local function onDragMove(moveEvent)
+            if not isDragging then return end
+            if capThumbRange <= 0 or capScrollRange <= 0 then return end
+            local curPos    = isVertical and moveEvent.position.y or moveEvent.position.x
+            local delta     = curPos - dragStartMouse
+            local newScroll = dragStartScroll + (delta / capThumbRange * capScrollRange)
+            setScrollOff(newScroll)
+            applyScroll()
+        end
+
+        local function onDragRelease()
+            isDragging = false
+            if captureOverlay then
+                captureOverlay:destroy()
+                captureOverlay = nil
+            end
+        end
 
         -- Arrow start button
-        layouts[#layouts + 1] = buildImageLayout(
-            desc.arrowStartTexture,
-            desc.trackX, desc.trackY,
-            isVertical and desc.scrollbarWidth or arrowSize,
-            isVertical and arrowSize or desc.scrollbarWidth,
-            false, false
-        )
+        layouts[#layouts + 1] = {
+            type  = UI.TYPE.Image,
+            props = {
+                position = Util.vector2(offsetX + desc.trackX, offsetY + desc.trackY),
+                size     = Util.vector2(
+                    isVertical and desc.scrollbarWidth or arrowSize,
+                    isVertical and arrowSize or desc.scrollbarWidth
+                ),
+                resource = UI.texture({ path = desc.arrowStartTexture }),
+                tileH    = false,
+                tileV    = false,
+            },
+            events = {
+                mousePress = Async:callback(function()
+                    setScrollOff(getScrollOff() - INCREMENT)
+                    applyScroll()
+                end),
+            },
+        }
 
         -- Arrow end button
         local endX = isVertical and desc.trackX or (desc.trackX + desc.trackWidth - arrowSize)
         local endY = isVertical and (desc.trackY + desc.trackHeight - arrowSize) or desc.trackY
-        layouts[#layouts + 1] = buildImageLayout(
-            desc.arrowEndTexture,
-            endX, endY,
-            isVertical and desc.scrollbarWidth or arrowSize,
-            isVertical and arrowSize or desc.scrollbarWidth,
-            false, false
-        )
+        layouts[#layouts + 1] = {
+            type  = UI.TYPE.Image,
+            props = {
+                position = Util.vector2(offsetX + endX, offsetY + endY),
+                size     = Util.vector2(
+                    isVertical and desc.scrollbarWidth or arrowSize,
+                    isVertical and arrowSize or desc.scrollbarWidth
+                ),
+                resource = UI.texture({ path = desc.arrowEndTexture }),
+                tileH    = false,
+                tileV    = false,
+            },
+            events = {
+                mousePress = Async:callback(function()
+                    setScrollOff(getScrollOff() + INCREMENT)
+                    applyScroll()
+                end),
+            },
+        }
 
         -- Thumb
-        local trackLen = (isVertical and desc.trackHeight or desc.trackWidth) - 2 * arrowSize
-        local viewSize = isVertical and scrollState.viewportHeight or scrollState.viewportWidth
-        local contentSize = isVertical and scrollState.contentHeight or scrollState.contentWidth
-        local scrollOffset = isVertical and scrollState.scrollY or scrollState.scrollX
-        local thumbSize, thumbPos = ScrollCanvas.CalculateThumb(
-            viewSize, contentSize, scrollOffset, trackLen
-        )
-
-        local thumbX, thumbY, thumbW, thumbH
-        if isVertical then
-            thumbX = desc.trackX
-            thumbY = desc.trackY + arrowSize + thumbPos
-            thumbW = desc.scrollbarWidth
-            thumbH = thumbSize
-        else
-            thumbX = desc.trackX + arrowSize + thumbPos
-            thumbY = desc.trackY
-            thumbW = thumbSize
-            thumbH = desc.scrollbarWidth
-        end
-
-        layouts[#layouts + 1] = buildImageLayout(
-            desc.thumbTexture,
-            thumbX, thumbY, thumbW, thumbH,
-            not isVertical, isVertical -- tile along scroll direction
-        )
+        layouts[#layouts + 1] = {
+            type   = UI.TYPE.Image,
+            props  = thumbProps,
+            events = {
+                mousePress = Async:callback(function(mouseEvent)
+                    isDragging      = true
+                    dragStartMouse  = isVertical and mouseEvent.position.y or mouseEvent.position.x
+                    dragStartScroll = getScrollOff()
+                    -- Snapshot sizes (won't change mid-drag)
+                    local capViewSize    = getViewSize()
+                    local capContentSize = getContentSize()
+                    capScrollRange = capContentSize - capViewSize
+                    capThumbRange  = trackLen - (isVertical and thumbProps.size.y or thumbProps.size.x)
+                    -- Full-screen overlay catches cursor-leaves-thumb movement,
+                    -- same pattern as Dragger/Resizable.
+                    captureOverlay = UI.create({
+                        layer = currentLayerName,
+                        props = {
+                            position = Util.vector2(0, 0),
+                            size     = Util.vector2(9999, 9999),
+                            alpha    = 0,
+                        },
+                        events = {
+                            mouseMove    = Async:callback(function(me) onDragMove(me) end),
+                            mouseRelease = Async:callback(function() onDragRelease() end),
+                        },
+                    })
+                end),
+                -- OpenMW implicit-captures mouseMove to the widget that received
+                -- mousePress, so we must handle drag here as the primary path.
+                mouseMove    = Async:callback(function(me) onDragMove(me) end),
+                mouseRelease = Async:callback(function() onDragRelease() end),
+            },
+        }
     end
 
     return layouts
@@ -588,11 +763,15 @@ transpileNode = function(node, eventMaps, context, hoverTracker)
                 end
             end
 
-            -- Content container (offset by scroll position)
+            -- Mutable props table for the scroll-content widget.
+            -- buildScrollbarLayouts captures a reference to this table so that
+            -- scroll events can update `position` without rebuilding the widget tree.
+            local scrollContentProps = {
+                position = Util.vector2(-(scrollState.scrollX or 0), -(scrollState.scrollY or 0)),
+                size     = Util.vector2(scrollState.contentWidth, scrollState.contentHeight),
+            }
             local scrollContent = {
-                props = {
-                    position = Util.vector2(-(scrollState.scrollX or 0), -(scrollState.scrollY or 0)),
-                },
+                props   = scrollContentProps,
                 content = UI.content(viewportChildren),
             }
 
@@ -608,8 +787,9 @@ transpileNode = function(node, eventMaps, context, hoverTracker)
             }
             contentLayouts[#contentLayouts + 1] = viewport
 
-            -- Scrollbars
-            local sbLayouts = buildScrollbarLayouts(node, scrollState, context)
+            -- Scrollbars — must be offset by the same border+padding as the viewport.
+            -- Pass scrollContentProps so event handlers can mutate the scroll position.
+            local sbLayouts = buildScrollbarLayouts(node, scrollState, context, offsetX, offsetY, scrollContentProps)
             for _, sbl in ipairs(sbLayouts) do
                 contentLayouts[#contentLayouts + 1] = sbl
             end
@@ -631,7 +811,9 @@ transpileNode = function(node, eventMaps, context, hoverTracker)
                 elseif child.kind == DomNodeKind.Output then
                     textContent = child.resolvedText or ""
                 end
-                if #textContent > 0 then
+                -- Skip whitespace-only text nodes (matches browser block-flow behaviour)
+                local isWsOnly = (textContent:match("^%s*$") ~= nil)
+                if #textContent > 0 and not isWsOnly then
                     local cld = child.layoutData or {}
                     childLayouts[#childLayouts + 1] = {
                         type = UI.TYPE.Text,
@@ -692,9 +874,15 @@ end
 --- @param eventMaps table<AnglesUI.DomNode, table> Event callback maps from RuntimeInit
 --- @param context table The evaluation scope
 --- @param hoverTracker AnglesUI.HoverTracker|nil
+--- @param elementRef { element: table }|nil Shared live-element reference (for scroll canvas events)
+--- @param scrollOffsets table<string, { x: number, y: number }>|nil Persistent scroll offsets from the Renderer
+--- @param rerenderFn (fun(): nil)|nil Called by applyScroll to force a full layout+render refresh
 --- @return table createArg The table to pass to UI.create()
 ---@nodiscard
-function Transpiler.Transpile(root, eventMaps, context, hoverTracker)
+function Transpiler.Transpile(root, eventMaps, context, hoverTracker, elementRef, scrollOffsets, rerenderFn)
+    currentElementRef    = elementRef or nil
+    currentScrollOffsets = scrollOffsets or {}
+    currentRerenderFn    = rerenderFn or nil
     -- Find the mw-root element
     local mwRoot = nil
     for _, child in ipairs(root.children) do
@@ -714,6 +902,7 @@ function Transpiler.Transpile(root, eventMaps, context, hoverTracker)
         error("AnglesUI: <mw-root> requires a 'Layer' attribute", 0)
     end
     local layer = layerAttr.value
+    currentLayerName = layer
 
     -- Transpile the mw-root and its contents
     local rootLayout = transpileNode(mwRoot, eventMaps, context, hoverTracker)

@@ -54,12 +54,15 @@ function GridLayout.Layout(node, availableWidth, availableHeight)
     local justifyContent = LayoutUtils.GetStyle(styles, "justify-content")
     local alignContent   = LayoutUtils.GetStyle(styles, "align-content")
 
-    -- Collect flow children
+    -- Collect flow children.
+    -- Pass 0 for width/height in this first measurement pass so that
+    -- percentage-sized items don't inflate "auto" track measurements.
+    -- Correct sizes are applied in the second boxModelLayout pass below.
     --- @type AnglesUI.DomNode[]
     local gridItems = {}
     for _, child in ipairs(node.children) do
         if child.kind == "Element" then
-            boxModelLayout(child, availableWidth, availableHeight)
+            boxModelLayout(child, 0, 0)
             local cld = child.layoutData
             if not cld.isAbsolute then
                 gridItems[#gridItems + 1] = child
@@ -82,12 +85,14 @@ function GridLayout.Layout(node, availableWidth, availableHeight)
         if p.rowEnd - 1 > numRows then numRows = p.rowEnd - 1 end
     end
 
-    -- Ensure templates have enough entries (fill with auto)
+    -- Ensure templates have enough entries.
+    -- Implicit (auto-generated) tracks use "fr" so they distribute available
+    -- space equally rather than inflating to their content's percentage size.
     while #colTemplate < numCols do
-        colTemplate[#colTemplate + 1] = { type = "auto", value = 0 }
+        colTemplate[#colTemplate + 1] = { type = "fr", value = 1 }
     end
     while #rowTemplate < numRows do
-        rowTemplate[#rowTemplate + 1] = { type = "auto", value = 0 }
+        rowTemplate[#rowTemplate + 1] = { type = "fr", value = 1 }
     end
 
     -- Measure auto-sized tracks (max content size of items in that track)

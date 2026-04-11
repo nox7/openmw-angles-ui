@@ -43,6 +43,7 @@ local DomNodeKind = {
 --- @field isUserComponent boolean Whether this is a user component
 --- @field hostElement AnglesUI.DomNode? The host element for user components (for :host)
 --- @field scopeId string? Unique scope identifier for CSS scoping
+--- @field logicalParent AnglesUI.DomNode? Override parent used for CSS selector matching (set on projected content so selectors pierce component wrappers)
 --- @field attributes table<string, AnglesUI.Attribute> Quick attribute lookup by name
 --- @field id string? Cached id attribute value
 --- @field classes table<string, boolean> Cached class set
@@ -87,6 +88,7 @@ function DomNode.FromElement(htmlNode, parent, depth)
     node.isUserComponent = htmlNode.isUserComponent or false
     node.hostElement = nil
     node.scopeId = nil
+    node.logicalParent = nil
     node.layoutData = {}
 
     -- Cache attributes

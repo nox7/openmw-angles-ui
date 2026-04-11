@@ -41,9 +41,10 @@ local RuntimeInit = require("scripts.Nox.AnglesUI.Runtime.RuntimeInit")
 local EventBinding = require("scripts.Nox.AnglesUI.Runtime.EventBinding")
 
 -- Renderer
-local LayoutInit  = require("scripts.Nox.AnglesUI.Renderer.LayoutInit")
-local BoxModel    = require("scripts.Nox.AnglesUI.Renderer.BoxModel")
-local Transpiler  = require("scripts.Nox.AnglesUI.Renderer.Transpiler")
+local LayoutInit    = require("scripts.Nox.AnglesUI.Renderer.LayoutInit")
+local BoxModel      = require("scripts.Nox.AnglesUI.Renderer.BoxModel")
+local ScrollCanvas  = require("scripts.Nox.AnglesUI.Renderer.ScrollCanvas")
+local Transpiler    = require("scripts.Nox.AnglesUI.Renderer.Transpiler")
 local Dragger     = require("scripts.Nox.AnglesUI.Renderer.Dragger")
 local Resizable   = require("scripts.Nox.AnglesUI.Renderer.Resizable")
 local Reactivity  = require("scripts.Nox.AnglesUI.Renderer.Reactivity")
@@ -70,7 +71,8 @@ local function readVfsFile(path)
     local handle, err = VFS.open(path)
     if not handle then return nil end
     local contents = handle:read("*all")
-    return contents
+    if contents == nil then return nil end
+    return tostring(contents)
 end
 
 --- Check if a VFS file exists.
@@ -88,16 +90,14 @@ end
 --- @param source string
 --- @return AnglesUI.BaseNode[]
 local function parseHtml(source)
-    local tokens = HtmlLexer.Tokenize(source)
-    return HtmlParser.Parse(tokens)
+    return HtmlParser.Parse(source)
 end
 
 --- Parse a CSS source string into a stylesheet AST.
 --- @param source string
 --- @return AnglesUI.CssStylesheet
 local function parseCss(source)
-    local tokens = CssLexer.Tokenize(source)
-    return CssParser.Parse(tokens, source)
+    return CssParser.Parse(source)
 end
 
 ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ end
 
 --- @class AnglesUI.Renderer
 --- @field private _htmlPath string
---- @field private _htmlAst AnglesUI.BaseNode[]
+--- @field private _htmlAst AnglesUI.BaseNode[] Pristine copy of the parsed HTML AST; never mutated.
 --- @field private _cssAst AnglesUI.CssStylesheet|nil
 --- @field private _registry AnglesUI.ComponentRegistry
 --- @field private _hoverTracker AnglesUI.HoverTracker
@@ -114,6 +114,7 @@ end
 --- @field private _context table|nil The last-used evaluation context
 --- @field private _reactivityHandle AnglesUI.ReactivityHandle|nil
 --- @field private _variableResolver AnglesUI.CssVariableResolver
+--- @field private _scrollOffsets table<string, {x:number,y:number}> Persisted scroll positions keyed by scroll canvas ID.
 local Renderer = {}
 Renderer.__index = Renderer
 
@@ -134,6 +135,9 @@ function Renderer.FromFile(filePath, userComponents)
         error("AnglesUI.Renderer: Cannot read HTML file: " .. filePath, 2)
     end
     self._htmlPath = filePath
+    -- Keep a pristine copy of the parsed AST so that runPipeline can produce
+    -- a fresh working copy each time without accumulating mutations from
+    -- component expansion or content projection.
     self._htmlAst = parseHtml(source)
 
     -- Validate: first element must be mw-root
@@ -169,6 +173,18 @@ function Renderer.FromFile(filePath, userComponents)
     self._element = nil
     self._context = nil
     self._reactivityHandle = nil
+    --- Shared mutable reference passed to Dragger/Resizable callbacks so they can
+    --- reach the live OpenMW element even though the callbacks are built before
+    --- UI.create() is called. Populated in Render() after UI.create().
+    self._elementRef = {}
+    --- Persisted position/size override applied after CSS cascade so that
+    --- resize and drag operations survive full re-renders (signal-triggered
+    --- or post-resize). Format: {x, y, w, h} — any field may be nil.
+    self._rootOverride = nil
+    --- Persisted scroll offsets for each mw-scroll-canvas, keyed by the node's
+    --- id attribute. Re-injected into scrollState after each layout pass so that
+    --- signal-triggered re-renders do not reset scroll positions.
+    self._scrollOffsets = {}
 
     return self
 end
@@ -193,52 +209,84 @@ local function expandComponents(nodes, registry, parentScopeId)
         if SpecialComponentRegistry.IsSpecial(tag) then
             local templateAst = SpecialComponentRegistry.GetOrParseHtml(tag, parseHtml)
             if templateAst and #templateAst > 0 then
-                -- The special component template replaces the content
+                -- The special component template replaces the content.
+                -- Deep-copy the template root so ContentProjection never mutates the cache.
+                local templateRoot = HtmlNodes.DeepCopyNode(templateAst[1])
                 local projected = node.children or {}
-                local templateRoot = templateAst[1]
 
                 if templateRoot.type == NodeType.Element then
                     --- @cast templateRoot AnglesUI.ElementNode
-                    -- Deep-clone the template
-                    local cloned = HtmlNodes.CreateElement(templateRoot.tag, templateRoot.line, templateRoot.column)
-                    cloned.attributes = templateRoot.attributes
-                    cloned.selfClosing = templateRoot.selfClosing
-                    cloned.isEngine = templateRoot.isEngine
-                    cloned.isUserComponent = templateRoot.isUserComponent
-
-                    -- Project content
-                    if templateRoot.children and #templateRoot.children > 0 then
-                        cloned.children = ContentProjection.Project(templateRoot.children, projected)
+                    if templateRoot.tag == "mw-content" then
+                        -- Template root is mw-content: host element IS the container.
+                        -- Project the caller's children directly into the host element.
+                        node.children = projected
+                        for _, projChild in ipairs(projected) do
+                            if projChild.type == NodeType.Element then
+                                projChild._logicalHostNode = node
+                            end
+                        end
                     else
-                        cloned.children = projected
-                    end
+                        -- Template root is a wrapper element: use the deep copy directly.
+                        local cloned = templateRoot
 
-                    -- Replace the original node's children
-                    node.children = { cloned }
+                        -- Project content
+                        if cloned.children and #cloned.children > 0 then
+                            cloned.children = ContentProjection.Project(cloned.children, projected)
+                        else
+                            cloned.children = projected
+                        end
+
+                        -- Annotate only the originally-projected caller children so DomTreeBuilder
+                        -- can set logicalParent. Template-internal elements keep their natural
+                        -- parent chain and should NOT be annotated.
+                        for _, projChild in ipairs(projected) do
+                            if projChild.type == NodeType.Element then
+                                projChild._logicalHostNode = node
+                            end
+                        end
+
+                        -- Replace the original node's children
+                        node.children = { cloned }
+                    end
                 end
             end
         -- User components
         elseif registry:IsRegistered(tag) then
             local templateAst = registry:GetOrParseHtml(tag, parseHtml, readVfsFile)
             if templateAst and #templateAst > 0 then
+                -- Deep-copy the template root so ContentProjection never mutates the cache.
+                local templateRoot = HtmlNodes.DeepCopyNode(templateAst[1])
                 local projected = node.children or {}
-                local templateRoot = templateAst[1]
 
                 if templateRoot.type == NodeType.Element then
                     --- @cast templateRoot AnglesUI.ElementNode
-                    local cloned = HtmlNodes.CreateElement(templateRoot.tag, templateRoot.line, templateRoot.column)
-                    cloned.attributes = templateRoot.attributes
-                    cloned.selfClosing = templateRoot.selfClosing
-                    cloned.isEngine = templateRoot.isEngine
-                    cloned.isUserComponent = templateRoot.isUserComponent
-
-                    if templateRoot.children and #templateRoot.children > 0 then
-                        cloned.children = ContentProjection.Project(templateRoot.children, projected)
+                    if templateRoot.tag == "mw-content" then
+                        -- Template root is mw-content: project directly into host.
+                        node.children = projected
+                        for _, projChild in ipairs(projected) do
+                            if projChild.type == NodeType.Element then
+                                projChild._logicalHostNode = node
+                            end
+                        end
                     else
-                        cloned.children = projected
-                    end
+                        -- Use the deep-copied template root as the cloned wrapper.
+                        local cloned = templateRoot
 
-                    node.children = { cloned }
+                        if cloned.children and #cloned.children > 0 then
+                            cloned.children = ContentProjection.Project(cloned.children, projected)
+                        else
+                            cloned.children = projected
+                        end
+
+                        -- Annotate only originally-projected caller children (not template elements)
+                        for _, projChild in ipairs(projected) do
+                            if projChild.type == NodeType.Element then
+                                projChild._logicalHostNode = node
+                            end
+                        end
+
+                        node.children = { cloned }
+                    end
                 end
             end
         end
@@ -277,6 +325,7 @@ local function collectFlatRules(self)
             if cssAst then
                 local rules = CssCascade.FlattenStylesheet(cssAst)
                 for _, r in ipairs(rules) do
+                    r.componentTag = tag  -- tag flat rules so :host can be resolved
                     allRules[#allRules + 1] = r
                 end
             end
@@ -289,6 +338,7 @@ local function collectFlatRules(self)
         if cssAst then
             local rules = CssCascade.FlattenStylesheet(cssAst)
             for _, r in ipairs(rules) do
+                r.componentTag = tagName  -- tag flat rules so :host can be resolved
                 allRules[#allRules + 1] = r
             end
         end
@@ -327,11 +377,15 @@ end
 --- @return AnglesUI.DomNode root
 --- @return AnglesUI.DomNode mwRoot
 local function runPipeline(self, context)
-    -- 1. Expand components in the HTML AST
-    expandComponents(self._htmlAst, self._registry, nil)
+    -- 1. Fresh working copy of the HTML AST so component expansion and content
+    --    projection never mutate the pristine source.  Without this, a re-render
+    --    (e.g. after resize or signal update) would try to expand already-expanded
+    --    nodes and projected content would be lost on the second pass.
+    local workAst = HtmlNodes.DeepCopyAst(self._htmlAst)
+    expandComponents(workAst, self._registry, nil)
 
-    -- 2. Build DOM tree from HTML AST
-    local root = DomTreeBuilder.Build(self._htmlAst)
+    -- 2. Build DOM tree from the working AST
+    local root = DomTreeBuilder.Build(workAst)
 
     -- 3. Find mw-root for screen size lookup
     local mwRoot = nil
@@ -350,29 +404,117 @@ local function runPipeline(self, context)
     local layerName = layerAttr and layerAttr.value or "Windows"
     local screenW, screenH = getScreenSize(layerName)
 
-    -- 5. CSS Cascade
-    local flatRules = collectFlatRules(self)
+    -- 5. CSS Cascade — two-pass to handle @container queries correctly.
+    --
+    -- Container queries must be evaluated AFTER layout so the evaluator can
+    -- read real pixel dimensions from layoutData.  We therefore:
+    --   Pass 1: cascade all non-@container rules → nodes get width/height,
+    --           container-type/name, and all other non-container styles.
+    --   Layout: BoxModel.LayoutTree fills layoutData for every node.
+    --   Pass 2: cascade only @container rules and merge over computed styles.
+    --   (A second layout pass then applies the changed styles.)
+    local allFlatRules = collectFlatRules(self)
     local hoverSet = self._hoverTracker:GetHoverSet()
-    local mediaEval = MediaQueryEvaluator.New(screenW, screenH)
-    local containerEval = ContainerQueryEvaluator.New()
+    local mediaEval = MediaQueryEvaluator.New(screenW, screenH):CreateEvaluatorFunc()
+    local containerEval = ContainerQueryEvaluator.CreateEvaluatorFunc()
+
+    -- Split rules into non-container and container buckets
+    local nonContainerRules = {}
+    local containerRules    = {}
+    for _, r in ipairs(allFlatRules) do
+        if r.atRuleName == "container" then
+            containerRules[#containerRules + 1] = r
+        else
+            nonContainerRules[#nonContainerRules + 1] = r
+        end
+    end
 
     -- Collect CSS variables from root CSS
     if self._cssAst then
         self._variableResolver:CollectFromStylesheet(self._cssAst)
     end
 
-    CssCascade.ApplyToTree(root, flatRules, self._variableResolver, hoverSet, nil, mediaEval, containerEval)
+    -- Pass 1: all rules except @container
+    CssCascade.ApplyToTree(root, nonContainerRules, self._variableResolver, hoverSet, nil, mediaEval, nil)
+
+    -- Apply any persisted resize/drag override to mw-root's computed styles so
+    -- that the layout pass uses the user-adjusted dimensions rather than the
+    -- CSS-defined ones. This must happen AFTER the cascade (which would reset
+    -- them) but BEFORE the layout pass (step 8).
+    if self._rootOverride then
+        local ovr = self._rootOverride
+        if ovr.w then mwRoot.computedStyles["width"]  = math.floor(ovr.w) .. "px" end
+        if ovr.h then mwRoot.computedStyles["height"] = math.floor(ovr.h) .. "px" end
+        if ovr.x or ovr.y then
+            mwRoot.computedStyles["position"] = "absolute"
+            if ovr.x then mwRoot.computedStyles["left"] = math.floor(ovr.x) .. "px" end
+            if ovr.y then mwRoot.computedStyles["top"]  = math.floor(ovr.y) .. "px" end
+        end
+    end
+
+    -- First layout pass — gives every node real dimensions in layoutData.
+    -- Container query evaluation in Pass 2 reads these.
+    BoxModel.LayoutTree(root, screenW, screenH)
+
+    -- Pass 2: @container rules only — now layoutData is populated so the
+    -- ContainerQueryEvaluator can read actual pixel widths/heights.
+    if #containerRules > 0 then
+        CssCascade.ApplyContainerRules(root, containerRules, self._variableResolver, hoverSet, nil, containerEval)
+
+        -- Second layout pass to apply any style changes from container rules.
+        BoxModel.LayoutTree(root, screenW, screenH)
+    end
+
+    -- Inject persisted scroll offsets into each mw-scroll-canvas node
+    -- AFTER the final layout pass (which recreates scrollState from scratch).
+    -- This ensures signal-triggered re-renders and resize re-renders do not
+    -- snap scroll positions back to zero.
+    root:Walk(function(domNode)
+        if domNode.kind == DomNodeKind.Element
+            and domNode.tag == "mw-scroll-canvas"
+            and domNode.id then
+            local saved = self._scrollOffsets[domNode.id]
+            if saved and domNode.layoutData and domNode.layoutData.scrollState then
+                local ss = domNode.layoutData.scrollState
+                ss.scrollX = ScrollCanvas.ClampScroll(saved.x or 0, ss.viewportWidth, ss.contentWidth)
+                ss.scrollY = ScrollCanvas.ClampScroll(saved.y or 0, ss.viewportHeight, ss.contentHeight)
+            end
+        end
+        return false
+    end)
 
     -- 6. Runtime evaluation (directives, bindings, events)
     local eventMaps = RuntimeInit.Evaluate(root, context)
 
     -- 7. Handle Dragger and Resizable on mw-root
-    local elementRef = { layout = nil }
+    -- Use self._elementRef so it can be populated with the live OpenMW element
+    -- after UI.create() in Render().
+    local elementRef = self._elementRef
+
+    -- Callbacks that persist position/size overrides across re-renders and
+    -- trigger a full re-layout when a resize drag completes.
+    local function onDragUpdate(newX, newY)
+        local ovr = self._rootOverride or {}
+        ovr.x = newX
+        ovr.y = newY
+        self._rootOverride = ovr
+    end
+
+    local function onResizeUpdate(newX, newY, newW, newH)
+        self._rootOverride = { x = newX, y = newY, w = newW, h = newH }
+    end
+
+    local function onResizeComplete()
+        -- Re-run the full pipeline so all children re-layout to the new root size.
+        if self._element then
+            self:_Rerender()
+        end
+    end
 
     -- Check all descendants for Dragger
     mwRoot:Walk(function(node)
         if node.kind == DomNodeKind.Element and Dragger.HasDragger(node) then
-            local dragCbs = Dragger.BuildCallbacks(node, mwRoot, elementRef, Util)
+            local dragCbs = Dragger.BuildCallbacks(node, mwRoot, elementRef, Util, UI, Async, layerName, onDragUpdate)
             local existing = eventMaps[node] or {}
             eventMaps[node] = EventBinding.MergeCallbackMaps(existing, dragCbs)
         end
@@ -382,16 +524,14 @@ local function runPipeline(self, context)
     -- Resizable on mw-root
     if Resizable.IsResizable(mwRoot) then
         local edgeMargin = Resizable.GetEdgeMargin(mwRoot)
-        local resizeCbs = Resizable.BuildCallbacks(mwRoot, edgeMargin, elementRef, Util)
+        local resizeCbs = Resizable.BuildCallbacks(mwRoot, edgeMargin, elementRef, Util, UI, Async, layerName, onResizeUpdate, onResizeComplete)
         local existing = eventMaps[mwRoot] or {}
         eventMaps[mwRoot] = EventBinding.MergeCallbackMaps(existing, resizeCbs)
     end
 
-    -- 8. Layout pass
-    BoxModel.LayoutTree(root, screenW, screenH)
-
-    -- 9. Transpile to OpenMW UI format
-    local createArg = Transpiler.Transpile(root, eventMaps, context, self._hoverTracker)
+    -- 8. Transpile to OpenMW UI format
+    local rerenderFn = function() self:_Rerender() end
+    local createArg = Transpiler.Transpile(root, eventMaps, context, self._hoverTracker, self._elementRef, self._scrollOffsets, rerenderFn)
 
     return createArg, eventMaps, root, mwRoot
 end
@@ -428,6 +568,10 @@ function Renderer:Render(context)
         -- First render: create the element
         self._element = UI.create(createArg)
     end
+
+    -- Populate the shared element reference so Dragger/Resizable callbacks can
+    -- reach the live OpenMW element. Must happen after UI.create().
+    self._elementRef.element = self._element
 
     -- Subscribe to signals for reactive re-render
     self._reactivityHandle = Reactivity.SubscribeBatched(context, function()

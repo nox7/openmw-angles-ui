@@ -1,12 +1,12 @@
-.morrowind-window {
-    border-top-left-corner: 2px "textures/menu_thin_border_top_left_corner.dds" false false;
-    border-top: 2px "textures/menu_thin_border_top.dds" true false;
-    border-top-right-corner: 2px "textures/menu_thin_border_top_right_corner.dds" false false;
-    border-right: 2px "textures/menu_thin_border_right.dds" false true;
-    border-bottom-right-corner: 2px "textures/menu_thin_border_bottom_right_corner.dds" false false;
-    border-bottom: 2px "textures/menu_thin_border_bottom.dds" true false;
-    border-bottom-left-corner: 2px "textures/menu_thin_border_bottom_left_corner.dds" false false;
-    border-left: 2px "textures/menu_thin_border_left.dds" false true;
-    background-image: "black";
-    background-image-opacity: 0.5;
+:host {
+  border-top-left-corner: 4px "textures/menu_thick_border_top_left_corner.dds" false false;
+  border-top: 4px "textures/menu_thick_border_top.dds" true false;
+  border-top-right-corner: 4px "textures/menu_thick_border_top_right_corner.dds" false false;
+  border-right: 4px "textures/menu_thick_border_right.dds" false true;
+  border-bottom-right-corner: 4px "textures/menu_thick_border_bottom_right_corner.dds" false false;
+  border-bottom: 4px "textures/menu_thick_border_bottom.dds" true false;
+  border-bottom-left-corner: 4px "textures/menu_thick_border_bottom_left_corner.dds" false false;
+  border-left: 4px "textures/menu_thick_border_left.dds" false true;
+  background-image: "black";
+  background-image-opacity: 0.5;
 }

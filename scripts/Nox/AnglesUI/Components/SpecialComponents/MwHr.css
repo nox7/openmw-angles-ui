@@ -1,6 +1,6 @@
-.morrowind-hr {
-    width: 100%;
-    height: 2px;
-    background-image: "textures/menu_thin_border_top.dds";
-    background-repeat: repeat-x;
+:host {
+  width: 100%;
+  height: 2px;
+  background-image: "textures/menu_thin_border_top.dds";
+  background-repeat: repeat-x;
 }

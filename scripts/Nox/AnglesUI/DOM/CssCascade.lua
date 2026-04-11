@@ -34,6 +34,7 @@ local matchSelectorOnDomNode
 --- @field sourceOrder integer
 --- @field atRuleCondition string? For media/container rules, the unparsed prelude
 --- @field atRuleName string? "media" or "container"
+--- @field componentTag string? Tag name of the owning component, used for :host matching
 
 --- Flatten rules recursively, expanding nested selectors.
 --- @param rules (AnglesUI.CssRule | AnglesUI.CssAtRule)[]
@@ -132,9 +133,32 @@ function CssCascade.MatchRules(flatRules, domNode, hoverSet, hostElement, mediaE
         end
 
         if not skip then
+        -- Determine effective host element for :host matching.
+        -- When a rule belongs to a specific component (componentTag is set):
+        --   * If the current node IS the component host, use it directly.
+        --   * Otherwise walk up the DOM parent chain to find the nearest ancestor
+        --     whose tag matches the component tag. This allows nested selectors such
+        --     as `:host > mw-window` or `:host > mw-window mw-text` to resolve `:host`
+        --     correctly even when matching an interior descendant of the component.
+        local effectiveHost = hostElement
+        if flatRule.componentTag then
+            if domNode.tag == flatRule.componentTag then
+                effectiveHost = domNode
+            else
+                local ancestor = domNode.parent
+                while ancestor do
+                    if ancestor.tag == flatRule.componentTag then
+                        effectiveHost = ancestor
+                        break
+                    end
+                    ancestor = ancestor.parent
+                end
+            end
+        end
+
         -- Try each parsed selector
         for _, selector in ipairs(flatRule.parsedSelectors) do
-            if matchSelectorOnDomNode(selector, domNode, hoverSet, hostElement) then
+            if matchSelectorOnDomNode(selector, domNode, hoverSet, effectiveHost) then
                 local a, b, c = CssSelectorEngine.Specificity(selector)
                 matched[#matched + 1] = {
                     rule = flatRule, -- We store the flat rule rather than original CssRule
@@ -190,8 +214,10 @@ local function getProxy(domNode)
     setmetatable(proxy, {
         __index = function(t, key)
             if key == "parent" then
-                if domNode.parent then
-                    return getProxy(domNode.parent)
+                -- Use logicalParent when set (projected content pierces component wrappers)
+                local cssParent = domNode.logicalParent or domNode.parent
+                if cssParent then
+                    return getProxy(cssParent)
                 end
                 return nil
             elseif key == "children" then
@@ -303,6 +329,42 @@ function CssCascade.ApplyToTree(root, flatRules, variableResolver, hoverSet, hos
         node.containerName = node.computedStyles["container-name"]
         if node.containerName and #node.containerName == 0 then
             node.containerName = nil
+        end
+
+        return false -- continue walking
+    end)
+end
+
+--- Second-pass cascade: re-evaluate only @container rules and merge any
+--- matching declarations over already-computed styles.
+---
+--- Must be called AFTER `BoxModel.LayoutTree` so that `layoutData` is
+--- populated and the ContainerQueryEvaluator can read real pixel dimensions.
+---
+--- @param root AnglesUI.DomNode The DOM tree root
+--- @param containerFlatRules AnglesUI._FlatRule[] Only the @container flat rules
+--- @param variableResolver AnglesUI.CssVariableResolver?
+--- @param hoverSet table<any, boolean>?
+--- @param hostElement AnglesUI.DomNode?
+--- @param containerEvaluator fun(prelude: string, node: AnglesUI.DomNode): boolean?
+function CssCascade.ApplyContainerRules(root, containerFlatRules, variableResolver, hoverSet, hostElement, containerEvaluator)
+    if not containerFlatRules or #containerFlatRules == 0 then return end
+
+    root:Walk(function(node)
+        if node.kind ~= "Element" then return false end
+
+        local matched = CssCascade.MatchRules(
+            containerFlatRules, node, hoverSet, hostElement,
+            nil, -- no media evaluator needed — these are container rules only
+            containerEvaluator
+        )
+        if #matched > 0 then
+            -- Merge container rule styles over existing computed styles (higher
+            -- specificity wins the same way as in the normal cascade).
+            local containerStyles = CssCascade.ComputeStyles(matched, variableResolver)
+            for prop, val in pairs(containerStyles) do
+                node.computedStyles[prop] = val
+            end
         end
 
         return false -- continue walking

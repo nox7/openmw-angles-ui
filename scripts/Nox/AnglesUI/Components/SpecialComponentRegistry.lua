@@ -64,6 +64,8 @@ local function readFile(path)
     end
 
     local contents = handle:read("*all")
+    if contents == nil then return nil end
+    contents = tostring(contents)
     fileCache[path] = contents
     return contents
 end
