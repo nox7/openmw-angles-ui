@@ -65,6 +65,7 @@ DomNode.__index = DomNode
 --- @param parent AnglesUI.DomNode?
 --- @param depth integer?
 --- @return AnglesUI.DomNode
+---@nodiscard
 function DomNode.FromElement(htmlNode, parent, depth)
     local node = setmetatable({}, DomNode)
     node.kind = DomNodeKind.Element
@@ -114,6 +115,7 @@ end
 --- @param parent AnglesUI.DomNode?
 --- @param depth integer?
 --- @return AnglesUI.DomNode
+---@nodiscard
 function DomNode.FromText(htmlNode, parent, depth)
     local node = setmetatable({}, DomNode)
     node.kind = DomNodeKind.Text
@@ -147,6 +149,7 @@ end
 --- @param parent AnglesUI.DomNode?
 --- @param depth integer?
 --- @return AnglesUI.DomNode
+---@nodiscard
 function DomNode.FromOutput(htmlNode, parent, depth)
     local node = setmetatable({}, DomNode)
     node.kind = DomNodeKind.Output
@@ -180,6 +183,7 @@ end
 --- @param parent AnglesUI.DomNode?
 --- @param depth integer?
 --- @return AnglesUI.DomNode
+---@nodiscard
 function DomNode.FromIfDirective(htmlNode, parent, depth)
     local node = setmetatable({}, DomNode)
     node.kind = DomNodeKind.IfDirective
@@ -213,6 +217,7 @@ end
 --- @param parent AnglesUI.DomNode?
 --- @param depth integer?
 --- @return AnglesUI.DomNode
+---@nodiscard
 function DomNode.FromForDirective(htmlNode, parent, depth)
     local node = setmetatable({}, DomNode)
     node.kind = DomNodeKind.ForDirective

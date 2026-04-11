@@ -73,6 +73,7 @@ TextMeasure.LINE_HEIGHT_FACTOR = 1.2
 ---@param text string The text to measure
 ---@param fontSize? number Font size in pixels (defaults to DEFAULT_FONT_SIZE)
 ---@return number width Estimated width in pixels
+---@nodiscard
 function TextMeasure.MeasureWidth(text, fontSize)
     fontSize = fontSize or TextMeasure.DEFAULT_FONT_SIZE
     local baseCharWidth = TextMeasure.BASE_WIDTH_FACTOR * fontSize
@@ -90,6 +91,7 @@ end
 --- Estimate the height (in pixels) of a single line of text.
 ---@param fontSize? number Font size in pixels (defaults to DEFAULT_FONT_SIZE)
 ---@return number height Estimated line height in pixels
+---@nodiscard
 function TextMeasure.MeasureLineHeight(fontSize)
     fontSize = fontSize or TextMeasure.DEFAULT_FONT_SIZE
     return fontSize * TextMeasure.LINE_HEIGHT_FACTOR
@@ -105,6 +107,7 @@ end
 ---@param wordWrap? boolean Whether to break at word boundaries (default true if maxWidth given)
 ---@return number width The width of the widest line
 ---@return number height The total height of all lines
+---@nodiscard
 function TextMeasure.MeasureBounds(text, fontSize, maxWidth, wordWrap)
     fontSize = fontSize or TextMeasure.DEFAULT_FONT_SIZE
     local lineHeight = TextMeasure.MeasureLineHeight(fontSize)

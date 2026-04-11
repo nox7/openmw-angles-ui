@@ -90,6 +90,7 @@ end
 --- Build a complete DOM tree from an HTML AST root (array of root-level nodes).
 --- @param htmlAst AnglesUI.BaseNode[] Root-level parsed HTML nodes
 --- @return AnglesUI.DomNode root The root DomNode (a virtual document node wrapping everything)
+---@nodiscard
 function DomTreeBuilder.Build(htmlAst)
     -- Create a virtual document root node
     local rootHtml = HtmlNodes.CreateElement("__document__", 0, 0)
@@ -109,6 +110,7 @@ end
 --- @param htmlNode AnglesUI.ElementNode
 --- @param parentDom AnglesUI.DomNode?
 --- @return AnglesUI.DomNode
+---@nodiscard
 function DomTreeBuilder.BuildFromElement(htmlNode, parentDom)
     local depth = parentDom and (parentDom.depth + 1) or 0
     local domNode = buildNode(htmlNode, parentDom, depth)

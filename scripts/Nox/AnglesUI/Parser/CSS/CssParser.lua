@@ -374,6 +374,7 @@ end
 --- Parse CSS source into a stylesheet AST.
 --- @param source string The raw CSS source
 --- @return AnglesUI.CssStylesheet
+---@nodiscard
 function CssParser.Parse(source)
     local tokens = CssLexer.Tokenize(source)
     local state = {
@@ -391,6 +392,7 @@ end
 --- @param tokens AnglesUI.CssToken[]
 --- @param source string The original source for raw text extraction
 --- @return AnglesUI.CssStylesheet
+---@nodiscard
 function CssParser.ParseTokens(tokens, source)
     local state = {
         tokens = tokens,

@@ -23,6 +23,7 @@ CssVariableResolver.__index = CssVariableResolver
 --- Create a new variable resolver instance.
 --- @param initialVars? table<string, string> Optional initial variables
 --- @return AnglesUI.CssVariableResolver
+---@nodiscard
 function CssVariableResolver.New(initialVars)
     local self = setmetatable({}, CssVariableResolver)
     self._variables = {}
@@ -263,6 +264,7 @@ end
 --- Check whether a CSS value string contains any var() references.
 --- @param value string
 --- @return boolean
+---@nodiscard
 function CssVariableResolver.ContainsVar(value)
     return value:find("var(", 1, true) ~= nil
 end

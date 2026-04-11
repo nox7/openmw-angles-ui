@@ -72,6 +72,7 @@ local CssLexer = {
 --- Tokenize a CSS source string.
 --- @param source string The raw CSS source
 --- @return AnglesUI.CssToken[] tokens
+---@nodiscard
 function CssLexer.Tokenize(source)
     -- Scanner state -------------------------------------------------------
     local pos    = 1

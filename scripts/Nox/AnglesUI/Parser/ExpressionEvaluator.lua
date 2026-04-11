@@ -577,6 +577,7 @@ end
 --- @param expression string The expression to evaluate
 --- @param context table<string, any> Variables available in the expression
 --- @return any result The evaluated result
+---@nodiscard
 function ExpressionEvaluator.Evaluate(expression, context)
     if not expression or #expression == 0 then
         return nil
@@ -599,6 +600,7 @@ end
 ---
 --- @param expression string The expression to defer
 --- @return fun(context: table<string, any>): any evaluator
+---@nodiscard
 function ExpressionEvaluator.Defer(expression)
     local tokens = tokenize(expression)
 

@@ -278,6 +278,7 @@ end
 --- parsed selector chains.
 --- @param selectorText string
 --- @return AnglesUI.Selector[]
+---@nodiscard
 function CssSelectorEngine.Parse(selectorText)
     local parts = splitOnCommas(selectorText)
     local selectors = {}
@@ -300,6 +301,7 @@ end
 --- @return integer a
 --- @return integer b
 --- @return integer c
+---@nodiscard
 function CssSelectorEngine.Specificity(selector)
     local a, b, c = 0, 0, 0
 
@@ -347,6 +349,7 @@ end
 --- @param b2 integer
 --- @param c2 integer
 --- @return boolean
+---@nodiscard
 function CssSelectorEngine.CompareSpecificity(a1, b1, c1, a2, b2, c2)
     if a1 ~= a2 then return a1 > a2 end
     if b1 ~= b2 then return b1 > b2 end
@@ -558,6 +561,7 @@ end
 ---------------------------------------------------------------------------
 
 --- Get the immediately preceding element sibling of a node.
+---@private
 --- @param element AnglesUI.BaseNode
 --- @return AnglesUI.BaseNode?
 function CssSelectorEngine._getPreviousSibling(element)
@@ -581,6 +585,7 @@ function CssSelectorEngine._getPreviousSibling(element)
 end
 
 --- Get all preceding element siblings of a node (in document order).
+---@private
 --- @param element AnglesUI.BaseNode
 --- @return AnglesUI.BaseNode[]
 function CssSelectorEngine._getPrecedingSiblings(element)

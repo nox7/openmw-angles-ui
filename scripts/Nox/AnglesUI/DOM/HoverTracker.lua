@@ -26,6 +26,7 @@ HoverTracker.__index = HoverTracker
 
 --- Create a new hover tracker.
 --- @return AnglesUI.HoverTracker
+---@nodiscard
 function HoverTracker.New()
     local self = setmetatable({}, HoverTracker)
     self._hoverSet = {}

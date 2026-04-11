@@ -57,6 +57,7 @@ local HtmlLexer = {
 --- Tokenize an Angular-style HTML template string.
 --- @param source string The raw template source
 --- @return AnglesUI.HtmlToken[] tokens
+---@nodiscard
 function HtmlLexer.Tokenize(source)
     -- Scanner state -------------------------------------------------------
     local pos    = 1

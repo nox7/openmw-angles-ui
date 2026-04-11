@@ -95,6 +95,7 @@ local HtmlNodes = {
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.ElementNode
+---@nodiscard
 function HtmlNodes.CreateElement(tag, line, column)
     return {
         type = NodeType.Element,
@@ -115,6 +116,7 @@ end
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.TextNode
+---@nodiscard
 function HtmlNodes.CreateText(content, line, column)
     return {
         type = NodeType.Text,
@@ -130,6 +132,7 @@ end
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.OutputDirectiveNode
+---@nodiscard
 function HtmlNodes.CreateOutput(expression, line, column)
     return {
         type = NodeType.Output,
@@ -145,6 +148,7 @@ end
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.IfDirectiveNode
+---@nodiscard
 function HtmlNodes.CreateIfDirective(condition, line, column)
     return {
         type = NodeType.IfDirective,
@@ -163,6 +167,7 @@ end
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.ElseIfDirectiveNode
+---@nodiscard
 function HtmlNodes.CreateElseIfDirective(condition, line, column)
     return {
         type = NodeType.ElseIfDirective,
@@ -178,6 +183,7 @@ end
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.ElseDirectiveNode
+---@nodiscard
 function HtmlNodes.CreateElseDirective(line, column)
     return {
         type = NodeType.ElseDirective,
@@ -194,6 +200,7 @@ end
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.ForDirectiveNode
+---@nodiscard
 function HtmlNodes.CreateForDirective(iteratorName, iterableExpression, line, column)
     return {
         type = NodeType.ForDirective,
@@ -212,6 +219,7 @@ end
 --- @param value? string
 --- @param property? string Sub-property for style/attr bindings
 --- @return AnglesUI.Attribute
+---@nodiscard
 function HtmlNodes.CreateAttribute(attrType, name, value, property)
     return {
         type = attrType,

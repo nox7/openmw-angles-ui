@@ -285,6 +285,7 @@ end
 --- Parse HTML template source into an AST.
 --- @param source string The raw Angular-style HTML template
 --- @return AnglesUI.BaseNode[] roots The root-level nodes
+---@nodiscard
 function HtmlParser.Parse(source)
     local tokens = HtmlLexer.Tokenize(source)
     local state  = createState(tokens, source)
@@ -294,6 +295,7 @@ end
 --- Parse from a pre-tokenized stream (useful for testing / alternate flows).
 --- @param tokens AnglesUI.HtmlToken[]
 --- @return AnglesUI.BaseNode[] roots
+---@nodiscard
 function HtmlParser.ParseTokens(tokens)
     local state = createState(tokens)
     return parseChildren(state)

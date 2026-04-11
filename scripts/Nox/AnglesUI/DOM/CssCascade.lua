@@ -18,6 +18,9 @@ local CssVariableResolver  = require("scripts.Nox.AnglesUI.Parser.CSS.CssVariabl
 --- @class AnglesUI.CssCascade
 local CssCascade = {}
 
+--- Forward declaration
+local matchSelectorOnDomNode
+
 ---------------------------------------------------------------------------
 -- Internal: flatten a stylesheet into a linear list of resolved rules.
 -- Each flattened entry has: resolvedSelector (string), declarations[],
@@ -81,6 +84,7 @@ end
 --- Flatten a stylesheet into a sorted list of flat rules.
 --- @param stylesheet AnglesUI.CssStylesheet
 --- @return AnglesUI._FlatRule[]
+---@nodiscard
 function CssCascade.FlattenStylesheet(stylesheet)
     local output = {}
     local counter = { n = 0 }
@@ -101,6 +105,7 @@ end
 --- @param mediaEvaluator fun(prelude: string): boolean?
 --- @param containerEvaluator fun(prelude: string, node: AnglesUI.DomNode): boolean?
 --- @return AnglesUI.MatchedRule[]
+---@nodiscard
 function CssCascade.MatchRules(flatRules, domNode, hoverSet, hostElement, mediaEvaluator, containerEvaluator)
     --- @type AnglesUI.MatchedRule[]
     local matched = {}
@@ -207,6 +212,7 @@ local function getProxy(domNode)
 end
 
 --- Match a parsed selector against a DomNode through the proxy bridge.
+---@private
 --- @param selector AnglesUI.Selector
 --- @param domNode AnglesUI.DomNode
 --- @param hoverSet table<any, boolean>?
@@ -246,6 +252,7 @@ end
 --- @param matchedRules AnglesUI.MatchedRule[]
 --- @param variableResolver AnglesUI.CssVariableResolver?
 --- @return table<string, string> computedStyles
+---@nodiscard
 function CssCascade.ComputeStyles(matchedRules, variableResolver)
     local styles = {}
 

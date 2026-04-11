@@ -62,6 +62,7 @@ local CssNodes = {
 
 --- Create a top-level stylesheet container.
 --- @return AnglesUI.CssStylesheet
+---@nodiscard
 function CssNodes.CreateStylesheet()
     return {
         type  = CssNodeType.Stylesheet,
@@ -74,6 +75,7 @@ end
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.CssRule
+---@nodiscard
 function CssNodes.CreateRule(selectorText, line, column)
     return {
         type         = CssNodeType.Rule,
@@ -93,6 +95,7 @@ end
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.CssDeclaration
+---@nodiscard
 function CssNodes.CreateDeclaration(property, value, line, column)
     return {
         type     = CssNodeType.Declaration,
@@ -109,6 +112,7 @@ end
 --- @param line? integer Source line
 --- @param column? integer Source column
 --- @return AnglesUI.CssAtRule
+---@nodiscard
 function CssNodes.CreateAtRule(name, prelude, line, column)
     return {
         type    = CssNodeType.AtRule,

@@ -31,6 +31,7 @@ MediaQueryEvaluator.__index = MediaQueryEvaluator
 --- @param screenWidth number Screen width in pixels
 --- @param screenHeight number Screen height in pixels
 --- @return AnglesUI.MediaQueryEvaluator
+---@nodiscard
 function MediaQueryEvaluator.New(screenWidth, screenHeight)
     local self = setmetatable({}, MediaQueryEvaluator)
     self._screenWidth = screenWidth or 0
