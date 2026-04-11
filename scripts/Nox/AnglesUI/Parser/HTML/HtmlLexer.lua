@@ -259,11 +259,9 @@ function HtmlLexer.Tokenize(source)
                 else
                     emit(TokenType.BINDING, bindName, expr)
                 end
-                goto continue_tag
-            end
 
             -- Event binding: (eventName)="expr"
-            if ch == "(" then
+            elseif ch == "(" then
                 advance() -- skip (
                 local nameStart = pos
                 while not isEnd() and peek() ~= ")" do
@@ -283,11 +281,9 @@ function HtmlLexer.Tokenize(source)
                 end
 
                 emit(TokenType.EVENT, evtName, expr)
-                goto continue_tag
-            end
 
             -- Regular attribute: name="value" or boolean attribute name
-            if isAlpha(ch) then
+            elseif isAlpha(ch) then
                 local attrName = readIdentifier()
                 skipWhitespace()
                 local attrValue = nil
@@ -299,12 +295,11 @@ function HtmlLexer.Tokenize(source)
                     end
                 end
                 emit(TokenType.ATTRIBUTE, attrName, attrValue)
-                goto continue_tag
-            end
 
-            -- Unknown character inside tag — skip
-            advance()
-            ::continue_tag::
+            else
+                -- Unknown character inside tag — skip
+                advance()
+            end
         end
     end
 
@@ -331,7 +326,8 @@ function HtmlLexer.Tokenize(source)
             textCol  = column
         end
 
-        while not isEnd() do
+        while not isEnd() do repeat -- repeat/until true simulates continue via break
+
             -- HTML comment: <!-- ... -->
             if peekStr(4) == "<!--" then
                 flushText()
@@ -342,7 +338,7 @@ function HtmlLexer.Tokenize(source)
                 if not isEnd() then advance(3) end
                 textLine = line
                 textCol  = column
-                goto continue_content
+                break
             end
 
             -- Close tag: </tagName>
@@ -356,7 +352,7 @@ function HtmlLexer.Tokenize(source)
                 emit(TokenType.TAG_CLOSE, tagName)
                 textLine = line
                 textCol  = column
-                goto continue_content
+                break
             end
 
             -- Open tag: <tagName
@@ -370,7 +366,7 @@ function HtmlLexer.Tokenize(source)
                 scanTag()
                 textLine = line
                 textCol  = column
-                goto continue_content
+                break
             end
 
             -- Output directive: {{ expression }}
@@ -389,7 +385,7 @@ function HtmlLexer.Tokenize(source)
                 emit(TokenType.OUTPUT, expr, nil, startLine, startCol)
                 textLine = line
                 textCol  = column
-                goto continue_content
+                break
             end
 
             -- @else if (condition) {
@@ -413,7 +409,7 @@ function HtmlLexer.Tokenize(source)
                     end
                     textLine = line
                     textCol  = column
-                    goto continue_content
+                    break
                 end
             end
 
@@ -436,7 +432,7 @@ function HtmlLexer.Tokenize(source)
                         end
                         textLine = line
                         textCol  = column
-                        goto continue_content
+                        break
                     end
                 end
             end
@@ -462,7 +458,7 @@ function HtmlLexer.Tokenize(source)
                     end
                     textLine = line
                     textCol  = column
-                    goto continue_content
+                    break
                 end
             end
 
@@ -494,7 +490,7 @@ function HtmlLexer.Tokenize(source)
                     end
                     textLine = line
                     textCol  = column
-                    goto continue_content
+                    break
                 end
             end
 
@@ -505,7 +501,7 @@ function HtmlLexer.Tokenize(source)
                 advance()
                 textLine = line
                 textCol  = column
-                goto continue_content
+                break
             end
 
             -- Regular text character
@@ -516,8 +512,7 @@ function HtmlLexer.Tokenize(source)
             textBuf = textBuf .. peek()
             advance()
 
-            ::continue_content::
-        end
+        until true end
 
         flushText()
     end

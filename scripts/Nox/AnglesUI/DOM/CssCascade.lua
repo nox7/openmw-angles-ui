@@ -120,16 +120,18 @@ function CssCascade.MatchRules(flatRules, domNode, hoverSet, hostElement, mediaE
 
     for _, flatRule in ipairs(flatRules) do
         -- Check at-rule conditions
+        local skip = false
         if flatRule.atRuleName == "media" then
             if mediaEvaluator and not mediaEvaluator(flatRule.atRuleCondition) then
-                goto continue
+                skip = true
             end
         elseif flatRule.atRuleName == "container" then
             if containerEvaluator and not containerEvaluator(flatRule.atRuleCondition, domNode) then
-                goto continue
+                skip = true
             end
         end
 
+        if not skip then
         -- Try each parsed selector
         for _, selector in ipairs(flatRule.parsedSelectors) do
             if matchSelectorOnDomNode(selector, domNode, hoverSet, hostElement) then
@@ -143,8 +145,8 @@ function CssCascade.MatchRules(flatRules, domNode, hoverSet, hostElement, mediaE
                 break -- One matching selector per rule is enough
             end
         end
+        end -- if not skip
 
-        ::continue::
     end
 
     -- Sort by specificity (ascending), then source order

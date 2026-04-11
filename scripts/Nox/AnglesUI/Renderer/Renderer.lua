@@ -184,7 +184,7 @@ end
 --- @param parentScopeId string|nil
 local function expandComponents(nodes, registry, parentScopeId)
     for i, node in ipairs(nodes) do
-        if node.type ~= NodeType.Element then goto continue end
+        if node.type == NodeType.Element then
 
         --- @cast node AnglesUI.ElementNode
         local tag = node.tag
@@ -248,7 +248,7 @@ local function expandComponents(nodes, registry, parentScopeId)
             expandComponents(node.children, registry, parentScopeId)
         end
 
-        ::continue::
+        end -- if node.type == NodeType.Element
     end
 end
 

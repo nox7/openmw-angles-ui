@@ -347,7 +347,7 @@ local function parsePostfix(state)
             consume(state, ETT.RPAREN)
 
             if type(value) == "function" then
-                value = value(table.unpack(args))
+                value = value(unpack(args))
             else
                 value = nil
             end

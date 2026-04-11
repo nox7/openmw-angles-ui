@@ -144,7 +144,10 @@ function FlexLayout.Layout(node, availableWidth, availableHeight)
         end
     end
 
-    -- Re-layout items with resolved main sizes to get correct cross sizes
+    -- Re-layout items with resolved main sizes to get correct cross sizes.
+    -- We save the flex-resolved main size before re-layout because
+    -- BoxModel.Layout respects explicit CSS width/height and would undo
+    -- the flex grow/shrink distribution.
     for i, item in ipairs(flexItems) do
         local cld = item.layoutData
         local itemMainMargin, itemCrossMargin
@@ -157,7 +160,8 @@ function FlexLayout.Layout(node, availableWidth, availableHeight)
             itemCrossMargin = cld.marginLeft + cld.marginRight
         end
 
-        local innerMain = math.max(0, mainSizes[i] - itemMainMargin)
+        local resolvedMain = mainSizes[i]
+        local innerMain = math.max(0, resolvedMain - itemMainMargin)
 
         if isRow then
             boxModelLayout(item, innerMain, availableHeight)
@@ -165,12 +169,19 @@ function FlexLayout.Layout(node, availableWidth, availableHeight)
             boxModelLayout(item, availableWidth, innerMain)
         end
 
-        -- Update sizes after re-layout
+        -- After re-layout, force the main dimension to the flex-resolved
+        -- size so that explicit CSS widths/heights don't undo grow/shrink.
         cld = item.layoutData
         if isRow then
+            local hChrome = cld.borderLeft + cld.paddingLeft + cld.paddingRight + cld.borderRight
+            cld.contentWidth = math.max(0, innerMain - hChrome)
+            cld.width = cld.borderLeft + cld.paddingLeft + cld.contentWidth + cld.paddingRight + cld.borderRight
             mainSizes[i] = cld.width + cld.marginLeft + cld.marginRight
             crossSizes[i] = cld.height + cld.marginTop + cld.marginBottom
         else
+            local vChrome = cld.borderTop + cld.paddingTop + cld.paddingBottom + cld.borderBottom
+            cld.contentHeight = math.max(0, innerMain - vChrome)
+            cld.height = cld.borderTop + cld.paddingTop + cld.contentHeight + cld.paddingBottom + cld.borderBottom
             mainSizes[i] = cld.height + cld.marginTop + cld.marginBottom
             crossSizes[i] = cld.width + cld.marginLeft + cld.marginRight
         end

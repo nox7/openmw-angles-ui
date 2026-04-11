@@ -214,13 +214,14 @@ parseChildren = function(state, stopCondition)
                         local nextTok = state.tokens[nextIdx]
                         if nextTok.type == TokenType.ELSE_IF_START or nextTok.type == TokenType.ELSE_START then
                             advance(state) -- consume whitespace text
-                            goto check_else
+                        else
+                            break
                         end
+                    else
+                        break
                     end
-                    break
                 end
 
-                ::check_else::
                 local ct = current(state)
 
                 if ct.type == TokenType.ELSE_IF_START then
